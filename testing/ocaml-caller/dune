@@ -1,9 +1,9 @@
 (rule
  (targets libcallable_rust.a dllcallable_rust.so)
- (deps (glob_files rust/src/*.rs))
+ (deps (source_tree rust))
  (action
   (progn
-   (run sh -c "cd rust; cargo build --release")
+   (chdir rust (run cargo build --release))
    (run sh -c
      "cp rust/target/release/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
       cp rust/target/release/libcallable_rust.dylib ./dllcallable_rust.so"
