@@ -15,3 +15,7 @@
  (names ocaml_rust_caller)
  (foreign_archives callable_rust)
  (libraries alcotest))
+
+(rule
+ (alias  runtest)
+ (action (run ./ocaml_rust_caller.exe)))
