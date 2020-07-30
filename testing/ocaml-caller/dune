@@ -1,0 +1,17 @@
+(rule
+ (targets libcallable_rust.a dllcallable_rust.so)
+ (deps (glob_files rust/src/*.rs))
+ (action
+  (progn
+   (run sh -c "cd rust; cargo build --release")
+   (run sh -c
+     "cp rust/target/release/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
+      cp rust/target/release/libcallable_rust.dylib ./dllcallable_rust.so"
+      )
+   (run cp rust/target/release/libcallable_rust.a libcallable_rust.a)
+   )))
+
+(executables
+ (names ocaml_rust_caller)
+ (foreign_archives callable_rust)
+ (libraries alcotest))

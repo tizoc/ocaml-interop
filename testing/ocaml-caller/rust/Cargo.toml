@@ -1,0 +1,11 @@
+[package]
+name = "callable_rust"
+version = "0.1.0"
+authors = ["Bruno Deferrari <utizoc@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+znfe = { path = "../../../../.." }
