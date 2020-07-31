@@ -55,6 +55,10 @@ impl<'gc> GCFrame<'gc> {
         };
         self
     }
+
+    pub fn keep<T>(&self, value: OCaml<T>) -> OCamlRef<'gc, T> {
+        OCamlRef::new(self, value)
+    }
 }
 
 impl<'gc> Drop for GCFrame<'gc> {

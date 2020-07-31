@@ -1,4 +1,4 @@
-use crate::memory::{GCFrame, OCamlRef};
+use crate::memory::GCFrame;
 use crate::mlvalues::*;
 use crate::mlvalues::tag;
 use std::marker;
@@ -45,10 +45,6 @@ impl<'a, T> OCaml<'a, T> {
             _marker: Default::default(),
             raw: x,
         }
-    }
-
-    pub fn reference<'g, 'gc>(self, gc: &'g GCFrame<'gc>) -> OCamlRef<'gc, T> {
-        OCamlRef::new(gc, self)
     }
 
     pub unsafe fn field<F>(self, i: UIntnat) -> OCaml<'a, F> {
