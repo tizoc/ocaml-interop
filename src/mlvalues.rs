@@ -1,5 +1,3 @@
-use crate::value::caml_string_length;
-
 pub mod tag;
 
 pub type UIntnat = usize;
@@ -72,18 +70,6 @@ pub unsafe fn string_val(val: RawOCaml) -> *mut u8 {
 pub unsafe fn raw_ocaml_to_i64(raw: RawOCaml) -> i64 {
     assert!(!is_block(raw));
     (raw >> 1) as i64
-}
-
-pub unsafe fn raw_ocaml_to_vecu8(raw: RawOCaml) -> Vec<u8> {
-    assert!(tag_val(raw) == tag::STRING);
-    let len = caml_string_length(raw);
-    let mut vec: Vec<u8> = Vec::with_capacity(len);
-    vec.extend_from_slice(std::slice::from_raw_parts(raw as *const u8, len));
-    vec
-}
-
-pub unsafe fn raw_ocaml_to_string(raw: RawOCaml) -> String {
-    String::from_utf8_unchecked(raw_ocaml_to_vecu8(raw))
 }
 
 #[inline]

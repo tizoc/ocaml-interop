@@ -82,9 +82,8 @@ impl<'a> OCaml<'a, String> {
 }
 
 impl<'a> OCaml<'a, Intnat> {
-    pub fn as_int(self) -> Intnat {
-        assert!(!is_block(self.raw));
-        self.raw >> 1
+    pub fn as_int(self) -> i64 {
+        unsafe { raw_ocaml_to_i64(self.raw) }
     }
 
     pub fn of_int(n: i64) -> Self {
