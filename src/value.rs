@@ -1,4 +1,4 @@
-use crate::memory::{GCFrame, OCamlRef};
+use crate::memory::GCFrame;
 use crate::mlvalues::*;
 use crate::mlvalues::tag;
 use std::marker;
@@ -47,16 +47,12 @@ impl<'a, T> OCaml<'a, T> {
         }
     }
 
-    pub fn reference<'g, 'gc>(self, gc: &'g GCFrame<'gc>) -> OCamlRef<'gc, T> {
-        OCamlRef::new(gc, self)
-    }
-
     pub unsafe fn field<F>(self, i: UIntnat) -> OCaml<'a, F> {
         assert!(tag_val(self.raw) < tag::NO_SCAN);
         assert!(i < wosize_val(self.raw));
         OCaml {
             _marker: Default::default(),
-            raw: *(self.raw as *const RawOCaml).offset(i as isize),
+            raw: *(self.raw as *const RawOCaml).add(i),
         }
     }
 
@@ -82,9 +78,8 @@ impl<'a> OCaml<'a, String> {
 }
 
 impl<'a> OCaml<'a, Intnat> {
-    pub fn as_int(self) -> Intnat {
-        assert!(!is_block(self.raw));
-        self.raw >> 1
+    pub fn as_int(self) -> i64 {
+        unsafe { raw_ocaml_to_i64(self.raw) }
     }
 
     pub fn of_int(n: i64) -> Self {
