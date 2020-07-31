@@ -1,4 +1,13 @@
 #[macro_export]
+macro_rules! gc_frame {
+    ($gc:ident) => {
+        let mut frame: $crate::GCFrame = Default::default();
+        frame.initialize();
+        let mut $gc = &mut frame;
+    };
+}
+
+#[macro_export]
 macro_rules! alloc_ocaml {
     { $(($obj:expr).)?$($fn:ident).+($gc:ident) } => {
         {

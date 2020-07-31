@@ -14,7 +14,7 @@ struct CamlRootsBlock {
 }
 
 impl Default for CamlRootsBlock {
-    fn default() -> CamlRootsBlock {
+    fn default() -> Self {
         CamlRootsBlock {
             next: ptr::null_mut(),
             ntables: 0,
@@ -38,8 +38,32 @@ extern "C" {
 }
 
 // OCaml GC frame handle
+#[derive(Default)]
 pub struct GCFrame<'gc> {
     _marker: marker::PhantomData<&'gc i32>,
+    block: CamlRootsBlock,
+    locals: LocalsBlock,
+}
+
+impl<'gc> GCFrame<'gc> {
+    pub fn initialize(&mut self) {
+        self.block.tables[0] = self.locals[0].as_ptr();
+        self.block.ntables = 1;
+        unsafe {
+            self.block.next = caml_local_roots;
+            caml_local_roots = &mut self.block;
+        }
+    }
+}
+
+impl<'gc> Drop for GCFrame<'gc> {
+    fn drop(&mut self) {
+        assert!(self.block.nitems == 0);
+        unsafe {
+            assert!(caml_local_roots == &mut self.block);
+            caml_local_roots = self.block.next;
+        }
+    }
 }
 
 // Token used for allocation functions.
@@ -62,31 +86,6 @@ unsafe fn free_local_root_cell(cell: &Cell<RawOCaml>) {
     let block = &mut *caml_local_roots;
     assert!(block.tables[0].offset(block.nitems - 1) == cell.as_ptr());
     block.nitems -= 1;
-}
-
-// Runs a block of code inside a fresh GC frame.
-// A new local roots block is pushed and then popped, with `body` executed in-between.
-// NOTE: right now a max of LOCAL_BLOCK_SIZE GC-tracked variables are supported.
-pub fn with_frame<'a, F>(body: F) -> RawOCaml
-where
-    F: Fn(&mut GCFrame) -> RawOCaml,
-{
-    let mut gc = GCFrame {
-        _marker: Default::default(),
-    };
-    let locals: LocalsBlock = Default::default();
-    unsafe {
-        let mut block: CamlRootsBlock = Default::default();
-        block.next = caml_local_roots;
-        block.ntables = 1;
-        block.tables[0] = locals[0].as_ptr();
-        caml_local_roots = &mut block;
-        let result = body(&mut gc);
-        assert!(caml_local_roots == &mut block);
-        assert!(block.nitems == 0);
-        caml_local_roots = block.next;
-        result
-    }
 }
 
 // A reference to an OCaml value. This location is tracked by the GC.

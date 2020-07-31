@@ -1,4 +1,4 @@
-use znfe::{with_frame, alloc_ocaml, FromOCaml, Intnat, OCaml, RawOCaml, ToOCaml, ToOCamlInteger};
+use znfe::{alloc_ocaml, gc_frame, FromOCaml, Intnat, OCaml, RawOCaml, ToOCaml, ToOCamlInteger};
 
 #[no_mangle]
 pub fn rust_twice(num: OCaml<'static, Intnat>) -> RawOCaml {
@@ -15,8 +15,7 @@ pub fn rust_increment_bytes(bytes: OCaml<String>, first_n: OCaml<'static, Intnat
         vec[i] += 1;
     }
 
-    with_frame(|gc| {
-        let output = alloc_ocaml! {vec.to_ocaml(gc)};
-        output.into()
-    })
+    gc_frame!(gc);
+    let output = alloc_ocaml! {vec.to_ocaml(gc)};
+    output.into()
 }
