@@ -17,6 +17,9 @@ macro_rules! alloc_ocaml {
 
 #[macro_export]
 macro_rules! call_ocaml {
+
+    // Field access: value.field.access(gc, ...)
+
     { $($fn:ident).+($gc:ident, $arg:expr) } => {
         {
             let res = $($fn).+.call($arg);
@@ -42,6 +45,68 @@ macro_rules! call_ocaml {
         {
             let mut args = [$($arg.eval()),*];
             let res = $($fn).+.call_n(&mut args);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    // Path: path::to::value(gc, ...)
+
+    { $($path:ident)::+($gc:ident, $arg:expr) } => {
+        {
+            let res = $($path)::+.call($arg);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    { $($path:ident)::+($gc:ident, $arg1:expr, $arg2:expr) } => {
+        {
+            let res = $($path)::+.call2($arg1, $arg2);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    { $($path:ident)::+($gc:ident, $arg1:expr, $arg2:expr, $arg3:expr) } => {
+        {
+            let res = $($path)::+.call3($arg1, $arg2, $arg3);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    { $($path:ident)::+($gc:ident, $($arg:expr),*) } => {
+        {
+            let mut args = [$($arg.eval()),*];
+            let res = $($path)::+.call_n(&mut args);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    // Path + field access: path::to::value.field.access(gc, ...)
+
+    { $($path:ident)::+.$($fn:ident).+($gc:ident, $arg:expr) } => {
+        {
+            let res = $($path)::+.$($fn).+.call($arg);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    { $($path:ident)::+.$($fn:ident).+($gc:ident, $arg1:expr, $arg2:expr) } => {
+        {
+            let res = $($path)::+.$($fn).+.call2($arg1, $arg2);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    { $($path:ident)::+.$($fn:ident).+($gc:ident, $arg1:expr, $arg2:expr, $arg3:expr) } => {
+        {
+            let res = $($path)::+.$($fn).+.call3($arg1, $arg2, $arg3);
+            res.map(|v| v.mark($gc).eval($gc))
+        }
+    };
+
+    { $($path:ident)::+.$($fn:ident).+($gc:ident, $($arg:expr),*) } => {
+        {
+            let mut args = [$($arg.eval()),*];
+            let res = $($path)::+.$($fn).+.call_n(&mut args);
             res.map(|v| v.mark($gc).eval($gc))
         }
     };

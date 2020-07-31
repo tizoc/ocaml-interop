@@ -1,16 +1,20 @@
 extern crate znfe;
 
-use lazy_static::lazy_static;
 use znfe::{
-    alloc_ocaml, call_ocaml, with_frame, FromOCaml, Intnat, OCaml, OCamlClosure, ToOCaml,
+    alloc_ocaml, call_ocaml, with_frame, FromOCaml, Intnat, OCaml, ToOCaml,
     ToOCamlInteger,
 };
 
-lazy_static! {
-    static ref OCAML_TWICE: OCamlClosure =
-        OCamlClosure::named("twice").expect("Missing 'twice' function");
-    static ref OCAML_INCREMENT_BYTES: OCamlClosure =
-        OCamlClosure::named("increment_bytes").expect("Missing 'increment_bytes' function");
+mod ocaml {
+    use lazy_static::lazy_static;
+    use znfe::OCamlClosure;
+
+    lazy_static! {
+        pub static ref TWICE: OCamlClosure =
+            OCamlClosure::named("twice").expect("Missing 'twice' function");
+        pub static ref INCREMENT_BYTES: OCamlClosure =
+            OCamlClosure::named("increment_bytes").expect("Missing 'increment_bytes' function");
+    }
 }
 
 pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
@@ -18,7 +22,7 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
         let bytes = alloc_ocaml! {bytes.to_ocaml(gc)};
         let bytes_ref = bytes.reference(gc);
         let first_n = alloc_ocaml! {(first_n as i64).to_ocaml(gc)};
-        let result = call_ocaml! {OCAML_INCREMENT_BYTES(gc, bytes_ref.get(gc), first_n)};
+        let result = call_ocaml! {ocaml::INCREMENT_BYTES(gc, bytes_ref.get(gc), first_n)};
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
         result.into()
     });
@@ -29,7 +33,7 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
 pub fn twice(num: i64) -> i64 {
     let res = with_frame(|gc| {
         let num = num.to_ocaml_fixnum();
-        let result = call_ocaml! {OCAML_TWICE(gc, num)};
+        let result = call_ocaml! {ocaml::TWICE(gc, num)};
         let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
         result.into()
     });
