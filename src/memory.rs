@@ -59,6 +59,10 @@ impl<'gc> GCFrame<'gc> {
     pub fn keep<T>(&self, value: OCaml<T>) -> OCamlRef<'gc, T> {
         OCamlRef::new(self, value)
     }
+
+    pub fn get<T>(&self, reference: OCamlRef<T>) -> OCaml<'gc, T> {
+        make_ocaml(reference.cell.get())
+    }
 }
 
 impl<'gc> Drop for GCFrame<'gc> {
@@ -111,10 +115,6 @@ impl<'a, T> OCamlRef<'a, T> {
             _marker: Default::default(),
             cell: cell,
         }
-    }
-
-    pub fn get<'gc, 'tmp>(&'a self, _gc: &'tmp GCFrame<'gc>) -> OCaml<'tmp, T> {
-        make_ocaml(self.cell.get())
     }
 }
 
