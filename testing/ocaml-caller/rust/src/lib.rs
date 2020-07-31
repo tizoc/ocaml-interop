@@ -15,7 +15,8 @@ pub fn rust_increment_bytes(bytes: OCaml<String>, first_n: OCaml<'static, Intnat
         vec[i] += 1;
     }
 
-    gc_frame!(gc);
-    let output = alloc_ocaml! {vec.to_ocaml(gc)};
-    output.into()
+    gc_frame!(gc, {
+        let output = alloc_ocaml! {vec.to_ocaml(gc)};
+        output.into()
+    })
 }

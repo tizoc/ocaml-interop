@@ -46,13 +46,14 @@ pub struct GCFrame<'gc> {
 }
 
 impl<'gc> GCFrame<'gc> {
-    pub fn initialize(&mut self) {
+    pub fn initialize(&mut self) -> &mut Self {
         self.block.tables[0] = self.locals[0].as_ptr();
         self.block.ntables = 1;
         unsafe {
             self.block.next = caml_local_roots;
             caml_local_roots = &mut self.block;
-        }
+        };
+        self
     }
 }
 

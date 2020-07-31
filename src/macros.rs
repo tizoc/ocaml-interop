@@ -1,9 +1,11 @@
 #[macro_export]
 macro_rules! gc_frame {
-    ($gc:ident) => {
-        let mut frame: $crate::GCFrame = Default::default();
-        frame.initialize();
-        let mut $gc = &mut frame;
+    ($gc:ident, $body:block) => {
+        {
+            let mut frame: $crate::GCFrame = Default::default();
+            let mut $gc = frame.initialize();
+            $body
+        }
     };
 }
 

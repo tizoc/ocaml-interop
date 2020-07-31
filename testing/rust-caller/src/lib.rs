@@ -15,21 +15,23 @@ mod ocaml {
 }
 
 pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
-    gc_frame!(gc);
-    let bytes = alloc_ocaml! {bytes.to_ocaml(gc)};
-    let bytes_ref = bytes.reference(gc);
-    let first_n = alloc_ocaml! {(first_n as i64).to_ocaml(gc)};
-    let result = call_ocaml! {ocaml::INCREMENT_BYTES(gc, bytes_ref.get(gc), first_n)};
-    let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
-    String::from_ocaml(result)
+    gc_frame!(gc, {
+        let bytes = alloc_ocaml! {bytes.to_ocaml(gc)};
+        let bytes_ref = bytes.reference(gc);
+        let first_n = alloc_ocaml! {(first_n as i64).to_ocaml(gc)};
+        let result = call_ocaml! {ocaml::INCREMENT_BYTES(gc, bytes_ref.get(gc), first_n)};
+        let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
+        String::from_ocaml(result)
+    })
 }
 
 pub fn twice(num: i64) -> i64 {
-    gc_frame!(gc);
-    let num = num.to_ocaml_fixnum();
-    let result = call_ocaml! {ocaml::TWICE(gc, num)};
-    let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
-    i64::from_ocaml(result)
+    gc_frame!(gc, {
+        let num = num.to_ocaml_fixnum();
+        let result = call_ocaml! {ocaml::TWICE(gc, num)};
+        let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
+        i64::from_ocaml(result)
+    })
 }
 
 // Tests
