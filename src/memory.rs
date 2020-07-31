@@ -87,7 +87,7 @@ unsafe fn reserve_local_root_cell<'gc>(_gc: &GCFrame<'gc>) -> &'gc Cell<RawOCaml
         block.nitems = pos + 1;
         cell
     } else {
-        panic!("Out of local roots");
+        panic!("Out of local roots. Max is LOCALS_BLOCK_SIZE={}", LOCALS_BLOCK_SIZE);
     }
 }
 
