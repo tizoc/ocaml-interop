@@ -113,7 +113,7 @@ impl<'a, T> OCamlRef<'a, T> {
         cell.set(x.into());
         OCamlRef {
             _marker: Default::default(),
-            cell: cell,
+            cell,
         }
     }
 }
@@ -140,7 +140,7 @@ impl<T> GCResult<T> {
     pub fn of(raw: RawOCaml) -> GCResult<T> {
         GCResult {
             _marker: Default::default(),
-            raw: raw,
+            raw,
         }
     }
 

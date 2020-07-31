@@ -52,7 +52,7 @@ impl<'a, T> OCaml<'a, T> {
         assert!(i < wosize_val(self.raw));
         OCaml {
             _marker: Default::default(),
-            raw: *(self.raw as *const RawOCaml).offset(i as isize),
+            raw: *(self.raw as *const RawOCaml).add(i),
         }
     }
 
