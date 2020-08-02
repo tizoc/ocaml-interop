@@ -1,4 +1,4 @@
-use crate::memory::GCResult;
+use crate::memory::{GCResult, GCToken};
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
 use crate::value::OCaml;
@@ -66,18 +66,24 @@ impl OCamlClosure {
         get_named(name).map(OCamlClosure)
     }
 
-    pub fn call<T, R>(self, arg: OCaml<T>) -> Result<GCResult<R>, Error> {
+    pub fn call<T, R>(self, _token: GCToken, arg: OCaml<T>) -> Result<GCResult<R>, Error> {
         let result = unsafe { caml_callback_exn(*self.0, arg.into()) };
         self.handle_result(result)
     }
 
-    pub fn call2<T, U, R>(self, arg1: OCaml<T>, arg2: OCaml<U>) -> Result<GCResult<R>, Error> {
+    pub fn call2<T, U, R>(
+        self,
+        _token: GCToken,
+        arg1: OCaml<T>,
+        arg2: OCaml<U>,
+    ) -> Result<GCResult<R>, Error> {
         let result = unsafe { caml_callback2_exn(*self.0, arg1.into(), arg2.into()) };
         self.handle_result(result)
     }
 
     pub fn call3<T, U, V, R>(
         self,
+        _token: GCToken,
         arg1: OCaml<T>,
         arg2: OCaml<U>,
         arg3: OCaml<V>,
@@ -86,7 +92,7 @@ impl OCamlClosure {
         self.handle_result(result)
     }
 
-    pub fn call_n<R>(self, args: &mut [RawOCaml]) -> Result<GCResult<R>, Error> {
+    pub fn call_n<R>(self, _token: GCToken, args: &mut [RawOCaml]) -> Result<GCResult<R>, Error> {
         let len = args.len();
         let result = unsafe { caml_callbackN_exn(*self.0, len, args.as_mut_ptr()) };
         self.handle_result(result)

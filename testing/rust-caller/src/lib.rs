@@ -1,6 +1,6 @@
 extern crate znfe;
 
-use znfe::{alloc_ocaml, call_ocaml, gc_frame, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger};
+use znfe::{ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger};
 
 mod ocaml {
     use lazy_static::lazy_static;
@@ -15,20 +15,20 @@ mod ocaml {
 }
 
 pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
-    gc_frame!(gc, {
-        let bytes = alloc_ocaml! {bytes.to_ocaml(gc)};
+    ocaml_frame!(gc, {
+        let bytes = ocaml_alloc! {bytes.to_ocaml(gc)};
         let bytes_ref = gc.keep(bytes);
-        let first_n = alloc_ocaml! {(first_n as i64).to_ocaml(gc)};
-        let result = call_ocaml! {ocaml::INCREMENT_BYTES(gc, gc.get(bytes_ref), first_n)};
+        let first_n = ocaml_alloc! {(first_n as i64).to_ocaml(gc)};
+        let result = ocaml_call! {ocaml::INCREMENT_BYTES(gc, gc.get(bytes_ref), first_n)};
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
         String::from_ocaml(result)
     })
 }
 
 pub fn twice(num: i64) -> i64 {
-    gc_frame!(gc, {
+    ocaml_frame!(gc, {
         let num = num.to_ocaml_fixnum();
-        let result = call_ocaml! {ocaml::TWICE(gc, num)};
+        let result = ocaml_call! {ocaml::TWICE(gc, num)};
         let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
         i64::from_ocaml(result)
     })

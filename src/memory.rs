@@ -63,6 +63,10 @@ impl<'gc> GCFrame<'gc> {
     pub fn get<T>(&self, reference: OCamlRef<T>) -> OCaml<'gc, T> {
         make_ocaml(reference.cell.get())
     }
+
+    pub unsafe fn token(&self) -> GCToken {
+        GCToken {}
+    }
 }
 
 impl<'gc> Drop for GCFrame<'gc> {
@@ -80,7 +84,7 @@ impl<'gc> Drop for GCFrame<'gc> {
 }
 
 // Token used for allocation functions.
-pub struct GCtoken {}
+pub struct GCToken {}
 
 unsafe fn reserve_local_root_cell<'gc>(_gc: &GCFrame<'gc>) -> &'gc Cell<RawOCaml> {
     let block = &mut *caml_local_roots;
@@ -158,10 +162,10 @@ impl<T> GCMarkedResult<T> {
     }
 }
 
-pub fn alloc_bytes(_token: GCtoken, s: &[u8]) -> GCResult<String> {
+pub fn alloc_bytes(_token: GCToken, s: &[u8]) -> GCResult<String> {
     GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
 }
 
-pub fn alloc_string(_token: GCtoken, s: &str) -> GCResult<String> {
+pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
     GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
 }
