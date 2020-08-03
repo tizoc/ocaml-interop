@@ -34,21 +34,30 @@ macro_rules! ocaml_call {
     { $($fn:ident).+($gc:ident, $arg:expr) } => {
         {
             let res = $($fn).+.call(unsafe { $gc.token() }, $arg);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
     { $($fn:ident).+($gc:ident, $arg1:expr, $arg2:expr) } => {
         {
             let res = $($fn).+.call2(unsafe { $gc.token() }, $arg1, $arg2);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
     { $($fn:ident).+($gc:ident, $arg1:expr, $arg2:expr, $arg3:expr) } => {
         {
             let res = $($fn).+.call3(unsafe { $gc.token() }, $arg1, $arg2, $arg3);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
@@ -56,7 +65,10 @@ macro_rules! ocaml_call {
         {
             let mut args = [$($arg.eval()),*];
             let res = $($fn).+.call_n(unsafe { $gc.token() }, &mut args);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
@@ -65,21 +77,30 @@ macro_rules! ocaml_call {
     { $($path:ident)::+($gc:ident, $arg:expr) } => {
         {
             let res = $($path)::+.call(unsafe { $gc.token() }, $arg);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
     { $($path:ident)::+($gc:ident, $arg1:expr, $arg2:expr) } => {
         {
             let res = $($path)::+.call2(unsafe { $gc.token() }, $arg1, $arg2);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
     { $($path:ident)::+($gc:ident, $arg1:expr, $arg2:expr, $arg3:expr) } => {
         {
             let res = $($path)::+.call3(unsafe { $gc.token() }, $arg1, $arg2, $arg3);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
@@ -87,7 +108,10 @@ macro_rules! ocaml_call {
         {
             let mut args = [$($arg.eval()),*];
             let res = $($path)::+.call_n(unsafe { $gc.token() }, &mut args);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
@@ -96,21 +120,30 @@ macro_rules! ocaml_call {
     { $($path:ident)::+.$($fn:ident).+($gc:ident, $arg:expr) } => {
         {
             let res = $($path)::+.$($fn).+.call(unsafe { $gc.token() }, $arg);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
     { $($path:ident)::+.$($fn:ident).+($gc:ident, $arg1:expr, $arg2:expr) } => {
         {
             let res = $($path)::+.$($fn).+.call2(unsafe { $gc.token() }, $arg1, $arg2);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
     { $($path:ident)::+.$($fn:ident).+($gc:ident, $arg1:expr, $arg2:expr, $arg3:expr) } => {
         {
             let res = $($path)::+.$($fn).+.call3(unsafe { $gc.token() }, $arg1, $arg2, $arg3);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 
@@ -118,7 +151,10 @@ macro_rules! ocaml_call {
         {
             let mut args = [$($arg.eval()),*];
             let res = $($path)::+.$($fn).+.call_n(unsafe { $gc.token() }, &mut args);
-            res.map(|v| v.mark($gc).eval($gc))
+            match res {
+                Ok(t) => Ok(t.mark($gc).eval($gc)),
+                Err(e) => Err(e),
+            }
         }
     };
 }
