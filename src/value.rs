@@ -10,20 +10,10 @@ extern "C" {
 }
 
 #[repr(transparent)]
+#[derive(Copy, Clone)]
 pub struct OCaml<'a, T: 'a> {
     _marker: marker::PhantomData<&'a T>,
     raw: RawOCaml,
-}
-
-impl<'a, T> Copy for OCaml<'a, T> {}
-
-impl<'a, T> Clone for OCaml<'a, T> {
-    fn clone(&self) -> OCaml<'a, T> {
-        OCaml {
-            _marker: Default::default(),
-            raw: self.raw,
-        }
-    }
 }
 
 impl<'a, T> Into<RawOCaml> for OCaml<'a, T> {
