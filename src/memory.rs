@@ -60,7 +60,7 @@ impl<'gc> GCFrame<'gc> {
         OCamlRef::new(self, value)
     }
 
-    pub fn get<T>(&self, reference: OCamlRef<T>) -> OCaml<'gc, T> {
+    pub fn get<T>(&self, reference: &OCamlRef<T>) -> OCaml<'gc, T> {
         make_ocaml(reference.cell.get())
     }
 
@@ -148,7 +148,7 @@ impl<T> GCResult<T> {
         }
     }
 
-    pub fn mark<'gc>(self, _gc: &mut GCFrame<'gc>) -> GCMarkedResult<T> {
+    pub fn mark(self, _gc: &mut GCFrame) -> GCMarkedResult<T> {
         GCMarkedResult {
             _marker: Default::default(),
             raw: self.raw,

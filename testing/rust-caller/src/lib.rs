@@ -17,7 +17,7 @@ mod ocaml {
 pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
     ocaml_frame!(gc, {
         let bytes = ocaml_alloc! {bytes.to_ocaml(gc)};
-        let bytes_ref = gc.keep(bytes);
+        let ref bytes_ref = gc.keep(bytes);
         let first_n = ocaml_alloc! {(first_n as i64).to_ocaml(gc)};
         let result = ocaml_call! {ocaml::INCREMENT_BYTES(gc, gc.get(bytes_ref), first_n)};
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
