@@ -3,7 +3,7 @@ macro_rules! ocaml_frame {
     ($gc:ident, $body:block) => {
         {
             let mut frame: $crate::GCFrame = Default::default();
-            let mut $gc = frame.initialize();
+            let $gc = frame.initialize();
             $body
         }
     };
