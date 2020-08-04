@@ -1,6 +1,6 @@
 use crate::memory::GCFrame;
-use crate::mlvalues::*;
 use crate::mlvalues::tag;
+use crate::mlvalues::*;
 use std::marker;
 use std::slice;
 use std::str;
@@ -26,6 +26,13 @@ pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
     OCaml {
         _marker: Default::default(),
         raw: x,
+    }
+}
+
+pub fn unit() -> OCaml<'static, ()> {
+    OCaml {
+        _marker: Default::default(),
+        raw: UNIT,
     }
 }
 

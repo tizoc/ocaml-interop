@@ -14,4 +14,4 @@ pub use crate::memory::{GCFrame, GCResult, GCToken};
 pub use crate::mlvalues::{Intnat, RawOCaml};
 pub use crate::runtime::init as init_runtime;
 pub use crate::runtime::shutdown as shutdown_runtime;
-pub use crate::value::OCaml;
+pub use crate::value::{OCaml, unit};

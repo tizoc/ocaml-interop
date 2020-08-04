@@ -4,6 +4,9 @@ pub type UIntnat = usize;
 pub type Intnat = isize;
 pub type RawOCaml = isize;
 
+// #define Val_unit Val_int(0)
+pub const UNIT: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
+
 // #define Is_block(x)  (((x) & 1) == 0)
 #[inline]
 pub fn is_block(x: RawOCaml) -> bool {
@@ -73,6 +76,6 @@ pub unsafe fn raw_ocaml_to_i64(raw: RawOCaml) -> i64 {
 }
 
 #[inline]
-pub unsafe fn raw_ocaml_of_i64(n: i64) -> RawOCaml {
+pub const unsafe fn raw_ocaml_of_i64(n: i64) -> RawOCaml {
     ((n << 1) | 1) as RawOCaml
 }
