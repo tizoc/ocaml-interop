@@ -1,4 +1,4 @@
-use crate::error::{Error, CamlError};
+use crate::error::{CamlError, Error};
 use crate::memory::{GCResult, GCToken};
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
@@ -52,12 +52,14 @@ fn get_named(name: &str) -> Option<*const RawOCaml> {
     }
 }
 
+pub type OCamlResult<T> = Result<GCResult<T>, Error>;
+
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {
         get_named(name).map(OCamlClosure)
     }
 
-    pub fn call<T, R>(&self, _token: GCToken, arg: OCaml<T>) -> Result<GCResult<R>, Error> {
+    pub fn call<T, R>(&self, _token: GCToken, arg: OCaml<T>) -> OCamlResult<R> {
         let result = unsafe { caml_callback_exn(*self.0, arg.into()) };
         self.handle_result(result)
     }
@@ -67,7 +69,7 @@ impl OCamlClosure {
         _token: GCToken,
         arg1: OCaml<T>,
         arg2: OCaml<U>,
-    ) -> Result<GCResult<R>, Error> {
+    ) -> OCamlResult<R> {
         let result = unsafe { caml_callback2_exn(*self.0, arg1.into(), arg2.into()) };
         self.handle_result(result)
     }
@@ -78,19 +80,19 @@ impl OCamlClosure {
         arg1: OCaml<T>,
         arg2: OCaml<U>,
         arg3: OCaml<V>,
-    ) -> Result<GCResult<R>, Error> {
+    ) -> OCamlResult<R> {
         let result = unsafe { caml_callback3_exn(*self.0, arg1.into(), arg2.into(), arg3.into()) };
         self.handle_result(result)
     }
 
-    pub fn call_n<R>(&self, _token: GCToken, args: &mut [RawOCaml]) -> Result<GCResult<R>, Error> {
+    pub fn call_n<R>(&self, _token: GCToken, args: &mut [RawOCaml]) -> OCamlResult<R> {
         let len = args.len();
         let result = unsafe { caml_callbackN_exn(*self.0, len, args.as_mut_ptr()) };
         self.handle_result(result)
     }
 
     #[inline]
-    fn handle_result<R>(self, result: RawOCaml) -> Result<GCResult<R>, Error> {
+    fn handle_result<R>(self, result: RawOCaml) -> OCamlResult<R> {
         if is_exception_result(result) {
             let ex = extract_exception(result);
             Err(Error::Caml(CamlError::Exception(ex)))
