@@ -12,17 +12,95 @@ Status: **UNSTABLE**
 
 There are a few rules that have to be followed when calling into the OCaml runtime:
 
-**Rule 1**: Calls into the OCaml runtime that perform allocations should only occur inside `ocaml_frame!` blocks. This applies both to declared OCaml functions and conversions from Rust values into OCaml values.
+**Rule 1**: Calls into the OCaml runtime that perform allocations should only occur inside `ocaml_frame!` blocks, wrapped by either the `ocaml_call!` (for declared OCaml functions) or `ocaml_alloc!` (for allocation or conversion functions) macros.
 
-**TODO**: good/bad example.
+Example:
 
-**Rule 2**: OCaml values that are obtained as a result of calling an OCaml function can only be referenced directly until another call to an OCaml function happens. This is enforced by Rust's borrow checker.
+```rust
+ocaml_frame!(gc, {
+    let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN));
+    let ocaml_string = ocaml_alloc!(a_string.to_ocaml(gc));
+    // ...
+})
+```
 
-**TODO**: good/bad example.
+Without the macros, this error is produced, because without the macros an incorrect token is passed as the first argument:
+
+```
+error[E0308]: mismatched types
+  --> example.rs
+   |
+   |  let result = ocaml_function(gc, arg1, ..., argN);
+   |                              ^^ expected struct `znfe::GCToken`, found `&mut znfe::GCFrame<'_>`
+```
+
+**Rule 2**: OCaml values that are obtained as a result of calling an OCaml function can only be referenced directly until another call to an OCaml function happens. This is enforced by Rust's borrow checker. If a value has to be referenced after other OCaml function calls, a special reference has to be kept.
+
+Example:
+
+```rust
+ocaml_frame!(gc, {
+    let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+    let ref result_ref = gc.keep(result);
+    let another_result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+    // ...
+    let more_results = ocaml_call!(another_ocaml_function(gc, gc.get(result_ref))).unwrap();
+    // ...
+})
+```
+
+If the value is not kept with `gc.keep`, Rust's borrow checker will complain:
+
+```
+error[E0502]: cannot borrow `*gc` as mutable because it is also borrowed as immutable
+  --> example.rs
+   |
+   |         let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+   |                      ------------------------------------ immutable borrow occurs here
+...
+   |         let another_result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+...
+   |         let more_results = ocaml_call!(another_ocaml_function(gc, result)).unwrap();
+   |                                                                   ------ immutable borrow later used here
+   |
+```
+
+There is no need to keep values that are used immediately without any calls into the OCaml runtime in-between their allocation and use.
 
 **Rule 3**: OCaml values that are the result of an allocation by the OCaml runtime cannot escape the `ocaml_frame!` block inside which they where created. This is enforced by Rust's borrow checker.
 
-**TODO**: good/bad example.
+Example:
+
+```rust
+let s = ocaml_frame!(gc, {
+    let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+    String::from_ocaml(result)
+});
+// ...
+```
+
+If the result escapes the block, Rust's borrow checker will complain:
+
+```
+error[E0597]: `frame` does not live long enough
+  --> example.rs
+   |
+   |       let s = ocaml_frame!(gc, {
+   |  _________-___^
+   | |         |
+   | |         borrow later stored here
+   | |         let result = let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+   | |         result
+   | |     });
+   | |      ^
+   | |      |
+   | |______borrowed value does not live long enough
+   |        `frame` dropped here while still borrowed
+   |
+```
+
+**TODO**: show escape hatch for values that need to escape the frame scope using raw OCaml values.
 
 ### Calling into OCaml
 
