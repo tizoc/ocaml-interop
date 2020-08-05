@@ -3,7 +3,7 @@ use znfe::{ocaml_alloc, ocaml_frame, FromOCaml, Intnat, OCaml, RawOCaml, ToOCaml
 #[no_mangle]
 pub fn rust_twice(num: OCaml<'static, Intnat>) -> RawOCaml {
     let num = i64::from_ocaml(num);
-    (num * 2).to_ocaml_fixnum().into()
+    unsafe { (num * 2).to_ocaml_fixnum().raw() }
 }
 
 #[no_mangle]
@@ -17,6 +17,6 @@ pub fn rust_increment_bytes(bytes: OCaml<String>, first_n: OCaml<'static, Intnat
 
     ocaml_frame!(gc, {
         let output = ocaml_alloc!(vec.to_ocaml(gc));
-        output.into()
+        unsafe { output.raw() }
     })
 }

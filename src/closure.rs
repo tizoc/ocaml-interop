@@ -60,7 +60,7 @@ impl OCamlClosure {
     }
 
     pub fn call<T, R>(&self, _token: GCToken, arg: OCaml<T>) -> OCamlResult<R> {
-        let result = unsafe { caml_callback_exn(*self.0, arg.into()) };
+        let result = unsafe { caml_callback_exn(*self.0, arg.raw()) };
         self.handle_result(result)
     }
 
@@ -70,7 +70,7 @@ impl OCamlClosure {
         arg1: OCaml<T>,
         arg2: OCaml<U>,
     ) -> OCamlResult<R> {
-        let result = unsafe { caml_callback2_exn(*self.0, arg1.into(), arg2.into()) };
+        let result = unsafe { caml_callback2_exn(*self.0, arg1.raw(), arg2.raw()) };
         self.handle_result(result)
     }
 
@@ -81,7 +81,7 @@ impl OCamlClosure {
         arg2: OCaml<U>,
         arg3: OCaml<V>,
     ) -> OCamlResult<R> {
-        let result = unsafe { caml_callback3_exn(*self.0, arg1.into(), arg2.into(), arg3.into()) };
+        let result = unsafe { caml_callback3_exn(*self.0, arg1.raw(), arg2.raw(), arg3.raw()) };
         self.handle_result(result)
     }
 

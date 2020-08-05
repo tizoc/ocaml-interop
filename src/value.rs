@@ -16,8 +16,8 @@ pub struct OCaml<'a, T: 'a> {
     raw: RawOCaml,
 }
 
-impl<'a, T> Into<RawOCaml> for OCaml<'a, T> {
-    fn into(self) -> RawOCaml {
+impl<'a, T> OCaml<'a, T> {
+    pub unsafe fn raw(self) -> RawOCaml {
         self.raw
     }
 }

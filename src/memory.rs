@@ -114,7 +114,7 @@ pub struct OCamlRef<'a, T> {
 impl<'a, T> OCamlRef<'a, T> {
     pub fn new<'gc, 'tmp>(gc: &'a GCFrame<'gc>, x: OCaml<'tmp, T>) -> OCamlRef<'gc, T> {
         let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
-        cell.set(x.into());
+        cell.set(unsafe { x.raw() });
         OCamlRef {
             _marker: Default::default(),
             cell,
