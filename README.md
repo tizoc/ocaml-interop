@@ -8,8 +8,23 @@ Status: **UNSTABLE**
 
 ## Usage
 
-### Calling into OCaml
+### Rules
 
+There are a few rules that have to be followed when calling into the OCaml runtime:
+
+**Rule 1**: Calls into the OCaml runtime that perform allocations should only occur inside `ocaml_frame!` blocks. This applies both to declared OCaml functions and conversions from Rust values into OCaml values.
+
+**TODO**: good/bad example.
+
+**Rule 2**: OCaml values that are obtained as a result of calling an OCaml function can only be referenced directly until another call to an OCaml function happens. This is enforced by Rust's borrow checker.
+
+**TODO**: good/bad example.
+
+**Rule 3**: OCaml values that are the result of an allocation by the OCaml runtime cannot escape the `ocaml_frame!` block inside which they where created. This is enforced by Rust's borrow checker.
+
+**TODO**: good/bad example.
+
+### Calling into OCaml
 
 ```rust
 use znfe::{
@@ -20,10 +35,12 @@ use znfe::{
 mod ocaml_funcs {
     use znfe::{ocaml, Intnat};
 
-    // Declares two public functions that have been registered by OCaml code with
-    // `Callback.register`.
     ocaml! {
+        // OCaml: `val increment_bytes: bytes -> int -> bytes`
+        // registered with `Callback.register "increment_bytes" increment_bytes`
         pub fn increment_bytes(bytes: String, first_n: Intnat) -> String;
+        // OCaml: `val twice: int -> int`
+        // registered with `Callback.register "twice" twice`
         pub fn twice(num: Intnat) -> Intnat;
     }
 
@@ -124,3 +141,11 @@ fn main() {
     println!("Bytes2 after: {}", result2);
 }
 ```
+
+## References and links
+
+- OCaml Manual: [Chapter 20  Interfacing C with OCaml](https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html).
+- [Safely Mixing OCaml and Rust](https://docs.google.com/viewer?a=v&pid=sites&srcid=ZGVmYXVsdGRvbWFpbnxtbHdvcmtzaG9wcGV8Z3g6NDNmNDlmNTcxMDk1YTRmNg) paper by Stephen Dolan.
+- [Safely Mixing OCaml and Rust](https://www.youtube.com/watch?v=UXfcENNM_ts) talk by Stephen Dolan.
+- [caml-oxide](https://github.com/stedolan/caml-oxide), the code from that paper.
+- [ocaml-rs](https://github.com/zshipko/ocaml-rs), another OCaml<->Rust FFI library.
