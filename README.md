@@ -70,14 +70,14 @@ If the value is not kept with `gc.keep`, Rust's borrow checker will complain:
 error[E0502]: cannot borrow `*gc` as mutable because it is also borrowed as immutable
   --> example.rs
    |
-   |         let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
-   |                      ------------------------------------ immutable borrow occurs here
+   |  let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+   |               ------------------------------------ immutable borrow occurs here
 ...
-   |         let another_result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+   |  let another_result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 ...
-   |         let more_results = ocaml_call!(another_ocaml_function(gc, result)).unwrap();
-   |                                                                   ------ immutable borrow later used here
+   |  let more_results = ocaml_call!(another_ocaml_function(gc, result)).unwrap();
+   |                                                            ------ immutable borrow later used here
    |
 ```
 
