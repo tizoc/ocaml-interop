@@ -6,13 +6,23 @@ OCaml<->Rust FFI with an emphasis on safety based on the ideas of [caml-oxide](h
 
 Status: **UNSTABLE**
 
+## Table of Contents
+
+- [Usage](#usage)
+  * [Rules](#rules)
+  * [Calling into OCaml](#calling-into-ocaml)
+  * [Calling from OCaml](#calling-from-ocaml)
+- [References and links](#references-and-links)
+
 ## Usage
 
 ### Rules
 
 There are a few rules that have to be followed when calling into the OCaml runtime:
 
-**Rule 1**: Calls into the OCaml runtime that perform allocations should only occur inside `ocaml_frame!` blocks, wrapped by either the `ocaml_call!` (for declared OCaml functions) or `ocaml_alloc!` (for allocation or conversion functions) macros.
+#### Rule 1) OCaml function calls, allocations and the GC Frame
+
+Calls into the OCaml runtime that perform allocations should only occur inside `ocaml_frame!` blocks, wrapped by either the `ocaml_call!` (for declared OCaml functions) or `ocaml_alloc!` (for allocation or conversion functions) macros.
 
 Example:
 
@@ -34,7 +44,9 @@ error[E0308]: mismatched types
    |                              ^^ expected struct `znfe::GCToken`, found `&mut znfe::GCFrame<'_>`
 ```
 
-**Rule 2**: OCaml values that are obtained as a result of calling an OCaml function can only be referenced directly until another call to an OCaml function happens. This is enforced by Rust's borrow checker. If a value has to be referenced after other OCaml function calls, a special reference has to be kept.
+#### Rule 2) OCaml value references
+
+OCaml values that are obtained as a result of calling an OCaml function can only be referenced directly until another call to an OCaml function happens. This is enforced by Rust's borrow checker. If a value has to be referenced after other OCaml function calls, a special reference has to be kept.
 
 Example:
 
@@ -68,7 +80,9 @@ error[E0502]: cannot borrow `*gc` as mutable because it is also borrowed as immu
 
 There is no need to keep values that are used immediately without any calls into the OCaml runtime in-between their allocation and use.
 
-**Rule 3**: OCaml values that are the result of an allocation by the OCaml runtime cannot escape the `ocaml_frame!` block inside which they where created. This is enforced by Rust's borrow checker.
+#### Rule 3) Liveness and scope of OCaml values
+
+OCaml values that are the result of an allocation by the OCaml runtime cannot escape the `ocaml_frame!` block inside which they where created. This is enforced by Rust's borrow checker.
 
 Example:
 
@@ -219,6 +233,10 @@ fn main() {
     println!("Bytes2 after: {}", result2);
 }
 ```
+
+### Calling from OCaml
+
+**TODO**
 
 ## References and links
 
