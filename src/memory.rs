@@ -60,7 +60,7 @@ impl<'gc> GCFrame<'gc> {
         OCamlRef::new(self, value)
     }
 
-    pub fn get<T>(&self, reference: &OCamlRef<T>) -> OCaml<'gc, T> {
+    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
         make_ocaml(reference.cell.get())
     }
 
