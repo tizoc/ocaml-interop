@@ -63,6 +63,20 @@ macro_rules! ocaml_alloc {
             res.mark($gc).eval($gc)
         }
     };
+
+    ( $obj:literal.$($fn:ident).+($gc:ident) ) => {
+        {
+            let res = $obj.$($fn).+(unsafe { $gc.token() });
+            res.mark($gc).eval($gc)
+        }
+    };
+
+    ( $obj:literal.$($fn:ident).+($gc:ident, $($arg:expr),* ) ) => {
+        {
+            let res = $obj.$($fn).+(unsafe { $gc.token() }, $($arg),* );
+            res.mark($gc).eval($gc)
+        }
+    };
 }
 
 #[macro_export]
