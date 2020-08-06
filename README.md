@@ -13,8 +13,8 @@ Status: **UNSTABLE**
     + [Rule 1: OCaml function calls, allocations and the GC Frame](#rule-1-ocaml-function-calls-allocations-and-the-gc-frame)
     + [Rule 2: OCaml value references](#rule-2-ocaml-value-references)
     + [Rule 3: Liveness and scope of OCaml values](#rule-3-liveness-and-scope-of-ocaml-values)
-  * [Calling into OCaml](#calling-into-ocaml)
-  * [Calling from OCaml](#calling-from-ocaml)
+  * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
+  * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
 - [References and links](#references-and-links)
 
 ## Usage
@@ -119,7 +119,7 @@ error[E0597]: `frame` does not live long enough
 
 **TODO**: show escape hatch for values that need to escape the frame scope using raw OCaml values.
 
-### Calling into OCaml
+### Calling into OCaml from Rust
 
 ```rust
 use znfe::{
@@ -237,9 +237,43 @@ fn main() {
 }
 ```
 
-### Calling from OCaml
+### Calling into Rust from OCaml
 
-**TODO**
+To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it in a way that OCaml can see it. This can be done with the `ocaml_export!` macro.
+
+```rust
+use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger};
+
+// `ocaml_export` expands the function definitions by adding `pub` visibility and
+// the required `#[no_mangle]` and `extern` declarations. It also takes care of
+// binding the GC frame handle to the name provided as the first parameter.
+ocaml_export! {
+    // The first parameter is a name to which the GC frame handle will be bound to.
+    // The remaining parameters and return value must have a declared type of `OCaml<T>`.
+    fn rust_twice(_gc, num: OCaml<Intnat>) -> OCaml<Intnat> {
+        let num = i64::from_ocaml(num);
+        (num * 2).to_ocaml_fixnum()
+    }
+
+    fn rust_increment_bytes(gc, bytes: OCaml<String>, first_n: OCaml<Intnat>) -> OCaml<String> {
+        let first_n = i64::from_ocaml(first_n) as usize;
+        let mut vec = Vec::from_ocaml(bytes);
+
+        for i in 0..first_n {
+            vec[i] += 1;
+        }
+
+        ocaml_alloc!(vec.to_ocaml(gc))
+    }
+}
+```
+
+Then in OCaml, these functions can be referred to in the same way as C functions:
+
+```ocaml
+external rust_twice: int -> int = "twice"
+external rust_increment_bytes: bytes -> int -> bytes = "increment_bytes"
+```
 
 ## References and links
 
