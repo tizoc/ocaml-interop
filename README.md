@@ -13,6 +13,10 @@ Status: **UNSTABLE**
     + [Rule 1: OCaml function calls, allocations and the GC Frame](#rule-1-ocaml-function-calls-allocations-and-the-gc-frame)
     + [Rule 2: OCaml value references](#rule-2-ocaml-value-references)
     + [Rule 3: Liveness and scope of OCaml values](#rule-3-liveness-and-scope-of-ocaml-values)
+  * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
+    + [`FromOCaml` trait](#fromocaml-trait)
+    + [`ToOCaml` trait](#toocaml-trait)
+    + [`ToOCamlInteger` trait](#toocamlinteger-trait)
   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
 - [References and links](#references-and-links)
@@ -64,7 +68,7 @@ ocaml_frame!(gc, {
 })
 ```
 
-If the value is not kept with `gc.keep`, Rust's borrow checker will complain:
+If the value is not kept with `gc.keep`, and instead is attempted to be re-used directly, Rust's borrow checker will complain:
 
 ```
 error[E0502]: cannot borrow `*gc` as mutable because it is also borrowed as immutable
@@ -118,6 +122,20 @@ error[E0597]: `frame` does not live long enough
 ```
 
 **TODO**: show escape hatch for values that need to escape the frame scope using raw OCaml values.
+
+### Converting between OCaml and Rust data
+
+#### `FromOCaml` trait
+
+The `FromOCaml` trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
+
+#### `ToOCaml` trait
+
+The `ToOCaml` trait implements conversion from Rust values into OCaml values, using the `to_ocaml` function. `to_ocaml` can only be called when wrapped by the `ocaml_alloc!` macro form, and it takes a single parameter that must be a handle to the current GC frame.
+
+#### `ToOCamlInteger` trait
+
+The `ToOCaml` trait implements conversion from Rust integers into OCaml integer values. The `to_ocaml_fixnum` integer converts a Rust integer into an OCaml fixnum (63bits).
 
 ### Calling into OCaml from Rust
 
