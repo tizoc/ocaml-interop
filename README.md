@@ -239,7 +239,7 @@ fn main() {
 
 ### Calling into Rust from OCaml
 
-To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it in a way that OCaml can see it. This can be done with the `ocaml_export!` macro.
+To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `ocaml_export!` macro.
 
 ```rust
 use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger};
