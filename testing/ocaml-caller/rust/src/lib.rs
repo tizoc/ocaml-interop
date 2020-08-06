@@ -1,13 +1,13 @@
 use znfe::{ocaml_alloc, ocaml_frame, FromOCaml, Intnat, OCaml, RawOCaml, ToOCaml, ToOCamlInteger};
 
 #[no_mangle]
-pub fn rust_twice(num: OCaml<'static, Intnat>) -> RawOCaml {
+pub extern "C" fn rust_twice(num: OCaml<'static, Intnat>) -> RawOCaml {
     let num = i64::from_ocaml(num);
     unsafe { (num * 2).to_ocaml_fixnum().raw() }
 }
 
 #[no_mangle]
-pub fn rust_increment_bytes(bytes: OCaml<String>, first_n: OCaml<'static, Intnat>) -> RawOCaml {
+pub extern "C" fn rust_increment_bytes(bytes: OCaml<String>, first_n: OCaml<'static, Intnat>) -> RawOCaml {
     let first_n = i64::from_ocaml(first_n) as usize;
     let mut vec = Vec::from_ocaml(bytes);
 
