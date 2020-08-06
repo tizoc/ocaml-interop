@@ -271,8 +271,8 @@ ocaml_export! {
 Then in OCaml, these functions can be referred to in the same way as C functions:
 
 ```ocaml
-external rust_twice: int -> int = "twice"
-external rust_increment_bytes: bytes -> int -> bytes = "increment_bytes"
+external rust_twice: int -> int = "rust_twice"
+external rust_increment_bytes: bytes -> int -> bytes = "rust_increment_bytes"
 ```
 
 ## References and links
