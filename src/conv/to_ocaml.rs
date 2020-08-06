@@ -8,7 +8,7 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml(self, gc: GCToken) -> GCResult<T>;
 }
 
-/// `ToOCamlInteger implements conversion from Rust integers into OCaml values.
+/// `ToOCamlInteger` implements conversion from Rust integers into OCaml values.
 pub unsafe trait ToOCamlInteger {
     fn to_ocaml_fixnum(self) -> OCaml<'static, Intnat>;
     // TODO: Int32.t and Int64.t
