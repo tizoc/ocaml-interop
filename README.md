@@ -121,6 +121,26 @@ error[E0597]: `frame` does not live long enough
 
 ### Calling into OCaml from Rust
 
+The following code defines two OCaml functions and registers them using the `Callback.register` mechanism:
+
+```ocaml
+let increment_bytes bytes first_n =
+  let limit = (min (Bytes.length bytes) first_n) - 1 in
+  for i = 0 to limit do
+    let value = (Bytes.get_uint8 bytes i) + 1 in
+    Bytes.set_uint8 bytes i value
+  done;
+  bytes
+
+let twice x = 2 * x
+
+let () =
+  Callback.register "increment_bytes" increment_bytes;
+  Callback.register "twice" twice
+```
+
+To be able to call these from Rust, there are a few things that need to be done:
+
 ```rust
 use znfe::{
     ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, OCaml, OCamlRef, ToOCaml, ToOCamlInteger,
@@ -226,6 +246,8 @@ fn twice(num: usize) -> usize {
 }
 
 fn main() {
+    // IMPORTANT: the OCaml runtime has to be initialized first
+    znfe::init_runtime();
     let first_n = twice(5);
     let bytes1 = "000000000000000".to_owned();
     let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
@@ -234,6 +256,8 @@ fn main() {
     let (result1, result2) = increment_bytes(bytes1, bytes2, first_n);
     println!("Bytes1 after: {}", result1);
     println!("Bytes2 after: {}", result2);
+    // Done with the OCaml runtime, perform cleanup
+    znfe::shutdown_runtime();
 }
 ```
 
