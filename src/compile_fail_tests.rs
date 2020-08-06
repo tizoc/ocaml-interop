@@ -30,3 +30,13 @@ pub struct FailsWithoutOCamlAllocMacro;
 /// });
 /// ```
 pub struct LivenessFailureCheck;
+
+/// ```compile_fail
+/// # use znfe::*;
+/// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
+/// let s = ocaml_frame!(gc, {
+///     let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(gc));
+///     let result = ocaml_call!(ocaml_function(gc, arg1)).unwrap();
+///     result
+/// });
+pub struct EscapeFailureCheck;
