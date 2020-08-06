@@ -141,6 +141,14 @@ let () =
 
 To be able to call these from Rust, there are a few things that need to be done:
 
+- The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by calling `znfe::init_ocaml_runtime`, but if the driving program is an OCaml application, this is not required.
+- Functions that were exported from the OCaml side with `Callback.register` have to be declared using the `ocaml!` macro.
+- Blocks of code that call OCaml functions, or allocate OCaml values, must be wrapped by the `ocaml_frame!` macro.
+- Calls to functions that allocate OCaml values must be wrapped by the `ocaml_alloc!` macro. These always return a value and cannot signal failure.
+- Calls to functions exported by OCaml with `Callback.register` must be wrapped by the `ocaml_call!` macro. These return a value of type `Result<OCaml<T>, znfe::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
+
+Example:
+
 ```rust
 use znfe::{
     ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, OCaml, OCamlRef, ToOCaml, ToOCamlInteger,
