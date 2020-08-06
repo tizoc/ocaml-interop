@@ -287,6 +287,9 @@ ocaml_export! {
             vec[i] += 1;
         }
 
+        // Note that unlike in `ocaml_frame!` blocks, where values of type `OCaml<T>`
+        // cannot escape, in functions defined inside `ocaml_export!` blocks,
+        // only results of type `OCaml<T>` are valid.
         ocaml_alloc!(vec.to_ocaml(gc))
     }
 }
