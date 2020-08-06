@@ -42,13 +42,13 @@ use serial_test::serial;
 #[test]
 #[serial]
 fn test_twice() {
-    znfe::init_runtime();
+    znfe::init_ocaml_runtime();
     assert_eq!(twice(10), 20);
 }
 
 #[test]
 #[serial]
 fn test_increment_bytes() {
-    znfe::init_runtime();
+    znfe::init_ocaml_runtime();
     assert_eq!(increment_bytes("0000000000000000", 10), "1111111111000000");
 }

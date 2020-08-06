@@ -247,7 +247,7 @@ fn twice(num: usize) -> usize {
 
 fn main() {
     // IMPORTANT: the OCaml runtime has to be initialized first
-    znfe::init_runtime();
+    znfe::init_ocaml_runtime();
     let first_n = twice(5);
     let bytes1 = "000000000000000".to_owned();
     let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
@@ -257,7 +257,7 @@ fn main() {
     println!("Bytes1 after: {}", result1);
     println!("Bytes2 after: {}", result2);
     // Done with the OCaml runtime, perform cleanup
-    znfe::shutdown_runtime();
+    znfe::shutdown_ocaml_runtime();
 }
 ```
 
