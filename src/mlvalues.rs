@@ -14,9 +14,9 @@ pub fn is_block(x: RawOCaml) -> bool {
 }
 
 // #define Is_long(x)   (((x) & 1) != 0)
-//pub fn is_long(x: RawOCaml) -> bool {
-//    (x & 1) != 0
-//}
+pub fn is_long(x: RawOCaml) -> bool {
+    (x & 1) != 0
+}
 
 // #define Is_exception_result(v) (((v) & 3) == 2)
 pub const fn is_exception_result(val: RawOCaml) -> bool {
