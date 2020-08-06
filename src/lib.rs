@@ -15,3 +15,7 @@ pub use crate::mlvalues::{Intnat, RawOCaml};
 pub use crate::runtime::init as init_runtime;
 pub use crate::runtime::shutdown as shutdown_runtime;
 pub use crate::value::{unit, OCaml};
+
+
+#[cfg(doctest)]
+pub mod compile_fail_tests;
