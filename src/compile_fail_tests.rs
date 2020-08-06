@@ -4,7 +4,7 @@
 /// let s = ocaml_frame!(gc, {
 ///    let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(gc));
 ///     let result = ocaml_function(gc, arg1).unwrap();
-///     unit()
+///     OCaml::unit()
 /// });
 /// ```
 pub struct FailsWithoutOCamlCallMacro;
@@ -14,7 +14,7 @@ pub struct FailsWithoutOCamlCallMacro;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// let s = ocaml_frame!(gc, {
 ///     let arg1 = ("test".to_owned()).to_ocaml(gc);
-///     unit()
+///     OCaml::unit()
 /// });
 /// ```
 pub struct FailsWithoutOCamlAllocMacro;
@@ -26,7 +26,7 @@ pub struct FailsWithoutOCamlAllocMacro;
 ///     let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(gc));
 ///     let result = ocaml_call!(ocaml_function(gc, arg1)).unwrap();
 ///     let another_result = ocaml_call!(ocaml_function(gc, arg1)).unwrap();
-///     unit()
+///     OCaml::unit()
 /// });
 /// ```
 pub struct LivenessFailureCheck;

@@ -16,23 +16,10 @@ pub struct OCaml<'a, T: 'a> {
     raw: RawOCaml,
 }
 
-impl<'a, T> OCaml<'a, T> {
-    pub unsafe fn raw(self) -> RawOCaml {
-        self.raw
-    }
-}
-
 pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
     OCaml {
         _marker: Default::default(),
         raw: x,
-    }
-}
-
-pub fn unit() -> OCaml<'static, ()> {
-    OCaml {
-        _marker: Default::default(),
-        raw: UNIT,
     }
 }
 
@@ -59,6 +46,19 @@ impl<'a, T> OCaml<'a, T> {
 
     pub fn is_long(self) -> bool {
         is_long(self.raw)
+    }
+
+    pub unsafe fn raw(self) -> RawOCaml {
+        self.raw
+    }
+}
+
+impl OCaml<'static, ()> {
+    pub fn unit() -> OCaml<'static, ()> {
+        OCaml {
+            _marker: Default::default(),
+            raw: UNIT,
+        }
     }
 }
 
