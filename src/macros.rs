@@ -49,6 +49,27 @@ macro_rules! ocaml {
 }
 
 #[macro_export]
+macro_rules! ocaml_export {
+    {
+      $(
+        fn $name:ident( $gc:ident, $($arg:ident : $ty:ty),* ) -> $res:ty
+           $body:block
+      )*
+    } => {
+      $(
+        #[no_mangle]
+        pub extern "C" fn $name( $($arg: $crate::RawOCaml), *) -> $crate::RawOCaml {
+            $crate::ocaml_frame!($gc, {
+                $(let $arg : $ty = unsafe { OCaml::new($gc, $arg) };)*
+                let retval : $res = $body;
+                unsafe { retval.raw() }
+            })
+        }
+      )*
+    }
+}
+
+#[macro_export]
 macro_rules! ocaml_alloc {
     ( $(($obj:expr).)?$($fn:ident).+($gc:ident) ) => {
         {
