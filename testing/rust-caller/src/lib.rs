@@ -1,7 +1,7 @@
 extern crate znfe;
 
 use znfe::{
-    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger,
+    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger
 };
 
 mod ocaml {
@@ -42,13 +42,13 @@ use serial_test::serial;
 #[test]
 #[serial]
 fn test_twice() {
-    znfe::init_ocaml_runtime();
+    znfe::OCamlRuntime::init_persistent();
     assert_eq!(twice(10), 20);
 }
 
 #[test]
 #[serial]
 fn test_increment_bytes() {
-    znfe::init_ocaml_runtime();
+    znfe::OCamlRuntime::init_persistent();
     assert_eq!(increment_bytes("0000000000000000", 10), "1111111111000000");
 }

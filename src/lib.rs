@@ -12,8 +12,7 @@ pub use crate::conv::{FromOCaml, ToOCaml, ToOCamlInteger};
 pub use crate::error::Error;
 pub use crate::memory::OCamlRef;
 pub use crate::mlvalues::{Intnat, RawOCaml};
-pub use crate::runtime::init as init_ocaml_runtime;
-pub use crate::runtime::shutdown as shutdown_ocaml_runtime;
+pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;
 
 pub mod internal {

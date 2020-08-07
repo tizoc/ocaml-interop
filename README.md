@@ -159,7 +159,7 @@ let () =
 
 To be able to call these from Rust, there are a few things that need to be done:
 
-- The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by calling `znfe::init_ocaml_runtime`, but if the driving program is an OCaml application, this is not required.
+- The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by doing `let runtime = OCamlRuntime::init()`, but if the driving program is an OCaml application, this is not required. When `runtime` goes out of scope it will be dropped and the OCaml runtime cleanup functions will be executed.
 - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the `ocaml!` macro.
 - Blocks of code that call OCaml functions, or allocate OCaml values, must be wrapped by the `ocaml_frame!` macro.
 - Calls to functions that allocate OCaml values must be wrapped by the `ocaml_alloc!` macro. These always return a value and cannot signal failure.
@@ -170,6 +170,7 @@ Example:
 ```rust
 use znfe::{
     ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, OCaml, OCamlRef, ToOCaml, ToOCamlInteger,
+    OCamlRuntime
 };
 
 // To call an OCaml function, it first has to be declared inside an `ocaml!` macro block:
@@ -272,8 +273,8 @@ fn twice(num: usize) -> usize {
 }
 
 fn main() {
-    // IMPORTANT: the OCaml runtime has to be initialized first
-    znfe::init_ocaml_runtime();
+    // IMPORTANT: the OCaml runtime has to be initialized first.
+    let ocaml_runtime = OCamlRuntime::init();
     let first_n = twice(5);
     let bytes1 = "000000000000000".to_owned();
     let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
@@ -282,8 +283,8 @@ fn main() {
     let (result1, result2) = increment_bytes(bytes1, bytes2, first_n);
     println!("Bytes1 after: {}", result1);
     println!("Bytes2 after: {}", result2);
-    // Done with the OCaml runtime, perform cleanup
-    znfe::shutdown_ocaml_runtime();
+    // At this point the `ocaml_runtime` handle will be dropped, triggering
+    // the execution of the necessary cleanup by the OCaml runtime
 }
 ```
 
