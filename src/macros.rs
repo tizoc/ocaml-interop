@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! ocaml_frame {
     ($gc:ident, $body:block) => {{
-        let mut frame: $crate::GCFrame = Default::default();
+        let mut frame: $crate::internal::GCFrame = Default::default();
         let $gc = frame.initialize();
         $body
     }};
@@ -12,7 +12,7 @@ macro_rules! ocaml {
     () => ();
 
     ($vis:vis fn $name:ident($arg:ident: $typ:ty) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$rtyp> {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call(token, $arg)
         }
@@ -21,7 +21,7 @@ macro_rules! ocaml {
     };
 
     ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>) -> $crate::OCamlResult<$rtyp> {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call2(token, $arg1, $arg2)
         }
@@ -30,7 +30,7 @@ macro_rules! ocaml {
     };
 
     ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty, $arg3:ident: $typ3:ty) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>, $arg3: $crate::OCaml<$typ3>) -> $crate::OCamlResult<$rtyp> {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>, $arg3: $crate::OCaml<$typ3>) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call3(token, $arg1, $arg2, $arg3)
         }
@@ -39,7 +39,7 @@ macro_rules! ocaml {
     };
 
     ($vis:vis fn $name:ident($($arg:ident: $typ:ty),+) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::GCToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$rtyp> {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call_n(token, &mut [$($arg.into()),+])
         }
@@ -131,9 +131,9 @@ macro_rules! ocaml_call {
 macro_rules! ocaml_closure_reference {
     ($var:ident, $name:ident) => {
         static name: &str = stringify!($name);
-        static mut OC: Option<$crate::OCamlClosure> = None;
+        static mut OC: Option<$crate::internal::OCamlClosure> = None;
         if OC.is_none() {
-            OC = $crate::OCamlClosure::named(name);
+            OC = $crate::internal::OCamlClosure::named(name);
         }
         let $var =
             OC.unwrap_or_else(|| panic!("OCaml closure with name '{}' not registered", name));
