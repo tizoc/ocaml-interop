@@ -16,4 +16,11 @@ ocaml_export! {
 
         ocaml_alloc!(vec.to_ocaml(gc))
     }
+
+    fn rust_make_tuple(gc, fst: OCaml<String>, snd: OCaml<Intnat>) -> OCaml<(String, Intnat)> {
+        let fst = String::from_ocaml(fst);
+        let snd = i64::from_ocaml(snd);
+        let tuple = (&fst, snd);
+        ocaml_alloc!(tuple.to_ocaml(gc))
+    }
 }

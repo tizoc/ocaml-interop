@@ -16,7 +16,10 @@ let decrement_bytes bytes first_n =
 
 let twice x = 2 * x
 
+let make_tuple a b = (a, b)
+
 let () =
   Callback.register "increment_bytes" increment_bytes;
   Callback.register "decrement_bytes" decrement_bytes;
-  Callback.register "twice" twice
+  Callback.register "twice" twice;
+  Callback.register "make_tuple" make_tuple

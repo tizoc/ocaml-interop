@@ -3,6 +3,7 @@ pub mod tag;
 pub type UIntnat = usize;
 pub type Intnat = isize;
 pub type RawOCaml = isize;
+pub type MlsizeT = UIntnat;
 
 // #define Val_unit Val_int(0)
 pub const UNIT: RawOCaml = unsafe { raw_ocaml_of_i64(0) };

@@ -1,8 +1,8 @@
-use mlvalues::{Intnat, RawOCaml};
+use crate::mlvalues::{Intnat, MlsizeT, RawOCaml};
+use crate::value::{make_ocaml, OCaml};
 use std::cell::Cell;
 use std::marker;
 use std::ptr;
-use value::{make_ocaml, OCaml};
 
 // Structure representing a block in the list of OCaml's GC local roots.
 #[repr(C)]
@@ -34,7 +34,22 @@ type LocalsBlock = [Cell<RawOCaml>; LOCALS_BLOCK_SIZE];
 extern "C" {
     static mut caml_local_roots: *mut CamlRootsBlock;
 
-    fn caml_alloc_initialized_string(len: usize, contents: *const u8) -> RawOCaml;
+    fn caml_alloc_initialized_string(len: MlsizeT, contents: *const u8) -> RawOCaml;
+    // fn caml_alloc(wosize: MlsizeT, tag: Tag) -> RawOCaml;
+    fn caml_alloc_tuple(wosize: MlsizeT) -> RawOCaml;
+    fn caml_modify(block: *mut RawOCaml, val: RawOCaml);
+}
+
+// #define Store_field(block, offset, val) do{ \
+//     mlsize_t caml__temp_offset = (offset); \
+//     value caml__temp_val = (val); \
+//     caml_modify (&Field ((block), caml__temp_offset), caml__temp_val); \
+//   }while(0)
+#[inline]
+unsafe fn store_field(block: RawOCaml, offset: MlsizeT, val: RawOCaml) {
+    // TODO: see if all this can be made prettier
+    let ptr = block as *mut isize;
+    caml_modify(ptr.add(offset), val);
 }
 
 // OCaml GC frame handle
@@ -95,7 +110,10 @@ unsafe fn reserve_local_root_cell<'gc>(_gc: &GCFrame<'gc>) -> &'gc Cell<RawOCaml
         block.nitems = pos + 1;
         cell
     } else {
-        panic!("Out of local roots. Max is LOCALS_BLOCK_SIZE={}", LOCALS_BLOCK_SIZE);
+        panic!(
+            "Out of local roots. Max is LOCALS_BLOCK_SIZE={}",
+            LOCALS_BLOCK_SIZE
+        );
     }
 }
 
@@ -168,4 +186,16 @@ pub fn alloc_bytes(_token: GCToken, s: &[u8]) -> GCResult<String> {
 
 pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
     GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
+}
+
+pub fn alloc_tuple<F, S>(_token: GCToken, fst: OCaml<F>, snd: OCaml<S>) -> GCResult<(F, S)> {
+    // TODO: it is possible to directly alter the fields memory upon first allocation of
+    // small values (like tuples are) without going through `caml_modify` to get
+    // a little bit of extra performance.
+    unsafe {
+        let ocaml_tuple = caml_alloc_tuple(2);
+        store_field(ocaml_tuple, 0, fst.raw());
+        store_field(ocaml_tuple, 1, snd.raw());
+        GCResult::of(ocaml_tuple)
+    }
 }

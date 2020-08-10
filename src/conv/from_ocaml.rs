@@ -27,3 +27,13 @@ unsafe impl FromOCaml<String> for String {
         v.as_str().to_owned()
     }
 }
+
+unsafe impl<A, B, FromA, FromB> FromOCaml<(FromA, FromB)> for (A, B)
+where
+    A: FromOCaml<FromA>,
+    B: FromOCaml<FromB>,
+{
+    fn from_ocaml(v: OCaml<(FromA, FromB)>) -> Self {
+        (A::from_ocaml(v.fst()), B::from_ocaml(v.snd()))
+    }
+}

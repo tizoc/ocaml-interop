@@ -10,6 +10,7 @@ mod ocaml {
     ocaml!{
         pub fn increment_bytes(bytes: String, first_n: Intnat) -> String;
         pub fn twice(num: Intnat) -> Intnat;
+        pub fn make_tuple(fst: String, snd: Intnat) -> (String, Intnat);
     }
 }
 
@@ -33,6 +34,16 @@ pub fn twice(num: i64) -> i64 {
     })
 }
 
+pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
+    ocaml_frame!(gc, {
+        let num = snd.to_ocaml_fixnum();
+        let str = ocaml_alloc!(fst.to_ocaml(gc));
+        let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
+        let result: OCaml<(String, Intnat)> = result.expect("Error in 'make_tuple' call result");
+        <(String, i64)>::from_ocaml(result)
+    })
+}
+
 // Tests
 
 // NOTE: required because at the moment, no synchronization is done on OCaml calls
@@ -51,4 +62,11 @@ fn test_twice() {
 fn test_increment_bytes() {
     znfe::OCamlRuntime::init_persistent();
     assert_eq!(increment_bytes("0000000000000000", 10), "1111111111000000");
+}
+
+#[test]
+#[serial]
+fn test_make_tuple() {
+    znfe::OCamlRuntime::init_persistent();
+    assert_eq!(make_tuple("fst".to_owned(), 9), ("fst".to_owned(), 9));
 }

@@ -31,7 +31,7 @@ impl<'a, T> OCaml<'a, T> {
         }
     }
 
-    pub unsafe fn field<F>(self, i: UIntnat) -> OCaml<'a, F> {
+    pub unsafe fn field<F>(&self, i: UIntnat) -> OCaml<'a, F> {
         assert!(tag_val(self.raw) < tag::NO_SCAN);
         assert!(i < wosize_val(self.raw));
         OCaml {
@@ -88,5 +88,15 @@ impl<'a> OCaml<'a, Intnat> {
             _marker: Default::default(),
             raw: unsafe { raw_ocaml_of_i64(n) },
         }
+    }
+}
+
+impl<'a, A, B> OCaml<'a, (A, B)> {
+    pub fn fst(&self) -> OCaml<'a, A> {
+        unsafe { self.field(0) }
+    }
+
+    pub fn snd(&self) -> OCaml<'a, B> {
+        unsafe { self.field(1) }
     }
 }
