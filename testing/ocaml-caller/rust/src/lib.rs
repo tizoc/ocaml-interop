@@ -1,4 +1,6 @@
-use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger};
+use znfe::{
+    ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, OCamlList, ToOCaml, ToOCamlInteger,
+};
 
 ocaml_export! {
     fn rust_twice(_gc, num: OCaml<Intnat>) -> OCaml<Intnat> {
@@ -17,10 +19,20 @@ ocaml_export! {
         ocaml_alloc!(vec.to_ocaml(gc))
     }
 
+    fn rust_increment_ints_list(gc, ints: OCaml<OCamlList<Intnat>>) -> OCaml<OCamlList<Intnat>> {
+        let mut vec = <Vec<i64>>::from_ocaml(ints);
+
+        for i in 0..vec.len() {
+            vec[i] += 1;
+        }
+
+        ocaml_alloc!(vec.to_ocaml(gc))
+    }
+
     fn rust_make_tuple(gc, fst: OCaml<String>, snd: OCaml<Intnat>) -> OCaml<(String, Intnat)> {
         let fst = String::from_ocaml(fst);
         let snd = i64::from_ocaml(snd);
-        let tuple = (&fst, snd);
+        let tuple = (fst, snd);
         ocaml_alloc!(tuple.to_ocaml(gc))
     }
 }

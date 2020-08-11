@@ -63,13 +63,13 @@ impl OCaml<'static, ()> {
 }
 
 impl<'a> OCaml<'a, String> {
-    pub fn as_bytes(self) -> &'a [u8] {
+    pub unsafe fn as_bytes(self) -> &'a [u8] {
         let s = self.raw;
-        assert!(unsafe { tag_val(s) } == tag::STRING);
-        unsafe { slice::from_raw_parts(string_val(s), caml_string_length(s)) }
+        assert!(tag_val(s) == tag::STRING);
+        slice::from_raw_parts(string_val(s), caml_string_length(s))
     }
 
-    pub fn as_str(self) -> &'a str {
+    pub unsafe fn as_str(self) -> &'a str {
         str::from_utf8(self.as_bytes()).unwrap()
     }
 
@@ -98,5 +98,42 @@ impl<'a, A, B> OCaml<'a, (A, B)> {
 
     pub fn snd(&self) -> OCaml<'a, B> {
         unsafe { self.field(1) }
+    }
+}
+
+impl<'a, A> OCaml<'a, OCamlList<A>> {
+    pub fn nil() -> Self {
+        OCaml {
+            _marker: Default::default(),
+            raw: EMPTY_LIST,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.raw == EMPTY_LIST
+    }
+
+    pub fn tl(&self) -> Option<OCaml<'a, A>> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(unsafe { self.field(0) })
+        }
+    }
+
+    pub fn hd(&self) -> Option<OCaml<'a, A>> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(unsafe { self.field(1) })
+        }
+    }
+
+    pub fn uncons(&self) -> Option<(OCaml<'a, A>, Self)> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(unsafe { (self.field(0), self.field(1)) })
+        }
     }
 }

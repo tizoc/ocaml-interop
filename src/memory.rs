@@ -1,4 +1,5 @@
-use crate::mlvalues::{Intnat, MlsizeT, RawOCaml};
+use crate::mlvalues::tag;
+use crate::mlvalues::{Intnat, MlsizeT, OCamlList, RawOCaml};
 use crate::value::{make_ocaml, OCaml};
 use std::cell::Cell;
 use std::marker;
@@ -35,7 +36,7 @@ extern "C" {
     static mut caml_local_roots: *mut CamlRootsBlock;
 
     fn caml_alloc_initialized_string(len: MlsizeT, contents: *const u8) -> RawOCaml;
-    // fn caml_alloc(wosize: MlsizeT, tag: Tag) -> RawOCaml;
+    fn caml_alloc(wosize: MlsizeT, tag: tag::Tag) -> RawOCaml;
     fn caml_alloc_tuple(wosize: MlsizeT) -> RawOCaml;
     fn caml_modify(block: *mut RawOCaml, val: RawOCaml);
 }
@@ -138,6 +139,10 @@ impl<'a, T> OCamlRef<'a, T> {
             cell,
         }
     }
+
+    pub fn set(&mut self, x: OCaml<T>) {
+        self.cell.set(unsafe { x.raw() });
+    }
 }
 
 impl<'a, T> Drop for OCamlRef<'a, T> {
@@ -166,6 +171,13 @@ impl<T> GCResult<T> {
         }
     }
 
+    pub fn of_ocaml(v: OCaml<T>) -> GCResult<T> {
+        GCResult {
+            _marker: Default::default(),
+            raw: unsafe { v.raw() },
+        }
+    }
+
     pub fn mark(self, _gc: &mut GCFrame) -> GCMarkedResult<T> {
         GCMarkedResult {
             _marker: Default::default(),
@@ -188,14 +200,28 @@ pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
     GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
 }
 
+// TODO: it is possible to directly alter the fields memory upon first allocation of
+// small values (like tuples and conses are) without going through `caml_modify` to get
+// a little bit of extra performance.
+
 pub fn alloc_tuple<F, S>(_token: GCToken, fst: OCaml<F>, snd: OCaml<S>) -> GCResult<(F, S)> {
-    // TODO: it is possible to directly alter the fields memory upon first allocation of
-    // small values (like tuples are) without going through `caml_modify` to get
-    // a little bit of extra performance.
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
         store_field(ocaml_tuple, 0, fst.raw());
         store_field(ocaml_tuple, 1, snd.raw());
         GCResult::of(ocaml_tuple)
+    }
+}
+
+pub fn alloc_cons<A>(
+    _token: GCToken,
+    head: OCaml<A>,
+    tail: OCaml<OCamlList<A>>,
+) -> GCResult<OCamlList<A>> {
+    unsafe {
+        let ocaml_cons = caml_alloc(2, tag::LIST);
+        store_field(ocaml_cons, 0, head.raw());
+        store_field(ocaml_cons, 1, tail.raw());
+        GCResult::of(ocaml_cons)
     }
 }

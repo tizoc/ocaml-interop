@@ -14,6 +14,9 @@ let decrement_bytes bytes first_n =
     done;
     bytes
 
+let increment_ints_list ints =
+  List.map ((+) 1) ints
+
 let twice x = 2 * x
 
 let make_tuple a b = (a, b)
@@ -21,5 +24,6 @@ let make_tuple a b = (a, b)
 let () =
   Callback.register "increment_bytes" increment_bytes;
   Callback.register "decrement_bytes" decrement_bytes;
+  Callback.register "increment_ints_list" increment_ints_list;
   Callback.register "twice" twice;
   Callback.register "make_tuple" make_tuple

@@ -1,14 +1,16 @@
 extern crate znfe;
 
 use znfe::{
-    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger
+    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, OCamlList, ToOCaml,
+    ToOCamlInteger,
 };
 
 mod ocaml {
-    use znfe::{ocaml, Intnat};
+    use znfe::{ocaml, Intnat, OCamlList};
 
-    ocaml!{
+    ocaml! {
         pub fn increment_bytes(bytes: String, first_n: Intnat) -> String;
+        pub fn increment_ints_list(ints: OCamlList<Intnat>) -> OCamlList<Intnat>;
         pub fn twice(num: Intnat) -> Intnat;
         pub fn make_tuple(fst: String, snd: Intnat) -> (String, Intnat);
     }
@@ -22,6 +24,16 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
         let result = ocaml_call!(ocaml::increment_bytes(gc, gc.get(bytes_ref), first_n));
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
         String::from_ocaml(result)
+    })
+}
+
+pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
+    ocaml_frame!(gc, {
+        let ints = ocaml_alloc!(ints.to_ocaml(gc));
+        let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
+        let result: OCaml<OCamlList<Intnat>> =
+            result.expect("Error in 'increment_ints_list' call result");
+        <Vec<i64>>::from_ocaml(result)
     })
 }
 
@@ -62,6 +74,15 @@ fn test_twice() {
 fn test_increment_bytes() {
     znfe::OCamlRuntime::init_persistent();
     assert_eq!(increment_bytes("0000000000000000", 10), "1111111111000000");
+}
+
+#[test]
+#[serial]
+fn test_increment_ints_list() {
+    znfe::OCamlRuntime::init_persistent();
+    let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    assert_eq!(increment_ints_list(&ints), expected);
 }
 
 #[test]

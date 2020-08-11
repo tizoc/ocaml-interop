@@ -1,5 +1,7 @@
 pub type Tag = u8;
 
+pub const LIST: Tag = 0;
+
 pub const NO_SCAN: Tag = 251;
 // pub const FORWARD: Tag = 250;
 // pub const INFIX: Tag = 249;
