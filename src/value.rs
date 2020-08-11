@@ -40,11 +40,11 @@ impl<'a, T> OCaml<'a, T> {
         }
     }
 
-    pub fn is_block(self) -> bool {
+    pub fn is_block(&self) -> bool {
         is_block(self.raw)
     }
 
-    pub fn is_long(self) -> bool {
+    pub fn is_long(&self) -> bool {
         is_long(self.raw)
     }
 
