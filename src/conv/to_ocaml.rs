@@ -1,8 +1,8 @@
-use mlvalues::FALSE;
-use mlvalues::TRUE;
-use crate::memory::alloc_tuple;
-use crate::memory::{alloc_bytes, alloc_some, alloc_string, GCResult, GCToken};
-use crate::mlvalues::{Intnat, RawOCaml, NONE};
+use crate::memory::{
+    alloc_bytes, alloc_some, alloc_string, alloc_tuple, alloc_tuple_3, alloc_tuple_4, GCResult,
+    GCToken,
+};
+use crate::mlvalues::{Intnat, RawOCaml, FALSE, NONE, TRUE};
 use crate::value::OCaml;
 use crate::{ocaml_alloc, ocaml_frame};
 use memory::alloc_cons;
@@ -83,6 +83,51 @@ where
             let ref fst_ref = gc.keep(fst);
             let snd = ocaml_alloc!((self.1).to_ocaml(gc));
             alloc_tuple(token, gc.get(fst_ref), snd)
+        })
+    }
+}
+
+unsafe impl<A, B, C, ToA, ToB, ToC> ToOCaml<(ToA, ToB, ToC)> for (A, B, C)
+where
+    A: ToOCaml<ToA>,
+    B: ToOCaml<ToB>,
+    C: ToOCaml<ToC>,
+{
+    fn to_ocaml(&self, token: GCToken) -> GCResult<(ToA, ToB, ToC)> {
+        ocaml_frame!(gc, {
+            let fst = ocaml_alloc!((self.0).to_ocaml(gc));
+            let ref fst_ref = gc.keep(fst);
+            let snd = ocaml_alloc!((self.1).to_ocaml(gc));
+            let ref snd_ref = gc.keep(snd);
+            let elt3 = ocaml_alloc!((self.2).to_ocaml(gc));
+            alloc_tuple_3(token, gc.get(fst_ref), gc.get(snd_ref), elt3)
+        })
+    }
+}
+
+unsafe impl<A, B, C, D, ToA, ToB, ToC, ToD> ToOCaml<(ToA, ToB, ToC, ToD)> for (A, B, C, D)
+where
+    A: ToOCaml<ToA>,
+    B: ToOCaml<ToB>,
+    C: ToOCaml<ToC>,
+    D: ToOCaml<ToD>,
+{
+    fn to_ocaml(&self, token: GCToken) -> GCResult<(ToA, ToB, ToC, ToD)> {
+        ocaml_frame!(gc, {
+            let fst = ocaml_alloc!((self.0).to_ocaml(gc));
+            let ref fst_ref = gc.keep(fst);
+            let snd = ocaml_alloc!((self.1).to_ocaml(gc));
+            let ref snd_ref = gc.keep(snd);
+            let elt3 = ocaml_alloc!((self.2).to_ocaml(gc));
+            let ref elt3_ref = gc.keep(elt3);
+            let elt4 = ocaml_alloc!((self.3).to_ocaml(gc));
+            alloc_tuple_4(
+                token,
+                gc.get(fst_ref),
+                gc.get(snd_ref),
+                gc.get(elt3_ref),
+                elt4,
+            )
         })
     }
 }

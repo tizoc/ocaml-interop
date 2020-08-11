@@ -221,6 +221,38 @@ pub fn alloc_tuple<F, S>(_token: GCToken, fst: OCaml<F>, snd: OCaml<S>) -> GCRes
     }
 }
 
+pub fn alloc_tuple_3<F, S, T3>(
+    _token: GCToken,
+    fst: OCaml<F>,
+    snd: OCaml<S>,
+    elt3: OCaml<T3>,
+) -> GCResult<(F, S, T3)> {
+    unsafe {
+        let ocaml_tuple = caml_alloc_tuple(3);
+        store_field(ocaml_tuple, 0, fst.raw());
+        store_field(ocaml_tuple, 1, snd.raw());
+        store_field(ocaml_tuple, 2, elt3.raw());
+        GCResult::of(ocaml_tuple)
+    }
+}
+
+pub fn alloc_tuple_4<F, S, T3, T4>(
+    _token: GCToken,
+    fst: OCaml<F>,
+    snd: OCaml<S>,
+    elt3: OCaml<T3>,
+    elt4: OCaml<T4>,
+) -> GCResult<(F, S, T3, T4)> {
+    unsafe {
+        let ocaml_tuple = caml_alloc_tuple(4);
+        store_field(ocaml_tuple, 0, fst.raw());
+        store_field(ocaml_tuple, 1, snd.raw());
+        store_field(ocaml_tuple, 2, elt3.raw());
+        store_field(ocaml_tuple, 3, elt4.raw());
+        GCResult::of(ocaml_tuple)
+    }
+}
+
 pub fn alloc_cons<A>(
     _token: GCToken,
     head: OCaml<A>,

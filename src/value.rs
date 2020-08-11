@@ -136,6 +136,38 @@ impl<'a, A, B> OCaml<'a, (A, B)> {
     }
 }
 
+impl<'a, A, B, C> OCaml<'a, (A, B, C)> {
+    pub fn fst(&self) -> OCaml<'a, A> {
+        unsafe { self.field(0) }
+    }
+
+    pub fn snd(&self) -> OCaml<'a, B> {
+        unsafe { self.field(1) }
+    }
+
+    pub fn tuple_3(&self) -> OCaml<'a, C> {
+        unsafe { self.field(2) }
+    }
+}
+
+impl<'a, A, B, C, D> OCaml<'a, (A, B, C, D)> {
+    pub fn fst(&self) -> OCaml<'a, A> {
+        unsafe { self.field(0) }
+    }
+
+    pub fn snd(&self) -> OCaml<'a, B> {
+        unsafe { self.field(1) }
+    }
+
+    pub fn tuple_3(&self) -> OCaml<'a, C> {
+        unsafe { self.field(2) }
+    }
+
+    pub fn tuple_4(&self) -> OCaml<'a, D> {
+        unsafe { self.field(3) }
+    }
+}
+
 impl<'a, A> OCaml<'a, OCamlList<A>> {
     pub fn nil() -> Self {
         OCaml {

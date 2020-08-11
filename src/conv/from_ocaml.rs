@@ -58,6 +58,39 @@ where
     }
 }
 
+unsafe impl<A, B, C, FromA, FromB, FromC> FromOCaml<(FromA, FromB, FromC)> for (A, B, C)
+where
+    A: FromOCaml<FromA>,
+    B: FromOCaml<FromB>,
+    C: FromOCaml<FromC>,
+{
+    fn from_ocaml(v: OCaml<(FromA, FromB, FromC)>) -> Self {
+        (
+            A::from_ocaml(v.fst()),
+            B::from_ocaml(v.snd()),
+            C::from_ocaml(v.tuple_3()),
+        )
+    }
+}
+
+unsafe impl<A, B, C, D, FromA, FromB, FromC, FromD> FromOCaml<(FromA, FromB, FromC, FromD)>
+    for (A, B, C, D)
+where
+    A: FromOCaml<FromA>,
+    B: FromOCaml<FromB>,
+    C: FromOCaml<FromC>,
+    D: FromOCaml<FromD>,
+{
+    fn from_ocaml(v: OCaml<(FromA, FromB, FromC, FromD)>) -> Self {
+        (
+            A::from_ocaml(v.fst()),
+            B::from_ocaml(v.snd()),
+            C::from_ocaml(v.tuple_3()),
+            D::from_ocaml(v.tuple_4()),
+        )
+    }
+}
+
 unsafe impl<A, FromA> FromOCaml<OCamlList<FromA>> for Vec<A>
 where
     A: FromOCaml<FromA>,
