@@ -204,6 +204,14 @@ pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
+pub fn alloc_some<A>(_token: GCToken, value: OCaml<A>) -> GCResult<Option<A>> {
+    unsafe {
+        let ocaml_some = caml_alloc(1, tag::SOME);
+        store_field(ocaml_some, 0, value.raw());
+        GCResult::of(ocaml_some)
+    }
+}
+
 pub fn alloc_tuple<F, S>(_token: GCToken, fst: OCaml<F>, snd: OCaml<S>) -> GCResult<(F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);

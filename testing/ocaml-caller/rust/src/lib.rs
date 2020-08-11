@@ -35,4 +35,10 @@ ocaml_export! {
         let tuple = (fst, snd);
         ocaml_alloc!(tuple.to_ocaml(gc))
     }
+
+    fn rust_make_some(gc, value: OCaml<String>) -> OCaml<Option<String>> {
+        let value = String::from_ocaml(value);
+        let some_value = Some(value);
+        ocaml_alloc!(some_value.to_ocaml(gc))
+    }
 }

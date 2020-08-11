@@ -29,6 +29,19 @@ unsafe impl FromOCaml<String> for String {
     }
 }
 
+unsafe impl<A, FromA> FromOCaml<Option<FromA>> for Option<A>
+where
+    A: FromOCaml<FromA>,
+{
+    fn from_ocaml(v: OCaml<Option<FromA>>) -> Self {
+        if let Some(value) = v.to_option() {
+            Some(A::from_ocaml(value))
+        } else {
+            None
+        }
+    }
+}
+
 unsafe impl<A, B, FromA, FromB> FromOCaml<(FromA, FromB)> for (A, B)
 where
     A: FromOCaml<FromA>,

@@ -13,6 +13,7 @@ mod ocaml {
         pub fn increment_ints_list(ints: OCamlList<Intnat>) -> OCamlList<Intnat>;
         pub fn twice(num: Intnat) -> Intnat;
         pub fn make_tuple(fst: String, snd: Intnat) -> (String, Intnat);
+        pub fn make_some(value: String) -> Option<String>;
     }
 }
 
@@ -56,6 +57,15 @@ pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
     })
 }
 
+pub fn make_some(value: String) -> Option<String> {
+    ocaml_frame!(gc, {
+        let str = ocaml_alloc!(value.to_ocaml(gc));
+        let result = ocaml_call!(ocaml::make_some(gc, str));
+        let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
+        <Option<String>>::from_ocaml(result)
+    })
+}
+
 // Tests
 
 // NOTE: required because at the moment, no synchronization is done on OCaml calls
@@ -90,4 +100,11 @@ fn test_increment_ints_list() {
 fn test_make_tuple() {
     znfe::OCamlRuntime::init_persistent();
     assert_eq!(make_tuple("fst".to_owned(), 9), ("fst".to_owned(), 9));
+}
+
+#[test]
+#[serial]
+fn test_make_some() {
+    znfe::OCamlRuntime::init_persistent();
+    assert_eq!(make_some("some".to_owned()), Some("some".to_owned()));
 }

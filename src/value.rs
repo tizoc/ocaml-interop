@@ -91,6 +91,28 @@ impl<'a> OCaml<'a, Intnat> {
     }
 }
 
+impl<'a, A> OCaml<'a, Option<A>> {
+    pub fn is_none(&self) -> bool {
+        self.raw == NONE
+    }
+
+    pub fn is_some(&self) -> bool {
+        self.is_block()
+    }
+
+    pub fn to_option(&self) -> Option<OCaml<'a, A>> {
+        if self.is_none() {
+            None
+        } else {
+            let value: OCaml<A> = unsafe { self.field(0) };
+            Some(OCaml {
+                _marker: Default::default(),
+                raw: value.raw,
+            })
+        }
+    }
+}
+
 impl<'a, A, B> OCaml<'a, (A, B)> {
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }

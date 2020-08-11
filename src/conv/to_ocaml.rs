@@ -1,6 +1,6 @@
 use crate::memory::alloc_tuple;
-use crate::memory::{alloc_bytes, alloc_string, GCResult, GCToken};
-use crate::mlvalues::{Intnat, RawOCaml};
+use crate::memory::{alloc_bytes, alloc_some, alloc_string, GCResult, GCToken};
+use crate::mlvalues::{Intnat, RawOCaml, NONE};
 use crate::value::OCaml;
 use crate::{ocaml_alloc, ocaml_frame};
 use memory::alloc_cons;
@@ -45,6 +45,22 @@ unsafe impl ToOCaml<String> for String {
 unsafe impl ToOCaml<String> for str {
     fn to_ocaml(&self, token: GCToken) -> GCResult<String> {
         alloc_string(token, self)
+    }
+}
+
+unsafe impl<A, ToA> ToOCaml<Option<ToA>> for Option<A>
+where
+    A: ToOCaml<ToA>,
+{
+    fn to_ocaml(&self, token: GCToken) -> GCResult<Option<ToA>> {
+        if let Some(value) = self {
+            ocaml_frame!(gc, {
+                let ocaml_value = ocaml_alloc!(value.to_ocaml(gc));
+                alloc_some(token, ocaml_value)
+            })
+        } else {
+            GCResult::of(NONE)
+        }
     }
 }
 

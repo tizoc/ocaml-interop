@@ -14,6 +14,9 @@ pub struct OCamlList<A> {
 // #define Val_unit Val_int(0)
 pub const UNIT: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 
+// #define Val_none Val_int(0)
+pub const NONE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
+
 // #define Val_emptylist Val_int(0)
 pub const EMPTY_LIST: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 
