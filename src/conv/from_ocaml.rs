@@ -14,6 +14,12 @@ unsafe impl FromOCaml<Intnat> for i64 {
     }
 }
 
+unsafe impl FromOCaml<bool> for bool {
+    fn from_ocaml(v: OCaml<bool>) -> Self {
+        v.as_bool()
+    }
+}
+
 unsafe impl FromOCaml<String> for Vec<u8> {
     fn from_ocaml(v: OCaml<String>) -> Self {
         let raw_bytes = unsafe { v.as_bytes() };

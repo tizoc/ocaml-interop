@@ -20,6 +20,12 @@ pub const NONE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 // #define Val_emptylist Val_int(0)
 pub const EMPTY_LIST: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 
+//#define Val_false Val_int(0)
+pub const FALSE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
+
+//#define Val_true Val_int(1)
+pub const TRUE: RawOCaml = unsafe { raw_ocaml_of_i64(1) };
+
 // #define Is_block(x)  (((x) & 1) == 0)
 #[inline]
 pub fn is_block(x: RawOCaml) -> bool {

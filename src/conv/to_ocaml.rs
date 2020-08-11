@@ -1,3 +1,5 @@
+use mlvalues::FALSE;
+use mlvalues::TRUE;
 use crate::memory::alloc_tuple;
 use crate::memory::{alloc_bytes, alloc_some, alloc_string, GCResult, GCToken};
 use crate::mlvalues::{Intnat, RawOCaml, NONE};
@@ -27,6 +29,12 @@ unsafe impl ToOCaml<Intnat> for i64 {
 unsafe impl ToOCamlInteger for i64 {
     fn to_ocaml_fixnum(self) -> OCaml<'static, Intnat> {
         OCaml::of_int(self)
+    }
+}
+
+unsafe impl ToOCaml<bool> for bool {
+    fn to_ocaml(&self, _token: GCToken) -> GCResult<bool> {
+        GCResult::of(if *self { TRUE } else { FALSE })
     }
 }
 

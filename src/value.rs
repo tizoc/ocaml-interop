@@ -91,6 +91,19 @@ impl<'a> OCaml<'a, Intnat> {
     }
 }
 
+impl<'a> OCaml<'a, bool> {
+    pub fn as_bool(self) -> bool {
+        unsafe { raw_ocaml_to_i64(self.raw) != 0 }
+    }
+
+    pub fn of_bool(b: bool) -> Self {
+        OCaml {
+            _marker: Default::default(),
+            raw: if b { TRUE } else { FALSE }
+        }
+    }
+}
+
 impl<'a, A> OCaml<'a, Option<A>> {
     pub fn is_none(&self) -> bool {
         self.raw == NONE
