@@ -41,7 +41,7 @@ macro_rules! ocaml {
     ($vis:vis fn $name:ident($($arg:ident: $typ:ty),+) -> $rtyp:ty; $($t:tt)*) => {
         $vis unsafe fn $name(token: $crate::internal::GCToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
-            F.call_n(token, &mut [$($arg.into()),+])
+            F.call_n(token, &mut [$($arg.raw()),+])
         }
 
         ocaml!($($t)*);
