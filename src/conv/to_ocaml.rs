@@ -26,9 +26,21 @@ unsafe impl ToOCaml<Intnat> for i64 {
     }
 }
 
+unsafe impl ToOCaml<Intnat> for i32 {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<Intnat> {
+        (*self as i64).to_ocaml(token)
+    }
+}
+
 unsafe impl ToOCamlInteger for i64 {
     fn to_ocaml_fixnum(self) -> OCaml<'static, Intnat> {
         OCaml::of_int(self)
+    }
+}
+
+unsafe impl ToOCamlInteger for i32 {
+    fn to_ocaml_fixnum(self) -> OCaml<'static, Intnat> {
+        (self as i64).to_ocaml_fixnum()
     }
 }
 
