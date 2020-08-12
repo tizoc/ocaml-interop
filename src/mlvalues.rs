@@ -12,6 +12,8 @@ pub struct OCamlList<A> {
     _marker: marker::PhantomData<A>,
 }
 
+pub struct OCamlInt32 {}
+
 pub struct OCamlUnboxedFloat {}
 
 // #define Val_unit Val_int(0)

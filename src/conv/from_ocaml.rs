@@ -1,4 +1,4 @@
-use mlvalues::{f64_val, Intnat, OCamlList, OCamlUnboxedFloat};
+use mlvalues::{f64_val, Intnat, OCamlInt32, OCamlList, OCamlUnboxedFloat};
 use value::OCaml;
 
 /// `FromOCaml` implements conversion from OCaml values into Rust values.
@@ -10,6 +10,13 @@ pub unsafe trait FromOCaml<T> {
 unsafe impl FromOCaml<Intnat> for i64 {
     fn from_ocaml(v: OCaml<Intnat>) -> Self {
         v.as_int()
+    }
+}
+
+unsafe impl FromOCaml<OCamlInt32> for i32 {
+    fn from_ocaml(v: OCaml<OCamlInt32>) -> Self {
+        let val: OCaml<i32> = unsafe { v.field(1) };
+        unsafe { *(val.raw() as *const i32) }
     }
 }
 

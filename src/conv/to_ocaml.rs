@@ -1,12 +1,10 @@
 use crate::memory::{
-    alloc_bytes, alloc_double, alloc_some, alloc_string, alloc_tuple, alloc_tuple_3, alloc_tuple_4,
-    GCResult, GCToken,
+    alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_some, alloc_string, alloc_tuple,
+    alloc_tuple_3, alloc_tuple_4, GCResult, GCToken,
 };
-use crate::mlvalues::{Intnat, RawOCaml, FALSE, NONE, TRUE};
+use crate::mlvalues::{Intnat, OCamlInt32, OCamlList, RawOCaml, FALSE, NONE, TRUE};
 use crate::value::OCaml;
 use crate::{ocaml_alloc, ocaml_frame};
-use memory::alloc_cons;
-use mlvalues::OCamlList;
 
 /// `ToOCaml` implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
@@ -29,6 +27,12 @@ unsafe impl ToOCaml<Intnat> for i64 {
 unsafe impl ToOCaml<Intnat> for i32 {
     fn to_ocaml(&self, token: GCToken) -> GCResult<Intnat> {
         (*self as i64).to_ocaml(token)
+    }
+}
+
+unsafe impl ToOCaml<OCamlInt32> for i32 {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlInt32> {
+        alloc_int32(token, *self)
     }
 }
 

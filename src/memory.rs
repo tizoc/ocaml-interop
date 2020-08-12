@@ -1,5 +1,5 @@
 use crate::mlvalues::tag;
-use crate::mlvalues::{Intnat, MlsizeT, OCamlList, RawOCaml};
+use crate::mlvalues::{Intnat, MlsizeT, OCamlInt32, OCamlList, RawOCaml};
 use crate::value::{make_ocaml, OCaml};
 use std::cell::Cell;
 use std::marker;
@@ -38,6 +38,7 @@ extern "C" {
     fn caml_alloc_initialized_string(len: MlsizeT, contents: *const u8) -> RawOCaml;
     fn caml_alloc(wosize: MlsizeT, tag: tag::Tag) -> RawOCaml;
     fn caml_alloc_tuple(wosize: MlsizeT) -> RawOCaml;
+    fn caml_copy_int32(i: i32) -> RawOCaml;
     fn caml_copy_double(d: f64) -> RawOCaml;
     fn caml_modify(block: *mut RawOCaml, val: RawOCaml);
 }
@@ -199,6 +200,10 @@ pub fn alloc_bytes(_token: GCToken, s: &[u8]) -> GCResult<String> {
 
 pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
     GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
+}
+
+pub fn alloc_int32(_token: GCToken, i: i32) -> GCResult<OCamlInt32> {
+    GCResult::of(unsafe { caml_copy_int32(i) })
 }
 
 pub fn alloc_double(_token: GCToken, d: f64) -> GCResult<f64> {
