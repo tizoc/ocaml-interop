@@ -19,6 +19,12 @@ unsafe impl FromOCaml<bool> for bool {
     }
 }
 
+unsafe impl FromOCaml<f64> for f64 {
+    fn from_ocaml(v: OCaml<f64>) -> Self {
+        unsafe { *(v.raw() as *const f64) }
+    }
+}
+
 unsafe impl FromOCaml<OCamlUnboxedFloat> for f64 {
     fn from_ocaml(v: OCaml<OCamlUnboxedFloat>) -> Self {
         unsafe { f64_val(v.raw()) }

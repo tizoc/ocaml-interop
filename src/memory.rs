@@ -38,6 +38,7 @@ extern "C" {
     fn caml_alloc_initialized_string(len: MlsizeT, contents: *const u8) -> RawOCaml;
     fn caml_alloc(wosize: MlsizeT, tag: tag::Tag) -> RawOCaml;
     fn caml_alloc_tuple(wosize: MlsizeT) -> RawOCaml;
+    fn caml_copy_double(d: f64) -> RawOCaml;
     fn caml_modify(block: *mut RawOCaml, val: RawOCaml);
 }
 
@@ -198,6 +199,10 @@ pub fn alloc_bytes(_token: GCToken, s: &[u8]) -> GCResult<String> {
 
 pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
     GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
+}
+
+pub fn alloc_double(_token: GCToken, d: f64) -> GCResult<f64> {
+    GCResult::of(unsafe { caml_copy_double(d) })
 }
 
 // TODO: it is possible to directly alter the fields memory upon first allocation of

@@ -1,6 +1,6 @@
 use crate::memory::{
-    alloc_bytes, alloc_some, alloc_string, alloc_tuple, alloc_tuple_3, alloc_tuple_4, GCResult,
-    GCToken,
+    alloc_bytes, alloc_double, alloc_some, alloc_string, alloc_tuple, alloc_tuple_3, alloc_tuple_4,
+    GCResult, GCToken,
 };
 use crate::mlvalues::{Intnat, RawOCaml, FALSE, NONE, TRUE};
 use crate::value::OCaml;
@@ -29,6 +29,12 @@ unsafe impl ToOCaml<Intnat> for i64 {
 unsafe impl ToOCaml<Intnat> for i32 {
     fn to_ocaml(&self, token: GCToken) -> GCResult<Intnat> {
         (*self as i64).to_ocaml(token)
+    }
+}
+
+unsafe impl ToOCaml<f64> for f64 {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<f64> {
+        alloc_double(token, *self)
     }
 }
 
