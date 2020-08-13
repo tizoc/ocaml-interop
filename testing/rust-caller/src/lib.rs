@@ -70,9 +70,9 @@ pub fn allocate_alot() -> bool {
     let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     for _n in 1..50000 {
         ocaml_frame!(gc, {
-            let x: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
-            let y: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
-            let z: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
+            let _x: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
+            let _y: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
+            let _z: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
             ()
         });
     }
