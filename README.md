@@ -16,7 +16,6 @@ Status: **UNSTABLE**
   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
     + [`FromOCaml` trait](#fromocaml-trait)
     + [`ToOCaml` trait](#toocaml-trait)
-    + [`ToOCamlInteger` trait](#toocamlinteger-trait)
   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
 - [References and links](#references-and-links)
@@ -132,10 +131,6 @@ The `FromOCaml` trait implements conversion from OCaml values into Rust values, 
 #### `ToOCaml` trait
 
 The `ToOCaml` trait implements conversion from Rust values into OCaml values, using the `to_ocaml` function. `to_ocaml` can only be called when wrapped by the `ocaml_alloc!` macro form, and it takes a single parameter that must be a handle to the current GC frame.
-
-#### `ToOCamlInteger` trait
-
-The `ToOCaml` trait implements conversion from Rust integers into OCaml integer values. The `to_ocaml_fixnum` integer converts a Rust integer into an OCaml fixnum (63bits).
 
 ### Calling into OCaml from Rust
 

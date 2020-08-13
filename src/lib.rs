@@ -8,7 +8,7 @@ mod runtime;
 mod value;
 
 pub use crate::closure::OCamlResult;
-pub use crate::conv::{FromOCaml, ToOCaml, ToOCamlInteger};
+pub use crate::conv::{FromOCaml, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::OCamlRef;
 pub use crate::mlvalues::{Intnat, OCamlInt32, OCamlList, OCamlUnboxedFloat, RawOCaml};

@@ -12,12 +12,6 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml(&self, gc: GCToken) -> GCResult<T>;
 }
 
-/// `ToOCamlInteger` implements conversion from Rust integers into OCaml values.
-pub unsafe trait ToOCamlInteger {
-    fn to_ocaml_fixnum(self) -> OCaml<'static, Intnat>;
-    // TODO: Int32.t and Int64.t
-}
-
 unsafe impl ToOCaml<Intnat> for i64 {
     fn to_ocaml(&self, _token: GCToken) -> GCResult<Intnat> {
         GCResult::of(((self << 1) | 1) as RawOCaml)
@@ -39,18 +33,6 @@ unsafe impl ToOCaml<OCamlInt32> for i32 {
 unsafe impl ToOCaml<f64> for f64 {
     fn to_ocaml(&self, token: GCToken) -> GCResult<f64> {
         alloc_double(token, *self)
-    }
-}
-
-unsafe impl ToOCamlInteger for i64 {
-    fn to_ocaml_fixnum(self) -> OCaml<'static, Intnat> {
-        OCaml::of_int(self)
-    }
-}
-
-unsafe impl ToOCamlInteger for i32 {
-    fn to_ocaml_fixnum(self) -> OCaml<'static, Intnat> {
-        (self as i64).to_ocaml_fixnum()
     }
 }
 

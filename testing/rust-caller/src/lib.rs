@@ -1,9 +1,6 @@
 extern crate znfe;
 
-use znfe::{
-    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, OCamlList, ToOCaml,
-    ToOCamlInteger,
-};
+use znfe::{ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, OCamlList, ToOCaml};
 
 mod ocaml {
     use znfe::{ocaml, Intnat, OCamlList};
@@ -40,7 +37,7 @@ pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
 
 pub fn twice(num: i64) -> i64 {
     ocaml_frame!(gc, {
-        let num = num.to_ocaml_fixnum();
+        let num = OCaml::of_int(num);
         let result = ocaml_call!(ocaml::twice(gc, num));
         let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
         i64::from_ocaml(result)
@@ -49,7 +46,7 @@ pub fn twice(num: i64) -> i64 {
 
 pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
     ocaml_frame!(gc, {
-        let num = snd.to_ocaml_fixnum();
+        let num = OCaml::of_int(snd);
         let str = ocaml_alloc!(fst.to_ocaml(gc));
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
         let result: OCaml<(String, Intnat)> = result.expect("Error in 'make_tuple' call result");
