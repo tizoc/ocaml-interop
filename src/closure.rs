@@ -1,4 +1,4 @@
-use crate::error::{CamlError, Error};
+use crate::error::OCamlError;
 use crate::memory::{GCResult, GCToken};
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
@@ -52,7 +52,7 @@ fn get_named(name: &str) -> Option<*const RawOCaml> {
     }
 }
 
-pub type OCamlResult<T> = Result<GCResult<T>, Error>;
+pub type OCamlResult<T> = Result<GCResult<T>, OCamlError>;
 
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {
@@ -95,7 +95,7 @@ impl OCamlClosure {
     fn handle_result<R>(self, result: RawOCaml) -> OCamlResult<R> {
         if is_exception_result(result) {
             let ex = extract_exception(result);
-            Err(Error::Caml(CamlError::Exception(ex)))
+            Err(OCamlError::Exception(ex))
         } else {
             let gv = GCResult::of(result);
             Ok(gv)

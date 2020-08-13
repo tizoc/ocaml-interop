@@ -1,11 +1,6 @@
 use mlvalues::RawOCaml;
 
 #[derive(Debug)]
-pub enum CamlError {
+pub enum OCamlError {
     Exception(RawOCaml),
-}
-
-#[derive(Debug)]
-pub enum Error {
-    Caml(CamlError),
 }
