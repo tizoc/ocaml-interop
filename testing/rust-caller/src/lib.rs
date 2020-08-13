@@ -66,6 +66,19 @@ pub fn make_some(value: String) -> Option<String> {
     })
 }
 
+pub fn allocate_alot() -> bool {
+    let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    for _n in 1..50000 {
+        ocaml_frame!(gc, {
+            let x: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
+            let y: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
+            let z: OCaml<String> = ocaml_alloc!(vec.to_ocaml(gc));
+            ()
+        });
+    }
+    true
+}
+
 // Tests
 
 // NOTE: required because at the moment, no synchronization is done on OCaml calls
@@ -107,4 +120,11 @@ fn test_make_tuple() {
 fn test_make_some() {
     znfe::OCamlRuntime::init_persistent();
     assert_eq!(make_some("some".to_owned()), Some("some".to_owned()));
+}
+
+#[test]
+#[serial]
+fn test_frame_management() {
+    znfe::OCamlRuntime::init_persistent();
+    assert_eq!(allocate_alot(), true);
 }

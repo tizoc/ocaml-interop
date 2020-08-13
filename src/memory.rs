@@ -90,13 +90,10 @@ impl<'gc> GCFrame<'gc> {
 impl<'gc> Drop for GCFrame<'gc> {
     fn drop(&mut self) {
         assert!(self.block.nitems == 0);
-        // In case this happens whith a GCFrame that was not initialized.
-        // We don't want to mess with caml_local_roots in that case.
-        if !self.block.next.is_null() {
-            unsafe {
-                assert!(caml_local_roots == &mut self.block);
-                caml_local_roots = self.block.next;
-            }
+        assert!(self.block.ntables == 1);
+        unsafe {
+            assert!(caml_local_roots == &mut self.block);
+            caml_local_roots = self.block.next;
         }
     }
 }
