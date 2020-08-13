@@ -1,4 +1,4 @@
-use crate::error::OCamlError;
+use crate::error::{OCamlError, OCamlException};
 use crate::memory::{GCResult, GCToken};
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
@@ -95,7 +95,7 @@ impl OCamlClosure {
     fn handle_result<R>(self, result: RawOCaml) -> OCamlResult<R> {
         if is_exception_result(result) {
             let ex = extract_exception(result);
-            Err(OCamlError::Exception(ex))
+            Err(OCamlError::Exception(OCamlException::of(ex)))
         } else {
             let gv = GCResult::of(result);
             Ok(gv)
