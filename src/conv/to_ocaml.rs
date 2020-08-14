@@ -172,6 +172,15 @@ unsafe impl<A, ToA> ToOCaml<OCamlList<ToA>> for Vec<A>
 where
     A: ToOCaml<ToA>,
 {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlList<ToA>> {
+        (&self).to_ocaml(token)
+    }
+}
+
+unsafe impl<A, ToA> ToOCaml<OCamlList<ToA>> for &Vec<A>
+where
+    A: ToOCaml<ToA>,
+{
     fn to_ocaml(&self, _token: GCToken) -> GCResult<OCamlList<ToA>> {
         ocaml_frame!(gc, {
             let ref mut result_ref = gc.keep(OCaml::nil());
