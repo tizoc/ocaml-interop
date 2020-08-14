@@ -78,6 +78,22 @@ impl<'a> OCaml<'a, String> {
     }
 }
 
+impl<'a> OCaml<'a, OCamlBytes> {
+    pub unsafe fn as_bytes(self) -> &'a [u8] {
+        let s = self.raw;
+        assert!(tag_val(s) == tag::STRING);
+        slice::from_raw_parts(string_val(s), caml_string_length(s))
+    }
+
+    pub unsafe fn as_str(self) -> &'a str {
+        str::from_utf8(self.as_bytes()).unwrap()
+    }
+
+    pub unsafe fn as_str_unchecked(self) -> &'a str {
+        str::from_utf8_unchecked(self.as_bytes())
+    }
+}
+
 impl<'a> OCaml<'a, Intnat> {
     pub fn as_int(self) -> i64 {
         unsafe { raw_ocaml_to_i64(self.raw) }

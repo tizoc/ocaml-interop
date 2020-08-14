@@ -1,5 +1,5 @@
 use crate::mlvalues::tag;
-use crate::mlvalues::{Intnat, MlsizeT, OCamlInt32, OCamlList, RawOCaml};
+use crate::mlvalues::{Intnat, MlsizeT, OCamlBytes, OCamlInt32, OCamlList, RawOCaml};
 use crate::value::{make_ocaml, OCaml};
 use std::cell::Cell;
 use std::marker;
@@ -191,7 +191,7 @@ impl<T> GCMarkedResult<T> {
     }
 }
 
-pub fn alloc_bytes(_token: GCToken, s: &[u8]) -> GCResult<String> {
+pub fn alloc_bytes(_token: GCToken, s: &[u8]) -> GCResult<OCamlBytes> {
     GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
 }
 

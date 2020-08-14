@@ -11,7 +11,7 @@ pub use crate::closure::OCamlResult;
 pub use crate::conv::{FromOCaml, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::OCamlRef;
-pub use crate::mlvalues::{Intnat, OCamlInt32, OCamlList, OCamlUnboxedFloat, RawOCaml};
+pub use crate::mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlList, OCamlUnboxedFloat, RawOCaml};
 pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;
 

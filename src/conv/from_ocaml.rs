@@ -1,4 +1,4 @@
-use mlvalues::{f64_val, Intnat, OCamlInt32, OCamlList, OCamlUnboxedFloat};
+use mlvalues::{f64_val, Intnat, OCamlBytes, OCamlInt32, OCamlList, OCamlUnboxedFloat};
 use value::OCaml;
 
 /// `FromOCaml` implements conversion from OCaml values into Rust values.
@@ -50,6 +50,21 @@ unsafe impl FromOCaml<String> for Vec<u8> {
 unsafe impl FromOCaml<String> for String {
     fn from_ocaml(v: OCaml<String>) -> Self {
         unsafe { v.as_str() }.to_owned()
+    }
+}
+
+unsafe impl FromOCaml<OCamlBytes> for Vec<u8> {
+    fn from_ocaml(v: OCaml<OCamlBytes>) -> Self {
+        let raw_bytes = unsafe { v.as_bytes() };
+        let mut vec: Vec<u8> = Vec::with_capacity(raw_bytes.len());
+        vec.extend_from_slice(raw_bytes);
+        vec
+    }
+}
+
+unsafe impl FromOCaml<OCamlBytes> for String {
+    fn from_ocaml(v: OCaml<OCamlBytes>) -> Self {
+        unsafe { v.as_str_unchecked() }.to_owned()
     }
 }
 

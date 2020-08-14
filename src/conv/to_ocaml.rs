@@ -2,7 +2,7 @@ use crate::memory::{
     alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_some, alloc_string, alloc_tuple,
     alloc_tuple_3, alloc_tuple_4, GCResult, GCToken,
 };
-use crate::mlvalues::{Intnat, OCamlInt32, OCamlList, RawOCaml, FALSE, NONE, TRUE};
+use crate::mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlList, RawOCaml, FALSE, NONE, TRUE};
 use crate::value::OCaml;
 use crate::{ocaml_alloc, ocaml_frame};
 
@@ -44,7 +44,8 @@ unsafe impl ToOCaml<bool> for bool {
 
 unsafe impl ToOCaml<String> for Vec<u8> {
     fn to_ocaml<'a, 'gc>(&self, token: GCToken) -> GCResult<String> {
-        alloc_bytes(token, self.as_slice())
+        let s = unsafe { std::str::from_utf8_unchecked(self.as_slice()) };
+        alloc_string(token, s)
     }
 }
 
@@ -57,6 +58,24 @@ unsafe impl ToOCaml<String> for String {
 unsafe impl ToOCaml<String> for str {
     fn to_ocaml(&self, token: GCToken) -> GCResult<String> {
         alloc_string(token, self)
+    }
+}
+
+unsafe impl ToOCaml<OCamlBytes> for Vec<u8> {
+    fn to_ocaml<'a, 'gc>(&self, token: GCToken) -> GCResult<OCamlBytes> {
+        alloc_bytes(token, self.as_slice())
+    }
+}
+
+unsafe impl ToOCaml<OCamlBytes> for String {
+    fn to_ocaml<'a, 'gc>(&self, token: GCToken) -> GCResult<OCamlBytes> {
+        alloc_bytes(token, self.as_bytes())
+    }
+}
+
+unsafe impl ToOCaml<OCamlBytes> for str {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlBytes> {
+        alloc_bytes(token, self.as_bytes())
     }
 }
 
