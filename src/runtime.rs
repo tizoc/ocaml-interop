@@ -16,6 +16,10 @@ impl OCamlRuntime {
         let c_args = vec![arg0, std::ptr::null()];
         unsafe { caml_startup(c_args.as_ptr()) }
     }
+
+    pub fn shutdown_persistent() {
+        unsafe { caml_shutdown() }
+    }
 }
 
 impl Drop for OCamlRuntime {
