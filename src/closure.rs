@@ -54,6 +54,13 @@ fn get_named(name: &str) -> Option<*const RawOCaml> {
 
 pub type OCamlResult<T> = Result<GCResult<T>, OCamlError>;
 
+pub type OCamlFn1<A, Ret> = unsafe fn(GCToken, OCaml<A>) -> OCamlResult<Ret>;
+pub type OCamlFn2<A, B, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>) -> OCamlResult<Ret>;
+pub type OCamlFn3<A, B, C, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>, OCaml<C>) -> OCamlResult<Ret>;
+pub type OCamlFn4<A, B, C, D, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCamlResult<Ret>;
+pub type OCamlFn5<A, B, C, D, E, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>, OCaml<E>) -> OCamlResult<Ret>;
+
+
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {
         get_named(name).map(OCamlClosure)

@@ -7,7 +7,7 @@ mod mlvalues;
 mod runtime;
 mod value;
 
-pub use crate::closure::OCamlResult;
+pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCamlResult};
 pub use crate::conv::{FromOCaml, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::OCamlRef;
