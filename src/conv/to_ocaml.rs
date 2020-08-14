@@ -43,32 +43,45 @@ unsafe impl ToOCaml<bool> for bool {
 }
 
 unsafe impl ToOCaml<String> for Vec<u8> {
-    fn to_ocaml<'a, 'gc>(&self, token: GCToken) -> GCResult<String> {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<String> {
+        let s = unsafe { std::str::from_utf8_unchecked(self.as_slice()) };
+        alloc_string(token, s)
+    }
+}
+
+unsafe impl ToOCaml<String> for &Vec<u8> {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<String> {
         let s = unsafe { std::str::from_utf8_unchecked(self.as_slice()) };
         alloc_string(token, s)
     }
 }
 
 unsafe impl ToOCaml<String> for String {
-    fn to_ocaml<'a, 'gc>(&self, token: GCToken) -> GCResult<String> {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<String> {
         alloc_string(token, self.as_str())
     }
 }
 
-unsafe impl ToOCaml<String> for str {
+unsafe impl ToOCaml<String> for &String {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<String> {
+        alloc_string(token, self.as_str())
+    }
+}
+
+unsafe impl ToOCaml<String> for &str {
     fn to_ocaml(&self, token: GCToken) -> GCResult<String> {
         alloc_string(token, self)
     }
 }
 
 unsafe impl ToOCaml<OCamlBytes> for Vec<u8> {
-    fn to_ocaml<'a, 'gc>(&self, token: GCToken) -> GCResult<OCamlBytes> {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlBytes> {
         alloc_bytes(token, self.as_slice())
     }
 }
 
 unsafe impl ToOCaml<OCamlBytes> for String {
-    fn to_ocaml<'a, 'gc>(&self, token: GCToken) -> GCResult<OCamlBytes> {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlBytes> {
         alloc_bytes(token, self.as_bytes())
     }
 }
