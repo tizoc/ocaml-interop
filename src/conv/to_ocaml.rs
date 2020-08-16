@@ -86,7 +86,7 @@ unsafe impl ToOCaml<OCamlBytes> for String {
     }
 }
 
-unsafe impl ToOCaml<OCamlBytes> for str {
+unsafe impl ToOCaml<OCamlBytes> for &str {
     fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlBytes> {
         alloc_bytes(token, self.as_bytes())
     }
