@@ -9,12 +9,14 @@ macro_rules! ocaml_frame {
 }
 
 // ocaml!{ pub fn ocaml_name(arg1: typ2, ...) -> ret_typ; ... }
+// ocaml!{ pub fn ocaml_name(arg1: typ2, ...); ... }
+// If no return type is provided, defaults to unit
 #[macro_export]
 macro_rules! ocaml {
     () => ();
 
-    ($vis:vis fn $name:ident($arg:ident: $typ:ty $(,)?) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$rtyp> {
+    ($vis:vis fn $name:ident($arg:ident: $typ:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call(token, $arg)
         }
@@ -22,8 +24,8 @@ macro_rules! ocaml {
         ocaml!($($t)*);
     };
 
-    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty $(,)?) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>) -> $crate::OCamlResult<$rtyp> {
+    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call2(token, $arg1, $arg2)
         }
@@ -31,8 +33,8 @@ macro_rules! ocaml {
         ocaml!($($t)*);
     };
 
-    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty, $arg3:ident: $typ3:ty $(,)?) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>, $arg3: $crate::OCaml<$typ3>) -> $crate::OCamlResult<$rtyp> {
+    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty, $arg3:ident: $typ3:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>, $arg3: $crate::OCaml<$typ3>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call3(token, $arg1, $arg2, $arg3)
         }
@@ -40,8 +42,8 @@ macro_rules! ocaml {
         ocaml!($($t)*);
     };
 
-    ($vis:vis fn $name:ident($($arg:ident: $typ:ty),+ $(,)?) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$rtyp> {
+    ($vis:vis fn $name:ident($($arg:ident: $typ:ty),+ $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
+        $vis unsafe fn $name(token: $crate::internal::GCToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call_n(token, &mut [$($arg.raw()),+])
         }
@@ -50,12 +52,14 @@ macro_rules! ocaml {
     }
 }
 
-// ocaml_export! { fn export_name(gc, arg1: typ1, ...) -> res_typ; ... }
+// ocaml_export! { fn export_name(gc, arg1: typ1, ...) -> res_typ ... }
+// ocaml_export! { fn export_name(gc, arg1: typ1, ...) ... }
+// If no return type is provided, defaults to unit
 #[macro_export]
 macro_rules! ocaml_export {
     {
       $(
-        fn $name:ident( $gc:ident, $($arg:ident : $ty:ty),* $(,)?) -> $res:ty
+        fn $name:ident( $gc:ident, $($arg:ident : $ty:ty),* $(,)?) $(-> $rtyp:ty)?
            $body:block
       )*
     } => {
@@ -64,12 +68,12 @@ macro_rules! ocaml_export {
         pub extern "C" fn $name( $($arg: $crate::RawOCaml),* ) -> $crate::RawOCaml {
             $crate::ocaml_frame!($gc, {
                 $(let $arg : $ty = unsafe { OCaml::new($gc, $arg) };)*
-                let retval : $res = $body;
+                let retval : $crate::default_to_ocaml_unit!($(-> $rtyp)?) = $body;
                 unsafe { retval.raw() }
             })
         }
       )*
-    }
+    };
 }
 
 // ocaml_alloc!(expr.to_ocaml(gc, ...)))
@@ -154,4 +158,18 @@ macro_rules! gcmark_result {
             Err(e) => Err(e),
         }
     };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! default_to_ocaml_unit {
+    () => (OCaml<()>);
+    (-> $rtyp:ty) => ($rtyp);
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! default_to_unit {
+    () => (());
+    (-> $rtyp:ty) => ($rtyp);
 }
