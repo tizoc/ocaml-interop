@@ -15,6 +15,7 @@ Status: **UNSTABLE**
     + [Rule 3: Liveness and scope of OCaml values](#rule-3-liveness-and-scope-of-ocaml-values)
   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
     + [`FromOCaml` trait](#fromocaml-trait)
+    + [`IntoRust` trait](#intorust-trait)
     + [`ToOCaml` trait](#toocaml-trait)
   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
@@ -127,6 +128,10 @@ error[E0597]: `frame` does not live long enough
 #### `FromOCaml` trait
 
 The `FromOCaml` trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
+
+#### `IntoRust` trait
+
+`IntoRust` is the counterpart to `FromOCaml` just like `Into` is to `From`. Using `ocaml_val.into_rust()` instead of `Type::from_ocaml(ocaml_val)` is usually more convenient, specially when more complicated types are involved.
 
 #### `ToOCaml` trait
 

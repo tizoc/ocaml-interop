@@ -1,7 +1,7 @@
 extern crate znfe;
 
 use znfe::{
-    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, Intnat, OCaml, OCamlBytes, OCamlList, ToOCaml,
+    ocaml_alloc, ocaml_call, ocaml_frame, Intnat, IntoRust, OCaml, OCamlBytes, OCamlList, ToOCaml,
 };
 
 mod ocaml {
@@ -23,7 +23,7 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
         let first_n = ocaml_alloc!((first_n as i64).to_ocaml(gc));
         let result = ocaml_call!(ocaml::increment_bytes(gc, gc.get(bytes_ref), first_n));
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
-        String::from_ocaml(result)
+        result.into_rust()
     })
 }
 
@@ -33,7 +33,7 @@ pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
         let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
         let result: OCaml<OCamlList<Intnat>> =
             result.expect("Error in 'increment_ints_list' call result");
-        <Vec<i64>>::from_ocaml(result)
+        result.into_rust()
     })
 }
 
@@ -42,7 +42,7 @@ pub fn twice(num: i64) -> i64 {
         let num = OCaml::of_int(num);
         let result = ocaml_call!(ocaml::twice(gc, num));
         let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
-        i64::from_ocaml(result)
+        result.into_rust()
     })
 }
 
@@ -52,7 +52,7 @@ pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
         let str = ocaml_alloc!(fst.to_ocaml(gc));
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
         let result: OCaml<(String, Intnat)> = result.expect("Error in 'make_tuple' call result");
-        <(String, i64)>::from_ocaml(result)
+        result.into_rust()
     })
 }
 
@@ -61,7 +61,7 @@ pub fn make_some(value: String) -> Option<String> {
         let str = ocaml_alloc!(value.to_ocaml(gc));
         let result = ocaml_call!(ocaml::make_some(gc, str));
         let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
-        <Option<String>>::from_ocaml(result)
+        result.into_rust()
     })
 }
 
