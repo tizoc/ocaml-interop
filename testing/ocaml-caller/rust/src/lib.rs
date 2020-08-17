@@ -1,14 +1,12 @@
-use znfe::{
-    ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, OCamlList, ToOCaml, ToOCamlInteger,
-};
+use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, OCamlBytes, OCamlList, ToOCaml};
 
 ocaml_export! {
     fn rust_twice(_gc, num: OCaml<Intnat>) -> OCaml<Intnat> {
         let num = i64::from_ocaml(num);
-        (num * 2).to_ocaml_fixnum()
+        OCaml::of_int(num * 2)
     }
 
-    fn rust_increment_bytes(gc, bytes: OCaml<String>, first_n: OCaml<Intnat>) -> OCaml<String> {
+    fn rust_increment_bytes(gc, bytes: OCaml<OCamlBytes>, first_n: OCaml<Intnat>) -> OCaml<OCamlBytes> {
         let first_n = i64::from_ocaml(first_n) as usize;
         let mut vec = Vec::from_ocaml(bytes);
 
