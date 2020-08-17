@@ -1,5 +1,5 @@
-use OCaml;
-use FromOCaml;
+use crate::value::OCaml;
+use crate::conv::FromOCaml;
 
 pub trait IntoRust<T>: Sized {
     fn into_rust(self) -> T;
