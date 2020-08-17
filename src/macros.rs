@@ -1,3 +1,4 @@
+// ocaml_frame!(gc, { ... })
 #[macro_export]
 macro_rules! ocaml_frame {
     ($gc:ident, $body:block) => {{
@@ -7,11 +8,12 @@ macro_rules! ocaml_frame {
     }};
 }
 
+// ocaml!{ pub fn ocaml_name(arg1: typ2, ...) -> ret_typ; ... }
 #[macro_export]
 macro_rules! ocaml {
     () => ();
 
-    ($vis:vis fn $name:ident($arg:ident: $typ:ty) -> $rtyp:ty; $($t:tt)*) => {
+    ($vis:vis fn $name:ident($arg:ident: $typ:ty $(,)?) -> $rtyp:ty; $($t:tt)*) => {
         $vis unsafe fn $name(token: $crate::internal::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call(token, $arg)
@@ -20,7 +22,7 @@ macro_rules! ocaml {
         ocaml!($($t)*);
     };
 
-    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty) -> $rtyp:ty; $($t:tt)*) => {
+    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty $(,)?) -> $rtyp:ty; $($t:tt)*) => {
         $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call2(token, $arg1, $arg2)
@@ -29,7 +31,7 @@ macro_rules! ocaml {
         ocaml!($($t)*);
     };
 
-    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty, $arg3:ident: $typ3:ty) -> $rtyp:ty; $($t:tt)*) => {
+    ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty, $arg3:ident: $typ3:ty $(,)?) -> $rtyp:ty; $($t:tt)*) => {
         $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>, $arg3: $crate::OCaml<$typ3>) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call3(token, $arg1, $arg2, $arg3)
@@ -38,7 +40,7 @@ macro_rules! ocaml {
         ocaml!($($t)*);
     };
 
-    ($vis:vis fn $name:ident($($arg:ident: $typ:ty),+) -> $rtyp:ty; $($t:tt)*) => {
+    ($vis:vis fn $name:ident($($arg:ident: $typ:ty),+ $(,)?) -> $rtyp:ty; $($t:tt)*) => {
         $vis unsafe fn $name(token: $crate::internal::GCToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$rtyp> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call_n(token, &mut [$($arg.raw()),+])
@@ -48,17 +50,18 @@ macro_rules! ocaml {
     }
 }
 
+// ocaml_export! { fn export_name(gc, arg1: typ1, ...) -> res_typ; ... }
 #[macro_export]
 macro_rules! ocaml_export {
     {
       $(
-        fn $name:ident( $gc:ident, $($arg:ident : $ty:ty),* ) -> $res:ty
+        fn $name:ident( $gc:ident, $($arg:ident : $ty:ty),* $(,)?) -> $res:ty
            $body:block
       )*
     } => {
       $(
         #[no_mangle]
-        pub extern "C" fn $name( $($arg: $crate::RawOCaml), *) -> $crate::RawOCaml {
+        pub extern "C" fn $name( $($arg: $crate::RawOCaml),* ) -> $crate::RawOCaml {
             $crate::ocaml_frame!($gc, {
                 $(let $arg : $ty = unsafe { OCaml::new($gc, $arg) };)*
                 let retval : $res = $body;
@@ -69,30 +72,31 @@ macro_rules! ocaml_export {
     }
 }
 
+// ocaml_alloc!(expr.to_ocaml(gc, ...)))
 #[macro_export]
 macro_rules! ocaml_alloc {
-    ( $(($obj:expr).)?$($fn:ident).+($gc:ident) ) => {
+    ( $(($obj:expr).)?$($fn:ident).+($gc:ident $(,)?) ) => {
         {
             let res = $(($obj).)?$($fn).+(unsafe { $gc.token() });
             res.mark($gc).eval($gc)
         }
     };
 
-    ( $(($obj:expr).)?$($fn:ident).+($gc:ident, $($arg:expr),* ) ) => {
+    ( $(($obj:expr).)?$($fn:ident).+($gc:ident, $($arg:expr),+ $(,)? ) ) => {
         {
             let res = $(($obj).)?$($fn).+(unsafe { $gc.token() }, $($arg),* );
             res.mark($gc).eval($gc)
         }
     };
 
-    ( $obj:literal.$($fn:ident).+($gc:ident) ) => {
+    ( $obj:literal.$($fn:ident).+($gc:ident $(,)?) ) => {
         {
             let res = $obj.$($fn).+(unsafe { $gc.token() });
             res.mark($gc).eval($gc)
         }
     };
 
-    ( $obj:literal.$($fn:ident).+($gc:ident, $($arg:expr),* ) ) => {
+    ( $obj:literal.$($fn:ident).+($gc:ident, $($arg:expr),+ $(,)?) ) => {
         {
             let res = $obj.$($fn).+(unsafe { $gc.token() }, $($arg),* );
             res.mark($gc).eval($gc)
@@ -100,23 +104,24 @@ macro_rules! ocaml_alloc {
     };
 }
 
+// ocaml_call!(expr.func(gc, arg1, ...))
 #[macro_export]
 macro_rules! ocaml_call {
-    ( $(($obj:expr).)?$($fn:ident).+($gc:ident, $($arg:expr),* ) ) => {
+    ( $(($obj:expr).)?$($fn:ident).+($gc:ident, $($arg:expr),+ $(,)?)) => {
         {
             let res = unsafe { $(($obj).)?$($fn).+($gc.token(), $($arg),* ) };
             $crate::gcmark_result!($gc, res)
         }
     };
 
-    ( $($path:ident)::+($gc:ident, $($args:expr),+) ) => {
+    ( $($path:ident)::+($gc:ident, $($args:expr),+ $(,)?) ) => {
         {
             let res = unsafe { $($path)::+($gc.token(), $($args),+) };
             $crate::gcmark_result!($gc, res)
         }
     };
 
-    ( $($path:ident)::+.$($field:ident).+($gc:ident, $($args:expr),+) ) => {
+    ( $($path:ident)::+.$($field:ident).+($gc:ident, $($args:expr),+ $(,)?) ) => {
         {
             let res = unsafe { $($path)::+$($field).+($gc.token(), $($args),+) };
             $crate::gcmark_result!($gc, res)
