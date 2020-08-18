@@ -8,6 +8,7 @@ Status: **UNSTABLE**
 
 ## Table of Contents
 
+- [How does it work](#how-does-it-work)
 - [Usage](#usage)
   * [Rules](#rules)
     + [Rule 1: OCaml function calls, allocations and the GC Frame](#rule-1-ocaml-function-calls-allocations-and-the-gc-frame)
@@ -20,6 +21,12 @@ Status: **UNSTABLE**
   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
 - [References and links](#references-and-links)
+
+## How does it work
+
+ZnFe, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
+
+This requires that the user is explicit about delimiting blocks that interact with the OCaml runtime, and that calls into the OCaml runtime are done only inside these blocks, and wrapped by a few special macros.
 
 ## Usage
 
