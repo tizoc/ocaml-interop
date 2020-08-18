@@ -176,7 +176,7 @@ Example:
 
 ```rust
 use znfe::{
-    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, OCaml, OCamlRef, ToOCaml, ToOCamlInteger,
+    ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, OCaml, OCamlRef, ToOCaml,
     OCamlRuntime
 };
 
@@ -230,11 +230,11 @@ fn increment_bytes(bytes1: String, bytes2: String, first_n: usize) -> (String, S
         let ocaml_bytes2: OCaml<String> = ocaml_alloc!(bytes2.to_ocaml(gc));
         let ref bytes2_ref: OCamlRef<String> = gc.keep(ocaml_bytes2);
 
-        // Rust numbers can be converted into OCaml fixnums with the `ToOCamlInteger`
-        // trait. Such conversion doesn't require any allocation on the OCaml side,
+        // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_int`.
+        // Such conversion doesn't require any allocation on the OCaml side,
         // so this call doesn't have to be wrapped by `ocaml_alloc!`, and no GC handle
         // is passed as an argument.
-        let ocaml_first_n = (first_n as i64).to_ocaml_fixnum();
+        let ocaml_first_n = OCaml::of_int(first_n as i64);
 
         // To call an OCaml function (declared above in a `ocaml!` block) the
         // `ocaml_call!` macro is used. The GC handle has to be passed as the first argument,
@@ -273,7 +273,7 @@ fn increment_bytes(bytes1: String, bytes2: String, first_n: usize) -> (String, S
 
 fn twice(num: usize) -> usize {
     ocaml_frame!(gc, {
-        let ocaml_num = (num as i64).to_ocaml_fixnum();
+        let ocaml_num = OCaml::of_int(num as i64);
         let result = ocaml_call!(ocaml_funcs::twice(gc, ocaml_num));
         i64::from_ocaml(result.unwrap()) as usize
     })
@@ -300,7 +300,7 @@ fn main() {
 To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `ocaml_export!` macro.
 
 ```rust
-use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, ToOCaml, ToOCamlInteger};
+use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, ToOCaml};
 
 // `ocaml_export` expands the function definitions by adding `pub` visibility and
 // the required `#[no_mangle]` and `extern` declarations. It also takes care of
@@ -310,7 +310,7 @@ ocaml_export! {
     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
     fn rust_twice(_gc, num: OCaml<Intnat>) -> OCaml<Intnat> {
         let num = i64::from_ocaml(num);
-        (num * 2).to_ocaml_fixnum()
+        OCaml::of_int(num * 2)
     }
 
     fn rust_increment_bytes(gc, bytes: OCaml<String>, first_n: OCaml<Intnat>) -> OCaml<String> {
