@@ -1,6 +1,7 @@
 module Rust = struct
   external twice: int -> int = "rust_twice"
-  external twice_unboxed_float: float -> (float [@unboxed]) = "" "rust_twice_unboxed_float"
+  external twice_unboxed_float: (float [@unboxed]) -> (float [@unboxed]) = "" "rust_twice_unboxed_float"
+  external add_unboxed_floats_noalloc: float -> float -> float = "" "rust_add_unboxed_floats_noalloc" [@@unboxed] [@@noalloc]
   external increment_bytes: bytes -> int -> bytes = "rust_increment_bytes"
   external increment_ints_list: int list -> int list = "rust_increment_ints_list"
   external make_tuple: string -> int -> (string * int) = "rust_make_tuple"
@@ -12,6 +13,9 @@ let test_twice () =
 
 let test_twice_unboxed_float () =
   Alcotest.(check (float 0.0)) "Multiply unboxed float by 2" 20.0 (Rust.twice_unboxed_float 10.0)
+
+let test_add_unboxed_floats_noalloc () =
+  Alcotest.(check (float 0.0)) "Add two unboxed floats" 60.0 (Rust.add_unboxed_floats_noalloc 10.0 50.0)
 
 let test_increment_bytes () =
   let expected = Bytes.of_string "1111111111000000" in

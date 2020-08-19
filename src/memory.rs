@@ -74,6 +74,10 @@ impl<'gc> GCFrame<'gc> {
         self
     }
 
+    pub unsafe fn initialize_empty(&mut self) -> &mut Self {
+        self
+    }
+
     pub fn keep<T>(&self, value: OCaml<T>) -> OCamlRef<'gc, T> {
         OCamlRef::new(self, value)
     }
