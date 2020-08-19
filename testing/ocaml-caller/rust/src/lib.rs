@@ -6,6 +6,11 @@ ocaml_export! {
         OCaml::of_int(num * 2)
     }
 
+    fn rust_twice_unboxed_float(_gc, num: OCaml<f64>) -> f64 {
+        let num: f64 = num.into_rust();
+        num * 2.0
+    }
+
     fn rust_increment_bytes(gc, bytes: OCaml<OCamlBytes>, first_n: OCaml<Intnat>) -> OCaml<OCamlBytes> {
         let first_n: i64 = first_n.into_rust();
         let first_n = first_n as usize;

@@ -3,12 +3,12 @@
  (deps (source_tree rust))
  (action
   (progn
-   (chdir rust (run cargo build --release))
+   (chdir rust (run cargo build))
    (run sh -c
-     "cp rust/target/release/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
-      cp rust/target/release/libcallable_rust.dylib ./dllcallable_rust.so"
+     "cp rust/target/debug/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
+      cp rust/target/debug/libcallable_rust.dylib ./dllcallable_rust.so"
       )
-   (run cp rust/target/release/libcallable_rust.a libcallable_rust.a)
+   (run cp rust/target/debug/libcallable_rust.a libcallable_rust.a)
    )))
 
 (executables

@@ -1,4 +1,4 @@
-use mlvalues::{f64_val, Intnat, OCamlBytes, OCamlInt32, OCamlList, OCamlUnboxedFloat};
+use mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlList};
 use value::OCaml;
 
 /// `FromOCaml` implements conversion from OCaml values into Rust values.
@@ -29,12 +29,6 @@ unsafe impl FromOCaml<bool> for bool {
 unsafe impl FromOCaml<f64> for f64 {
     fn from_ocaml(v: OCaml<f64>) -> Self {
         unsafe { *(v.raw() as *const f64) }
-    }
-}
-
-unsafe impl FromOCaml<OCamlUnboxedFloat> for f64 {
-    fn from_ocaml(v: OCaml<OCamlUnboxedFloat>) -> Self {
-        unsafe { f64_val(v.raw()) }
     }
 }
 

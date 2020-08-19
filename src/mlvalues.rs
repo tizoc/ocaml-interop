@@ -1,4 +1,3 @@
-use std::mem::transmute;
 use std::marker;
 
 pub mod tag;
@@ -15,8 +14,6 @@ pub struct OCamlList<A> {
 pub struct OCamlBytes {}
 
 pub struct OCamlInt32 {}
-
-pub struct OCamlUnboxedFloat {}
 
 // #define Val_unit Val_int(0)
 pub const UNIT: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
@@ -104,9 +101,4 @@ pub unsafe fn raw_ocaml_to_i64(raw: RawOCaml) -> i64 {
 #[inline]
 pub const unsafe fn raw_ocaml_of_i64(n: i64) -> RawOCaml {
     ((n << 1) | 1) as RawOCaml
-}
-
-#[inline]
-pub unsafe fn f64_val(val: RawOCaml) -> f64 {
-    transmute::<isize, f64>(val)
 }

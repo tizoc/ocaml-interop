@@ -57,22 +57,41 @@ macro_rules! ocaml {
 // If no return type is provided, defaults to unit
 #[macro_export]
 macro_rules! ocaml_export {
+    {} => ();
+
     {
-      $(
+        fn $name:ident( $gc:ident, $($arg:ident : $ty:ty),* $(,)?) -> f64
+           $body:block
+
+        $($t:tt)*
+    } => {
+        #[no_mangle]
+        pub extern "C" fn $name( $($arg: $crate::RawOCaml),* ) -> f64 {
+            $crate::ocaml_frame!($gc, {
+                $(let $arg : $ty = unsafe { $crate::OCaml::new($gc, $arg) };)*
+                $body
+            })
+        }
+
+        ocaml_export!{$($t)*}
+    };
+
+    {
         fn $name:ident( $gc:ident, $($arg:ident : $ty:ty),* $(,)?) $(-> $rtyp:ty)?
            $body:block
-      )*
+
+        $($t:tt)*
     } => {
-      $(
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $crate::RawOCaml),* ) -> $crate::RawOCaml {
             $crate::ocaml_frame!($gc, {
-                $(let $arg : $ty = unsafe { OCaml::new($gc, $arg) };)*
+                $(let $arg : $ty = unsafe { $crate::OCaml::new($gc, $arg) };)*
                 let retval : $crate::default_to_ocaml_unit!($(-> $rtyp)?) = $body;
                 unsafe { retval.raw() }
             })
         }
-      )*
+
+        ocaml_export!{$($t)*}
     };
 }
 
@@ -163,7 +182,10 @@ macro_rules! gcmark_result {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! default_to_ocaml_unit {
-    () => (OCaml<()>);
+    // No return value, default to unit
+    () => ($crate::OCaml<()>);
+
+    // Return value specified
     (-> $rtyp:ty) => ($rtyp);
 }
 
