@@ -299,7 +299,7 @@ macro_rules! expand_exported_function {
             fn $name( $gc, $($arg : $typ),*, $next_arg : $crate::RawOCaml, @proc_args $($proc_args)*) $(-> $rtyp)?
                 $body
             #original_args $($original_args)*
-        )
+        );
     };
 
     // Handle unboxed floats
