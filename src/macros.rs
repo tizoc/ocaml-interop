@@ -301,7 +301,7 @@ macro_rules! expand_exported_function {
             fn $name( $gc, $($arg : $typ),*, $next_arg : f64, @proc_args $($proc_args)*) $(-> $rtyp)?
                 $body
             #original_args $($original_args)*
-        )
+        );
     };
 
     // Handle other types
@@ -410,7 +410,7 @@ macro_rules! expand_exported_function_with_unboxed_float_return {
         #original_args $($original_args:tt)*
     } => {
         $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc, $($arg : $typ),*, $next_arg : f64, @proc_args) $(-> $rtyp)?
+            fn $name( $gc, $($arg : $typ),*, $next_arg : f64, @proc_args) -> f64
                 $body
             #original_args $($original_args)*
         );
@@ -426,7 +426,7 @@ macro_rules! expand_exported_function_with_unboxed_float_return {
             fn $name( $gc, $($arg : $typ),*, $next_arg : f64, @proc_args $($proc_args)*) -> f64
                 $body
             #original_args $($original_args)*
-        )
+        );
     };
 
     // Handle other types
