@@ -425,5 +425,57 @@ macro_rules! expand_exported_function_with_unboxed_float_return {
                 $body
             #original_args $($original_args)*
         );
-    }
+    };
+
+    // Handle unboxed floats
+
+    // fn func(gc, @proc_args arg: f64)
+    {
+        fn $name:ident( $gc:ident, @proc_args $next_arg:ident : f64) -> f64
+           $body:block
+        #original_args $($original_args:tt)*
+    } => {
+        $crate::expand_exported_function_with_unboxed_float_return!(
+            fn $name( $gc, $next_arg : f64, @proc_args) -> f64              $body
+            #original_args $($original_args)*
+        );
+    };
+
+    // fn func(gc, @proc_args arg: f64, ...)
+    {
+        fn $name:ident( $gc:ident, @proc_args $next_arg:ident : f64, $($proc_args:tt)*) -> f64
+           $body:block
+        #original_args $($original_args:tt)*
+    } => {
+        $crate::expand_exported_function_with_unboxed_float_return!(
+            fn $name( $gc, $next_arg : f64, @proc_args $($proc_args)*) -> f64              $body
+            #original_args $($original_args)*
+        );
+    };
+
+    // fn func(gc, arg1: typ1, ..., @proc_args arg: f64)
+    {
+        fn $name:ident( $gc:ident, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : f64) -> f64
+           $body:block
+        #original_args $($original_args:tt)*
+    } => {
+        $crate::expand_exported_function_with_unboxed_float_return!(
+            fn $name( $gc, $($arg : $typ),*, $next_arg : f64, @proc_args) $(-> $rtyp)?
+                $body
+            #original_args $($original_args)*
+        );
+    };
+
+    // fn func(gc, arg1: typ1, ..., @proc_args arg: f64, ....)
+    {
+        fn $name:ident( $gc:ident, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : f64, $($proc_args:tt)*) -> f64
+           $body:block
+        #original_args $($original_args:tt)*
+    } => {
+        $crate::expand_exported_function_with_unboxed_float_return!(
+            fn $name( $gc, $($arg : $typ),*, $next_arg : f64, @proc_args $($proc_args)*) -> f64
+                $body
+            #original_args $($original_args)*
+        )
+    };
 }
