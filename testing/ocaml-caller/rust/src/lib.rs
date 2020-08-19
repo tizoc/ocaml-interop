@@ -6,8 +6,11 @@ ocaml_export! {
         OCaml::of_int(num * 2)
     }
 
-    fn rust_twice_unboxed_float(_gc, num: OCaml<f64>) -> f64 {
-        let num: f64 = num.into_rust();
+    fn rust_add_unboxed_floats_noalloc(noalloc, num: f64, num2: f64) -> f64 {
+        num * num2
+    }
+
+    fn rust_twice_unboxed_float(_gc, num: f64) -> f64 {
         num * 2.0
     }
 
