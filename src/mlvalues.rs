@@ -17,7 +17,8 @@ pub struct OCamlList<A> {
     _marker: marker::PhantomData<A>,
 }
 
-/// `OCaml<OCamlBytes>` is a reference to an OCaml `bytes` value.
+/// `OCaml<OCamlBytes>` is a reference to an OCaml `bytes` value. Unlike with `OCaml<String>`,
+/// there is no validation being performed when converting this value into `String`.
 pub struct OCamlBytes {}
 
 /// `OCaml<OCamlInt32>` is a reference to an OCaml `Int32.t` (boxed `int32`) value.
