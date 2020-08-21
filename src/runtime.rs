@@ -3,6 +3,7 @@ extern "C" {
     fn caml_shutdown();
 }
 
+/// OCaml runtime handle.
 pub struct OCamlRuntime {}
 
 impl OCamlRuntime {

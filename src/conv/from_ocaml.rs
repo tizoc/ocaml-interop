@@ -1,9 +1,9 @@
 use mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlList};
 use value::OCaml;
 
-/// `FromOCaml` implements conversion from OCaml values into Rust values.
+/// Implements conversion from OCaml values into Rust values.
 pub unsafe trait FromOCaml<T> {
-    /// Convert from OCaml value
+    /// Convert from OCaml value.
     fn from_ocaml(v: OCaml<T>) -> Self;
 }
 

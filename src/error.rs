@@ -3,6 +3,7 @@ use crate::mlvalues::{is_block, string_val, tag_val, RawOCaml};
 use crate::value::caml_string_length;
 use std::slice;
 
+/// An OCaml exception value.
 #[derive(Debug)]
 pub struct OCamlException {
     raw: RawOCaml,

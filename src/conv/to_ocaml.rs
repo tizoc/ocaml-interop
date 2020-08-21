@@ -6,9 +6,9 @@ use crate::mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlList, RawOCaml, FALSE
 use crate::value::OCaml;
 use crate::{ocaml_alloc, ocaml_frame};
 
-/// `ToOCaml` implements conversion from Rust values into OCaml values.
+/// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
-    /// Convert to OCaml value
+    /// Convert to OCaml value.
     fn to_ocaml(&self, gc: GCToken) -> GCResult<T>;
 }
 

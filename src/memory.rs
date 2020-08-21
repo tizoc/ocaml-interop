@@ -127,7 +127,7 @@ unsafe fn free_local_root_cell(cell: &Cell<RawOCaml>) {
     block.nitems -= 1;
 }
 
-// A reference to an OCaml value. This location is tracked by the GC.
+/// A reference to an OCaml value. This location is tracked by the GC.
 pub struct OCamlRef<'a, T> {
     cell: &'a Cell<RawOCaml>,
     _marker: marker::PhantomData<Cell<T>>,

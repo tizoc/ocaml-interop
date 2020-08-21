@@ -3,16 +3,24 @@ use std::marker;
 pub mod tag;
 
 pub type UIntnat = usize;
+
+/// `OCaml<Intnat>` is an OCaml `int` (fixnum) value.
 pub type Intnat = isize;
+
+/// Represent OCaml `value` values (fixnums or pointers).
 pub type RawOCaml = isize;
 pub type MlsizeT = UIntnat;
 
+/// `OCaml<OCamlList<T>>` is a reference to an OCaml `list` containing
+/// values of type `T`.
 pub struct OCamlList<A> {
     _marker: marker::PhantomData<A>,
 }
 
+/// `OCaml<OCamlBytes>` is a reference to an OCaml `bytes` value.
 pub struct OCamlBytes {}
 
+/// `OCaml<OCamlInt32>` is a reference to an OCaml `Int32.t` (boxed `int32`) value.
 pub struct OCamlInt32 {}
 
 // #define Val_unit Val_int(0)
@@ -24,10 +32,10 @@ pub const NONE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 // #define Val_emptylist Val_int(0)
 pub const EMPTY_LIST: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 
-//#define Val_false Val_int(0)
+// #define Val_false Val_int(0)
 pub const FALSE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 
-//#define Val_true Val_int(1)
+// #define Val_true Val_int(1)
 pub const TRUE: RawOCaml = unsafe { raw_ocaml_of_i64(1) };
 
 // #define Is_block(x)  (((x) & 1) == 0)

@@ -1,7 +1,9 @@
 use crate::value::OCaml;
 use crate::conv::FromOCaml;
 
+/// Counterpart to `FromOCaml`, usually more comfortable to use.
 pub trait IntoRust<T>: Sized {
+    /// Convert into a Rust value.
     fn into_rust(self) -> T;
 }
 

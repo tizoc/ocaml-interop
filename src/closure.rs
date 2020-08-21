@@ -52,14 +52,19 @@ fn get_named(name: &str) -> Option<*const RawOCaml> {
     }
 }
 
+/// The result of calls to OCaml functions. Can be a value or an error.
 pub type OCamlResult<T> = Result<GCResult<T>, OCamlError>;
 
+/// OCaml function that accepts one argument.
 pub type OCamlFn1<A, Ret> = unsafe fn(GCToken, OCaml<A>) -> OCamlResult<Ret>;
+/// OCaml function that accepts two arguments.
 pub type OCamlFn2<A, B, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>) -> OCamlResult<Ret>;
+/// OCaml function that accepts three arguments.
 pub type OCamlFn3<A, B, C, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>, OCaml<C>) -> OCamlResult<Ret>;
+/// OCaml function that accepts four arguments.
 pub type OCamlFn4<A, B, C, D, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCamlResult<Ret>;
+/// OCaml function that accepts five arguments.
 pub type OCamlFn5<A, B, C, D, E, Ret> = unsafe fn(GCToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>, OCaml<E>) -> OCamlResult<Ret>;
-
 
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {
