@@ -55,6 +55,8 @@ unsafe fn store_field(block: RawOCaml, offset: MlsizeT, val: RawOCaml) {
     caml_modify(ptr.add(offset), val);
 }
 
+pub trait GCFrameHandle<'gc> {}
+
 // OCaml GC frame handle
 #[derive(Default)]
 pub struct GCFrame<'gc> {
@@ -101,6 +103,26 @@ impl<'gc> Drop for GCFrame<'gc> {
         }
     }
 }
+
+// OCaml GC frame handle
+#[derive(Default)]
+pub struct GCFrameNoKeep<'gc> {
+    _marker: marker::PhantomData<&'gc i32>,
+}
+
+impl<'gc> GCFrameNoKeep<'gc> {
+    pub fn initialize(&mut self) -> &mut Self {
+        self
+    }
+
+    pub unsafe fn token(&self) -> GCToken {
+        GCToken {}
+    }
+}
+
+impl<'gc> GCFrameHandle<'gc> for GCFrame<'gc> {}
+impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
+
 
 // Token used for allocation functions.
 pub struct GCToken {}
@@ -181,7 +203,7 @@ impl<T> GCResult<T> {
         }
     }
 
-    pub fn mark(self, _gc: &mut GCFrame) -> GCMarkedResult<T> {
+    pub fn mark(self, _gc: &mut dyn GCFrameHandle) -> GCMarkedResult<T> {
         GCMarkedResult {
             _marker: Default::default(),
             raw: self.raw,
@@ -190,7 +212,7 @@ impl<T> GCResult<T> {
 }
 
 impl<T> GCMarkedResult<T> {
-    pub fn eval<'a, 'gc: 'a>(self, _gc: &'a GCFrame<'gc>) -> OCaml<'a, T> {
+    pub fn eval<'a, 'gc: 'a>(self, _gc: &'a dyn GCFrameHandle<'gc>) -> OCaml<'a, T> {
         make_ocaml(self.raw)
     }
 }

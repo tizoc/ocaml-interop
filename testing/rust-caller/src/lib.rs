@@ -28,7 +28,7 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
 }
 
 pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
-    ocaml_frame!(gc, {
+    ocaml_frame!(gc nokeep, {
         let ints = ocaml_alloc!(ints.to_ocaml(gc));
         let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
         let result: OCaml<OCamlList<Intnat>> =
@@ -38,7 +38,7 @@ pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
 }
 
 pub fn twice(num: i64) -> i64 {
-    ocaml_frame!(gc, {
+    ocaml_frame!(gc nokeep, {
         let num = OCaml::of_int(num);
         let result = ocaml_call!(ocaml::twice(gc, num));
         let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
@@ -47,7 +47,7 @@ pub fn twice(num: i64) -> i64 {
 }
 
 pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
-    ocaml_frame!(gc, {
+    ocaml_frame!(gc nokeep, {
         let num = OCaml::of_int(snd);
         let str = ocaml_alloc!(fst.to_ocaml(gc));
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
@@ -57,7 +57,7 @@ pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
 }
 
 pub fn make_some(value: String) -> Option<String> {
-    ocaml_frame!(gc, {
+    ocaml_frame!(gc nokeep, {
         let str = ocaml_alloc!(value.to_ocaml(gc));
         let result = ocaml_call!(ocaml::make_some(gc, str));
         let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
