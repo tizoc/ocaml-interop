@@ -2,7 +2,7 @@
 //!
 //! [ZnFe](https://github.com/tizoc/znfe) is an OCaml<->Rust FFI with an emphasis on safety based on the ideas of [caml-oxide](https://github.com/stedolan/caml-oxide).
 //!
-//! Status: **UNSTABLE**
+//! Status: **API UNSTABLE**
 //!
 //! ## Table of Contents
 //!
