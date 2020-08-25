@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::mlvalues::tag;
-use crate::mlvalues::{Intnat, MlsizeT, OCamlBytes, OCamlInt32, OCamlList, RawOCaml};
+use crate::mlvalues::{Intnat, MlsizeT, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
 use crate::value::{make_ocaml, OCaml};
 use std::cell::Cell;
 use std::marker;
@@ -42,6 +42,7 @@ extern "C" {
     fn caml_alloc(wosize: MlsizeT, tag: tag::Tag) -> RawOCaml;
     fn caml_alloc_tuple(wosize: MlsizeT) -> RawOCaml;
     fn caml_copy_int32(i: i32) -> RawOCaml;
+    fn caml_copy_int64(i: i64) -> RawOCaml;
     fn caml_copy_double(d: f64) -> RawOCaml;
     fn caml_modify(block: *mut RawOCaml, val: RawOCaml);
 }
@@ -125,7 +126,6 @@ impl<'gc> GCFrameNoKeep<'gc> {
 
 impl<'gc> GCFrameHandle<'gc> for GCFrame<'gc> {}
 impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
-
 
 // Token used for allocation functions.
 pub struct GCToken {}
@@ -230,6 +230,10 @@ pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
 
 pub fn alloc_int32(_token: GCToken, i: i32) -> GCResult<OCamlInt32> {
     GCResult::of(unsafe { caml_copy_int32(i) })
+}
+
+pub fn alloc_int64(_token: GCToken, i: i64) -> GCResult<OCamlInt64> {
+    GCResult::of(unsafe { caml_copy_int64(i) })
 }
 
 pub fn alloc_double(_token: GCToken, d: f64) -> GCResult<f64> {

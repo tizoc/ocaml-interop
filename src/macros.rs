@@ -23,6 +23,10 @@ macro_rules! ocaml_frame {
     }};
 }
 
+/// `ocaml! { pub fn ocaml_name(arg1: typ1, ...) -> ret_typ; ... }` declares a function that has been
+/// defined in OCaml code and registered with `Callback.register "ocaml_name" the_function`.
+/// Visibility and return value type can be omitted. If the return type is omitted, it defaults to
+/// unit.
 // ocaml!{ pub fn ocaml_name(arg1: typ1, ...) -> ret_typ; ... }
 // ocaml!{ pub fn ocaml_name(arg1: typ1, ...); ... }
 // If no return type is provided, defaults to unit

@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 use crate::memory::{
-    alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_some, alloc_string, alloc_tuple,
-    alloc_tuple_3, alloc_tuple_4, GCResult, GCToken,
+    alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
+    alloc_tuple, alloc_tuple_3, alloc_tuple_4, GCResult, GCToken,
 };
-use crate::mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlList, RawOCaml, FALSE, NONE, TRUE};
+use crate::mlvalues::{
+    Intnat, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
+};
 use crate::value::OCaml;
 use crate::{ocaml_alloc, ocaml_frame};
 
@@ -30,6 +32,12 @@ unsafe impl ToOCaml<Intnat> for i32 {
 unsafe impl ToOCaml<OCamlInt32> for i32 {
     fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlInt32> {
         alloc_int32(token, *self)
+    }
+}
+
+unsafe impl ToOCaml<OCamlInt64> for i64 {
+    fn to_ocaml(&self, token: GCToken) -> GCResult<OCamlInt64> {
+        alloc_int64(token, *self)
     }
 }
 
