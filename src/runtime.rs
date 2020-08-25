@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 extern "C" {
     fn caml_startup(argv: *const *const i8);
     fn caml_shutdown();

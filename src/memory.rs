@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 use crate::mlvalues::tag;
 use crate::mlvalues::{Intnat, MlsizeT, OCamlBytes, OCamlInt32, OCamlList, RawOCaml};
 use crate::value::{make_ocaml, OCaml};

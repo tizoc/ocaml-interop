@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 use crate::mlvalues::tag;
 use crate::mlvalues::{is_block, string_val, tag_val, RawOCaml};
 use crate::value::caml_string_length;

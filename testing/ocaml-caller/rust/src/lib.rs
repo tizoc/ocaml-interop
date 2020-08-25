@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 use znfe::{ocaml_alloc, ocaml_export, IntoRust, Intnat, OCaml, OCamlBytes, OCamlList, ToOCaml};
 
 ocaml_export! {

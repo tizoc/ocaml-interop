@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 use mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlList};
 use value::OCaml;
 

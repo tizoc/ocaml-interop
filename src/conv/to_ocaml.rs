@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 use crate::memory::{
     alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_some, alloc_string, alloc_tuple,
     alloc_tuple_3, alloc_tuple_4, GCResult, GCToken,

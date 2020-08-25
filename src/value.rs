@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 use crate::memory::GCFrame;
 use crate::mlvalues::tag;
 use crate::mlvalues::*;

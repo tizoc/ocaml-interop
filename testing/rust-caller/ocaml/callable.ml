@@ -1,3 +1,6 @@
+(* Copyright (c) SimpleStaking and Tezedge Contributors
+   SPDX-License-Identifier: MIT *)
+
 let increment_bytes bytes first_n =
   let limit = (min (Bytes.length bytes) first_n) - 1 in
   for i = 0 to limit do

@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 /// ```compile_fail
 /// # use znfe::*;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }

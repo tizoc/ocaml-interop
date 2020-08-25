@@ -1,3 +1,6 @@
+(* Copyright (c) SimpleStaking and Tezedge Contributors
+   SPDX-License-Identifier: MIT *)
+
 module Rust = struct
   external twice: int -> int = "rust_twice"
   external twice_unboxed_float: (float [@unboxed]) -> (float [@unboxed]) = "" "rust_twice_unboxed_float"

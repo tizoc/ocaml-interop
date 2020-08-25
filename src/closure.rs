@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 use crate::error::{OCamlError, OCamlException};
 use crate::memory::{GCResult, GCToken};
 use crate::mlvalues::tag;

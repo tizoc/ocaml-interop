@@ -1,3 +1,6 @@
+// Copyright (c) SimpleStaking and Tezedge Contributors
+// SPDX-License-Identifier: MIT
+
 /// `ocaml_frame!(gc, { ... })` opens a new frame, with the GC handle bound to `gc`. Code inside the passed block
 /// can allocate OCaml values and call OCaml functions.
 ///
