@@ -3,7 +3,7 @@
 ///
 /// The variant `ocaml_frame!(gc nokeep, { ... })` (with `nokeep` after the GC handle variable name) avoids
 /// setting up the frame and can be used for blocks that do not keep OCaml pointers across OCaml calls
-/// (`gc.keep(value)` cannot be used).
+/// (`gc.keep(value)` cannot be used). Keep in mind that this variant is likely to change in the future.
 // ocaml_frame!(gc, { ... })
 #[macro_export]
 macro_rules! ocaml_frame {
