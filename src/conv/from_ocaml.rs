@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList};
+use mlvalues::{field_val, Intnat, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList};
 use value::OCaml;
 
 /// Implements conversion from OCaml values into Rust values.
@@ -18,15 +18,15 @@ unsafe impl FromOCaml<Intnat> for i64 {
 
 unsafe impl FromOCaml<OCamlInt32> for i32 {
     fn from_ocaml(v: OCaml<OCamlInt32>) -> Self {
-        let val: OCaml<i32> = unsafe { v.field(1) };
-        unsafe { *(val.raw() as *const i32) }
+        let val = unsafe { field_val(v.raw(), 1) };
+        unsafe { *(val as *const i32) }
     }
 }
 
 unsafe impl FromOCaml<OCamlInt64> for i64 {
     fn from_ocaml(v: OCaml<OCamlInt64>) -> Self {
-        let val: OCaml<i64> = unsafe { v.field(1) };
-        unsafe { *(val.raw() as *const i64) }
+        let val = unsafe { field_val(v.raw(), 1) };
+        unsafe { *(val as *const i64) }
     }
 }
 

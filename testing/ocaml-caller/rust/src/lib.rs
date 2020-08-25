@@ -1,7 +1,10 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use znfe::{ocaml_alloc, ocaml_export, IntoRust, Intnat, OCaml, OCamlBytes, OCamlList, ToOCaml};
+use znfe::{
+    ocaml_alloc, ocaml_export, Intnat, IntoRust, OCaml, OCamlBytes, OCamlInt32, OCamlInt64,
+    OCamlList, ToOCaml,
+};
 
 ocaml_export! {
     fn rust_twice(_gc, num: OCaml<Intnat>) -> OCaml<Intnat> {
@@ -9,8 +12,26 @@ ocaml_export! {
         OCaml::of_int(num * 2)
     }
 
+    fn rust_twice_boxed_i64(gc, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {
+        let num: i64 = num.into_rust();
+        let result = num * 2;
+        ocaml_alloc!(result.to_ocaml(gc))
+    }
+
+    fn rust_twice_boxed_i32(gc, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
+        let num: i32 = num.into_rust();
+        let result = num * 2;
+        ocaml_alloc!(result.to_ocaml(gc))
+    }
+
     fn rust_add_unboxed_floats_noalloc(_gc nokeep, num: f64, num2: f64) -> f64 {
         num * num2
+    }
+
+    fn rust_twice_boxed_float(gc, num: OCaml<f64>) -> OCaml<f64> {
+        let num: f64 = num.into_rust();
+        let result = num * 2.0;
+        ocaml_alloc!(result.to_ocaml(gc))
     }
 
     fn rust_twice_unboxed_float(_gc nokeep, num: f64) -> f64 {

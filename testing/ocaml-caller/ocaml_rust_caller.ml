@@ -3,6 +3,9 @@
 
 module Rust = struct
   external twice: int -> int = "rust_twice"
+  external twice_boxed_i64: int64 -> int64 = "rust_twice_boxed_i64"
+  external twice_boxed_i32: int32 -> int32 = "rust_twice_boxed_i32"
+  external twice_boxed_float: float -> float = "rust_twice_boxed_float"
   external twice_unboxed_float: (float [@unboxed]) -> (float [@unboxed]) = "" "rust_twice_unboxed_float"
   external add_unboxed_floats_noalloc: float -> float -> float = "" "rust_add_unboxed_floats_noalloc" [@@unboxed] [@@noalloc]
   external increment_bytes: bytes -> int -> bytes = "rust_increment_bytes"
@@ -13,6 +16,15 @@ end
 
 let test_twice () =
   Alcotest.(check int) "Multiply by 2" 20 (Rust.twice 10)
+
+let test_twice_boxed_i64 () =
+  Alcotest.(check int64) "Multiply by 2 (boxed int64)" 20L (Rust.twice_boxed_i64 10L)
+
+let test_twice_boxed_i32 () =
+  Alcotest.(check int32) "Multiply by 2 (boxed int32)" 20l (Rust.twice_boxed_i32 10l)
+
+let test_twice_boxed_float () =
+  Alcotest.(check (float 0.0)) "Multiply boxed float by 2" 20.0 (Rust.twice_boxed_float 10.0)
 
 let test_twice_unboxed_float () =
   Alcotest.(check (float 0.0)) "Multiply unboxed float by 2" 20.0 (Rust.twice_unboxed_float 10.0)
@@ -45,6 +57,9 @@ let () =
   run "Tests" [
     "basic", [
       test_case "Rust.twice"           `Quick test_twice;
+      test_case "Rust.twice_boxed_i64" `Quick test_twice_boxed_i64;
+      test_case "Rust.twice_boxed_i32" `Quick test_twice_boxed_i32;
+      test_case "Rust.twice_boxed_float" `Quick test_twice_boxed_float;
       test_case "Rust.twice_unboxed_float" `Quick test_twice_unboxed_float;
       test_case "Rust.increment_bytes" `Quick test_increment_bytes;
       test_case "Rust.increment_ints_list" `Quick test_increment_ints_list;

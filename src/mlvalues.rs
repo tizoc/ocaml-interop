@@ -111,6 +111,12 @@ pub unsafe fn string_val(val: RawOCaml) -> *mut u8 {
     bp_val(val)
 }
 
+// #define Field(x, i) (((value *)(x)) [i])
+#[inline]
+pub unsafe fn field_val(val: RawOCaml, i: UIntnat) -> *mut RawOCaml {
+    (val as *mut RawOCaml).add(i)
+}
+
 #[inline]
 pub unsafe fn raw_ocaml_to_i64(raw: RawOCaml) -> i64 {
     assert!(!is_block(raw));
