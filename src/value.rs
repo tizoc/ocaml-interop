@@ -40,7 +40,7 @@ impl<'a, T> OCaml<'a, T> {
     }
 
     pub unsafe fn field<F>(&self, i: UIntnat) -> OCaml<'a, F> {
-        assert!(tag_val(self.raw) < tag::NO_SCAN);
+        assert!(tag_val(self.raw) < tag::NO_SCAN || tag_val(self.raw) == tag::CUSTOM);
         assert!(i < wosize_val(self.raw));
         OCaml {
             _marker: Default::default(),

@@ -16,4 +16,4 @@ pub const CLOSURE: Tag = 247;
 pub const STRING: Tag = 252;
 // pub const DOUBLE: Tag = 253;
 // pub const DOUBLE_ARRAY: Tag = 254;
-// pub const CUSTOM: Tag = 255;
+pub const CUSTOM: Tag = 255;
