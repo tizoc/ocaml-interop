@@ -8,7 +8,51 @@ use znfe::{
 };
 
 mod ocaml {
-    use znfe::{ocaml, Intnat, OCamlList};
+    use znfe::internal::{GCResult, GCToken};
+    use znfe::{
+        ocaml, ocaml_alloc, ocaml_frame, ocaml_record_alloc_fn, Intnat, OCaml, OCamlInt32,
+        OCamlInt64, OCamlList, ToOCaml,
+    };
+
+    pub struct TestRecord {
+        pub i: i64,
+        pub f: f64,
+        pub i32: i32,
+        pub i64: i64,
+        pub s: String,
+        pub t: (i64, f64),
+    }
+
+    ocaml_record_alloc_fn!(
+        pub fn alloc_test_record(
+            i: Intnat,
+            f: f64,
+            i32: OCamlInt32,
+            i64: OCamlInt64,
+            s: String,
+            t: (Intnat, f64)
+        ) -> TestRecord);
+
+    unsafe impl ToOCaml<TestRecord> for TestRecord {
+        fn to_ocaml(&self, token: GCToken) -> GCResult<TestRecord> {
+            ocaml_frame!(gc, {
+                let i = OCaml::of_int(self.i);
+                let f = ocaml_alloc!(self.f.to_ocaml(gc));
+                let ref f = gc.keep(f);
+                let i32 = ocaml_alloc!(self.i32.to_ocaml(gc));
+                let ref i32 = gc.keep(i32);
+                let i64 = ocaml_alloc!(self.i64.to_ocaml(gc));
+                let ref i64 = gc.keep(i64);
+                let s = ocaml_alloc!(self.s.to_ocaml(gc));
+                let ref s = gc.keep(s);
+                let t = ocaml_alloc!(self.t.to_ocaml(gc));
+
+                unsafe {
+                    alloc_test_record(token, i, gc.get(f), gc.get(i32), gc.get(i64), gc.get(s), t)
+                }
+            })
+        }
+    }
 
     ocaml! {
         pub fn increment_bytes(bytes: String, first_n: Intnat) -> String;
@@ -16,6 +60,7 @@ mod ocaml {
         pub fn twice(num: Intnat) -> Intnat;
         pub fn make_tuple(fst: String, snd: Intnat) -> (String, Intnat);
         pub fn make_some(value: String) -> Option<String>;
+        pub fn verify_record(record: TestRecord) -> bool;
     }
 }
 
@@ -64,6 +109,15 @@ pub fn make_some(value: String) -> Option<String> {
         let str = ocaml_alloc!(value.to_ocaml(gc));
         let result = ocaml_call!(ocaml::make_some(gc, str));
         let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
+        result.into_rust()
+    })
+}
+
+pub fn verify_record_test(record: ocaml::TestRecord) -> bool {
+    ocaml_frame!(gc, {
+        let ocaml_record = ocaml_alloc!(record.to_ocaml(gc));
+        let result = ocaml_call!(ocaml::verify_record(gc, ocaml_record));
+        let result: OCaml<bool> = result.expect("Error in 'verify_record' call result");
         result.into_rust()
     })
 }
@@ -129,4 +183,19 @@ fn test_make_some() {
 fn test_frame_management() {
     znfe::OCamlRuntime::init_persistent();
     assert_eq!(allocate_alot(), true);
+}
+
+#[test]
+#[serial]
+fn test_record_conversion() {
+    znfe::OCamlRuntime::init_persistent();
+    let record = ocaml::TestRecord {
+        i: 10,
+        f: 5.0,
+        i32: 10,
+        i64: 10,
+        s: "string".to_owned(),
+        t: (10, 5.0),
+    };
+    assert_eq!(verify_record_test(record), true);
 }

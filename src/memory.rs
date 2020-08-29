@@ -39,7 +39,7 @@ extern "C" {
     static mut caml_local_roots: *mut CamlRootsBlock;
 
     fn caml_alloc_initialized_string(len: MlsizeT, contents: *const u8) -> RawOCaml;
-    fn caml_alloc(wosize: MlsizeT, tag: tag::Tag) -> RawOCaml;
+    pub fn caml_alloc(wosize: MlsizeT, tag: tag::Tag) -> RawOCaml;
     fn caml_alloc_tuple(wosize: MlsizeT) -> RawOCaml;
     fn caml_copy_int32(i: i32) -> RawOCaml;
     fn caml_copy_int64(i: i64) -> RawOCaml;
@@ -53,7 +53,7 @@ extern "C" {
 //     caml_modify (&Field ((block), caml__temp_offset), caml__temp_val); \
 //   }while(0)
 #[inline]
-unsafe fn store_field(block: RawOCaml, offset: MlsizeT, val: RawOCaml) {
+pub unsafe fn store_field(block: RawOCaml, offset: MlsizeT, val: RawOCaml) {
     // TODO: see if all this can be made prettier
     let ptr = block as *mut isize;
     caml_modify(ptr.add(offset), val);
