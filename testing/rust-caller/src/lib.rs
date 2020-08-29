@@ -10,8 +10,8 @@ use znfe::{
 mod ocaml {
     use znfe::internal::{GCResult, GCToken};
     use znfe::{
-        ocaml, ocaml_alloc, ocaml_frame, ocaml_record_alloc_fn, Intnat, OCaml, OCamlInt32,
-        OCamlInt64, OCamlList, ToOCaml,
+        ocaml, ocaml_frame, ocaml_record_alloc_fn, to_ocaml, Intnat, OCaml, OCamlInt32, OCamlInt64,
+        OCamlList, ToOCaml,
     };
 
     pub struct TestRecord {
@@ -37,15 +37,11 @@ mod ocaml {
         fn to_ocaml(&self, token: GCToken) -> GCResult<TestRecord> {
             ocaml_frame!(gc, {
                 let i = OCaml::of_int(self.i);
-                let f = ocaml_alloc!(self.f.to_ocaml(gc));
-                let ref f = gc.keep(f);
-                let i32 = ocaml_alloc!(self.i32.to_ocaml(gc));
-                let ref i32 = gc.keep(i32);
-                let i64 = ocaml_alloc!(self.i64.to_ocaml(gc));
-                let ref i64 = gc.keep(i64);
-                let s = ocaml_alloc!(self.s.to_ocaml(gc));
-                let ref s = gc.keep(s);
-                let t = ocaml_alloc!(self.t.to_ocaml(gc));
+                let ref f = to_ocaml!(gc, self.f).keep(gc);
+                let ref i32 = to_ocaml!(gc, self.i32).keep(gc);
+                let ref i64 = to_ocaml!(gc, self.i64).keep(gc);
+                let ref s = to_ocaml!(gc, self.s).keep(gc);
+                let t = to_ocaml!(gc, self.t);
 
                 unsafe {
                     alloc_test_record(token, i, gc.get(f), gc.get(i32), gc.get(i64), gc.get(s), t)
