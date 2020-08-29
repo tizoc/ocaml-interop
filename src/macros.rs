@@ -143,6 +143,13 @@ macro_rules! ocaml_alloc {
     };
 }
 
+#[macro_export]
+macro_rules! to_ocaml {
+    ($gc:ident, $obj:expr) => {
+        $crate::ocaml_alloc!(($obj).to_ocaml($gc))
+    }
+}
+
 // ocaml_call!(expr.func(gc, arg1, ...))
 #[macro_export]
 macro_rules! ocaml_call {
