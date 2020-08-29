@@ -60,7 +60,7 @@ impl<'a, T> OCaml<'a, T> {
         self.raw
     }
 
-    pub fn keep<'gc>(self, gc: &'a GCFrame<'gc>) -> OCamlRef<'gc, T> {
+    pub fn keep<'gc>(self, gc: &GCFrame<'gc>) -> OCamlRef<'gc, T> {
         gc.keep(self)
     }
 }
