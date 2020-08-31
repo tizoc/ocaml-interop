@@ -34,6 +34,21 @@ macro_rules! ocaml_frame {
 macro_rules! ocaml {
     () => ();
 
+    ($vis:vis alloc fn $name:ident($($field:ident: $typ:ty),+ $(,)?) -> $rtyp:ty; $($t:tt)*) => {
+        $vis unsafe fn $name(_token: $crate::internal::GCToken, $($field: $crate::OCaml<$typ>),+) -> $crate::internal::GCResult<$rtyp> {
+            let mut current = 0;
+            let mut field_count = $crate::count_fields!($($field)*);
+            let record = $crate::internal::caml_alloc(field_count, 0);
+            $(
+                $crate::internal::store_field(record, current, $field.raw());
+                current += 1;
+            )+
+            $crate::internal::GCResult::of(record)
+        }
+
+        ocaml!($($t)*);
+    };
+
     ($vis:vis fn $name:ident($arg:ident: $typ:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
         $vis unsafe fn $name(token: $crate::internal::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
@@ -175,7 +190,7 @@ macro_rules! ocaml_call {
     };
 }
 
-// Record allocator definer
+// Utility macros
 
 #[doc(hidden)]
 #[macro_export]
@@ -184,25 +199,6 @@ macro_rules! count_fields {
     ($_f1:ident $_f2:ident $_f3:ident $_f4:ident $_f5:ident $($fields:ident)*) => {5usize + $crate::count_fields!($($fields)*)};
     ($field:ident $($fields:ident)*) => {1usize + $crate::count_fields!($($fields)*)};
 }
-
-#[macro_export]
-macro_rules! ocaml_record_alloc_fn {
-    ($vis:vis fn $name:ident($($field:ident: $typ:ty),+) -> $rtyp:ty) => {
-        $vis unsafe fn $name(_token: $crate::internal::GCToken, $($field: $crate::OCaml<$typ>),+) -> $crate::internal::GCResult<$rtyp> {
-            #[allow(unused)]
-            let mut current = 0;
-            let mut field_count = $crate::count_fields!($($field)*);
-            let record = $crate::internal::caml_alloc(field_count, 0);
-            $(
-                $crate::internal::store_field(record, current, $field.raw());
-                current += 1;
-            )+
-            $crate::internal::GCResult::of(record)
-        }
-    }
-}
-
-// Utility macros
 
 #[doc(hidden)]
 #[macro_export]

@@ -10,8 +10,7 @@ use znfe::{
 mod ocaml {
     use znfe::internal::{GCResult, GCToken};
     use znfe::{
-        ocaml, ocaml_frame, ocaml_record_alloc_fn, to_ocaml, Intnat, OCaml, OCamlInt32, OCamlInt64,
-        OCamlList, ToOCaml,
+        ocaml, ocaml_frame, to_ocaml, Intnat, OCaml, OCamlInt32, OCamlInt64, OCamlList, ToOCaml,
     };
 
     pub struct TestRecord {
@@ -22,16 +21,6 @@ mod ocaml {
         pub s: String,
         pub t: (i64, f64),
     }
-
-    ocaml_record_alloc_fn!(
-        pub fn alloc_test_record(
-            i: Intnat,
-            f: f64,
-            i32: OCamlInt32,
-            i64: OCamlInt64,
-            s: String,
-            t: (Intnat, f64)
-        ) -> TestRecord);
 
     unsafe impl ToOCaml<TestRecord> for TestRecord {
         fn to_ocaml(&self, token: GCToken) -> GCResult<TestRecord> {
@@ -51,6 +40,7 @@ mod ocaml {
     }
 
     ocaml! {
+        pub alloc fn alloc_test_record(i: Intnat, f: f64, i32: OCamlInt32, i64: OCamlInt64, s: String, t: (Intnat, f64)) -> TestRecord;
         pub fn increment_bytes(bytes: String, first_n: Intnat) -> String;
         pub fn increment_ints_list(ints: OCamlList<Intnat>) -> OCamlList<Intnat>;
         pub fn twice(num: Intnat) -> Intnat;
