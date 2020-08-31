@@ -8,9 +8,9 @@ use znfe::{
 };
 
 mod ocaml {
-    use znfe::internal::{GCResult, GCToken};
     use znfe::{
-        ocaml, ocaml_frame, to_ocaml, Intnat, OCaml, OCamlInt32, OCamlInt64, OCamlList, ToOCaml,
+        ocaml, ocaml_frame, to_ocaml, Intnat, OCaml, OCamlAllocResult, OCamlAllocToken, OCamlInt32,
+        OCamlInt64, OCamlList, ToOCaml,
     };
 
     pub struct TestRecord {
@@ -23,7 +23,7 @@ mod ocaml {
     }
 
     unsafe impl ToOCaml<TestRecord> for TestRecord {
-        fn to_ocaml(&self, token: GCToken) -> GCResult<TestRecord> {
+        fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<TestRecord> {
             ocaml_frame!(gc, {
                 let i = OCaml::of_int(self.i);
                 let ref f = to_ocaml!(gc, self.f).keep(gc);

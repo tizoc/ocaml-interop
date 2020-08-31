@@ -62,7 +62,7 @@
 //!   --> example.rs
 //!    |
 //!    |  let result = ocaml_function(gc, arg1, ..., argN);
-//!    |                              ^^ expected struct `znfe::GCToken`, found `&mut znfe::GCFrame<'_>`
+//!    |                              ^^ expected struct `znfe::OCamlAllocToken`, found `&mut znfe::GCFrame<'_>`
 //! ```
 //!
 //! #### Rule 2: OCaml value references
@@ -381,7 +381,7 @@ mod value;
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCamlResult};
 pub use crate::conv::{FromOCaml, IntoRust, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
-pub use crate::memory::OCamlRef;
+pub use crate::memory::{OCamlAllocResult, OCamlAllocToken, OCamlRef};
 pub use crate::mlvalues::{Intnat, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
 pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;
@@ -389,7 +389,7 @@ pub use crate::value::OCaml;
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep, GCResult, GCToken};
+    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep};
 }
 
 #[doc(hidden)]

@@ -92,8 +92,8 @@ impl<'gc> GCFrame<'gc> {
         make_ocaml(reference.cell.get())
     }
 
-    pub unsafe fn token(&self) -> GCToken {
-        GCToken {}
+    pub unsafe fn token(&self) -> OCamlAllocToken {
+        OCamlAllocToken {}
     }
 }
 
@@ -119,8 +119,8 @@ impl<'gc> GCFrameNoKeep<'gc> {
         self
     }
 
-    pub unsafe fn token(&self) -> GCToken {
-        GCToken {}
+    pub unsafe fn token(&self) -> OCamlAllocToken {
+        OCamlAllocToken {}
     }
 }
 
@@ -128,7 +128,7 @@ impl<'gc> GCFrameHandle<'gc> for GCFrame<'gc> {}
 impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
 
 // Token used for allocation functions.
-pub struct GCToken {}
+pub struct OCamlAllocToken {}
 
 unsafe fn reserve_local_root_cell<'gc>(_gc: &GCFrame<'gc>) -> &'gc Cell<RawOCaml> {
     let block = &mut *caml_local_roots;
@@ -180,7 +180,7 @@ impl<'a, T> Drop for OCamlRef<'a, T> {
 }
 
 // Intermediary allocation result.
-pub struct GCResult<T> {
+pub struct OCamlAllocResult<T> {
     raw: RawOCaml,
     _marker: marker::PhantomData<T>,
 }
@@ -191,16 +191,16 @@ pub struct GCMarkedResult<T> {
     _marker: marker::PhantomData<T>,
 }
 
-impl<T> GCResult<T> {
-    pub fn of(raw: RawOCaml) -> GCResult<T> {
-        GCResult {
+impl<T> OCamlAllocResult<T> {
+    pub fn of(raw: RawOCaml) -> OCamlAllocResult<T> {
+        OCamlAllocResult {
             _marker: Default::default(),
             raw,
         }
     }
 
-    pub fn of_ocaml(v: OCaml<T>) -> GCResult<T> {
-        GCResult {
+    pub fn of_ocaml(v: OCaml<T>) -> OCamlAllocResult<T> {
+        OCamlAllocResult {
             _marker: Default::default(),
             raw: unsafe { v.raw() },
         }
@@ -220,88 +220,88 @@ impl<T> GCMarkedResult<T> {
     }
 }
 
-pub fn alloc_bytes(_token: GCToken, s: &[u8]) -> GCResult<OCamlBytes> {
-    GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
+pub fn alloc_bytes(_token: OCamlAllocToken, s: &[u8]) -> OCamlAllocResult<OCamlBytes> {
+    OCamlAllocResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
 }
 
-pub fn alloc_string(_token: GCToken, s: &str) -> GCResult<String> {
-    GCResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
+pub fn alloc_string(_token: OCamlAllocToken, s: &str) -> OCamlAllocResult<String> {
+    OCamlAllocResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
 }
 
-pub fn alloc_int32(_token: GCToken, i: i32) -> GCResult<OCamlInt32> {
-    GCResult::of(unsafe { caml_copy_int32(i) })
+pub fn alloc_int32(_token: OCamlAllocToken, i: i32) -> OCamlAllocResult<OCamlInt32> {
+    OCamlAllocResult::of(unsafe { caml_copy_int32(i) })
 }
 
-pub fn alloc_int64(_token: GCToken, i: i64) -> GCResult<OCamlInt64> {
-    GCResult::of(unsafe { caml_copy_int64(i) })
+pub fn alloc_int64(_token: OCamlAllocToken, i: i64) -> OCamlAllocResult<OCamlInt64> {
+    OCamlAllocResult::of(unsafe { caml_copy_int64(i) })
 }
 
-pub fn alloc_double(_token: GCToken, d: f64) -> GCResult<f64> {
-    GCResult::of(unsafe { caml_copy_double(d) })
+pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<f64> {
+    OCamlAllocResult::of(unsafe { caml_copy_double(d) })
 }
 
 // TODO: it is possible to directly alter the fields memory upon first allocation of
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<A>(_token: GCToken, value: OCaml<A>) -> GCResult<Option<A>> {
+pub fn alloc_some<A>(_token: OCamlAllocToken, value: OCaml<A>) -> OCamlAllocResult<Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
         store_field(ocaml_some, 0, value.raw());
-        GCResult::of(ocaml_some)
+        OCamlAllocResult::of(ocaml_some)
     }
 }
 
-pub fn alloc_tuple<F, S>(_token: GCToken, fst: OCaml<F>, snd: OCaml<S>) -> GCResult<(F, S)> {
+pub fn alloc_tuple<F, S>(_token: OCamlAllocToken, fst: OCaml<F>, snd: OCaml<S>) -> OCamlAllocResult<(F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
         store_field(ocaml_tuple, 0, fst.raw());
         store_field(ocaml_tuple, 1, snd.raw());
-        GCResult::of(ocaml_tuple)
+        OCamlAllocResult::of(ocaml_tuple)
     }
 }
 
 pub fn alloc_tuple_3<F, S, T3>(
-    _token: GCToken,
+    _token: OCamlAllocToken,
     fst: OCaml<F>,
     snd: OCaml<S>,
     elt3: OCaml<T3>,
-) -> GCResult<(F, S, T3)> {
+) -> OCamlAllocResult<(F, S, T3)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(3);
         store_field(ocaml_tuple, 0, fst.raw());
         store_field(ocaml_tuple, 1, snd.raw());
         store_field(ocaml_tuple, 2, elt3.raw());
-        GCResult::of(ocaml_tuple)
+        OCamlAllocResult::of(ocaml_tuple)
     }
 }
 
 pub fn alloc_tuple_4<F, S, T3, T4>(
-    _token: GCToken,
+    _token: OCamlAllocToken,
     fst: OCaml<F>,
     snd: OCaml<S>,
     elt3: OCaml<T3>,
     elt4: OCaml<T4>,
-) -> GCResult<(F, S, T3, T4)> {
+) -> OCamlAllocResult<(F, S, T3, T4)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(4);
         store_field(ocaml_tuple, 0, fst.raw());
         store_field(ocaml_tuple, 1, snd.raw());
         store_field(ocaml_tuple, 2, elt3.raw());
         store_field(ocaml_tuple, 3, elt4.raw());
-        GCResult::of(ocaml_tuple)
+        OCamlAllocResult::of(ocaml_tuple)
     }
 }
 
 pub fn alloc_cons<A>(
-    _token: GCToken,
+    _token: OCamlAllocToken,
     head: OCaml<A>,
     tail: OCaml<OCamlList<A>>,
-) -> GCResult<OCamlList<A>> {
+) -> OCamlAllocResult<OCamlList<A>> {
     unsafe {
         let ocaml_cons = caml_alloc(2, tag::LIST);
         store_field(ocaml_cons, 0, head.raw());
         store_field(ocaml_cons, 1, tail.raw());
-        GCResult::of(ocaml_cons)
+        OCamlAllocResult::of(ocaml_cons)
     }
 }

@@ -55,7 +55,7 @@ error[E0308]: mismatched types
   --> example.rs
    |
    |  let result = ocaml_function(gc, arg1, ..., argN);
-   |                              ^^ expected struct `znfe::GCToken`, found `&mut znfe::GCFrame<'_>`
+   |                              ^^ expected struct `znfe::OCamlAllocToken`, found `&mut znfe::GCFrame<'_>`
 ```
 
 #### Rule 2: OCaml value references

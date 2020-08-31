@@ -38,7 +38,7 @@ macro_rules! ocaml {
     () => ();
 
     ($vis:vis alloc fn $name:ident($($field:ident: $typ:ty),+ $(,)?) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(_token: $crate::internal::GCToken, $($field: $crate::OCaml<$typ>),+) -> $crate::internal::GCResult<$rtyp> {
+        $vis unsafe fn $name(_token: $crate::OCamlAllocToken, $($field: $crate::OCaml<$typ>),+) -> $crate::OCamlAllocResult<$rtyp> {
             let mut current = 0;
             let mut field_count = $crate::count_fields!($($field)*);
             let record = $crate::internal::caml_alloc(field_count, 0);
@@ -46,14 +46,14 @@ macro_rules! ocaml {
                 $crate::internal::store_field(record, current, $field.raw());
                 current += 1;
             )+
-            $crate::internal::GCResult::of(record)
+            $crate::OCamlAllocResult::of(record)
         }
 
         ocaml!($($t)*);
     };
 
     ($vis:vis fn $name:ident($arg:ident: $typ:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+        $vis unsafe fn $name(token: $crate::OCamlAllocToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call(token, $arg)
         }
@@ -62,7 +62,7 @@ macro_rules! ocaml {
     };
 
     ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+        $vis unsafe fn $name(token: $crate::OCamlAllocToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call2(token, $arg1, $arg2)
         }
@@ -71,7 +71,7 @@ macro_rules! ocaml {
     };
 
     ($vis:vis fn $name:ident($arg1:ident: $typ1:ty, $arg2:ident: $typ2:ty, $arg3:ident: $typ3:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>, $arg3: $crate::OCaml<$typ3>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+        $vis unsafe fn $name(token: $crate::OCamlAllocToken, $arg1: $crate::OCaml<$typ1>, $arg2: $crate::OCaml<$typ2>, $arg3: $crate::OCaml<$typ3>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call3(token, $arg1, $arg2, $arg3)
         }
@@ -80,7 +80,7 @@ macro_rules! ocaml {
     };
 
     ($vis:vis fn $name:ident($($arg:ident: $typ:ty),+ $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(token: $crate::internal::GCToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+        $vis unsafe fn $name(token: $crate::OCamlAllocToken, $($arg: $crate::OCaml<$typ>),+) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call_n(token, &mut [$($arg.raw()),+])
         }
