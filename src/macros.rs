@@ -27,6 +27,9 @@ macro_rules! ocaml_frame {
 /// defined in OCaml code and registered with `Callback.register "ocaml_name" the_function`.
 /// Visibility and return value type can be omitted. If the return type is omitted, it defaults to
 /// unit.
+/// `ocaml! { pub alloc fn alloc_name(arg1: typ1, ...) -> ret_typ; ... }` (with `alloc` annotation) defines
+/// a record allocation function. In this case, an OCaml counterparte registered with `Callback.register "alloc_name" the_function`
+/// is not required (and will not be used if present).
 // ocaml!{ pub fn ocaml_name(arg1: typ1, ...) -> ret_typ; ... }
 // ocaml!{ pub fn ocaml_name(arg1: typ1, ...); ... }
 // If no return type is provided, defaults to unit
