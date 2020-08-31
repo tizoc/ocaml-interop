@@ -27,12 +27,30 @@ macro_rules! ocaml_frame {
 /// defined in OCaml code and registered with `Callback.register "ocaml_name" the_function`.
 /// Visibility and return value type can be omitted. If the return type is omitted, it defaults to
 /// unit.
+/// `ocaml! { pub alloc fn alloc_name(arg1: typ1, ...) -> ret_typ; ... }` (with `alloc` annotation) defines
+/// a record allocation function. In this case, an OCaml counterparte registered with `Callback.register "alloc_name" the_function`
+/// is not required (and will not be used if present).
 // ocaml!{ pub fn ocaml_name(arg1: typ1, ...) -> ret_typ; ... }
 // ocaml!{ pub fn ocaml_name(arg1: typ1, ...); ... }
 // If no return type is provided, defaults to unit
 #[macro_export]
 macro_rules! ocaml {
     () => ();
+
+    ($vis:vis alloc fn $name:ident($($field:ident: $typ:ty),+ $(,)?) -> $rtyp:ty; $($t:tt)*) => {
+        $vis unsafe fn $name(_token: $crate::internal::GCToken, $($field: $crate::OCaml<$typ>),+) -> $crate::internal::GCResult<$rtyp> {
+            let mut current = 0;
+            let mut field_count = $crate::count_fields!($($field)*);
+            let record = $crate::internal::caml_alloc(field_count, 0);
+            $(
+                $crate::internal::store_field(record, current, $field.raw());
+                current += 1;
+            )+
+            $crate::internal::GCResult::of(record)
+        }
+
+        ocaml!($($t)*);
+    };
 
     ($vis:vis fn $name:ident($arg:ident: $typ:ty $(,)?) $(-> $rtyp:ty)?; $($t:tt)*) => {
         $vis unsafe fn $name(token: $crate::internal::GCToken, $arg: $crate::OCaml<$typ>) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
@@ -143,6 +161,13 @@ macro_rules! ocaml_alloc {
     };
 }
 
+#[macro_export]
+macro_rules! to_ocaml {
+    ($gc:ident, $obj:expr) => {
+        $crate::ocaml_alloc!(($obj).to_ocaml($gc))
+    }
+}
+
 // ocaml_call!(expr.func(gc, arg1, ...))
 #[macro_export]
 macro_rules! ocaml_call {
@@ -169,6 +194,14 @@ macro_rules! ocaml_call {
 }
 
 // Utility macros
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! count_fields {
+    () => {0usize};
+    ($_f1:ident $_f2:ident $_f3:ident $_f4:ident $_f5:ident $($fields:ident)*) => {5usize + $crate::count_fields!($($fields)*)};
+    ($field:ident $($fields:ident)*) => {1usize + $crate::count_fields!($($fields)*)};
+}
 
 #[doc(hidden)]
 #[macro_export]

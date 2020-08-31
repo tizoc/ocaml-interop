@@ -389,7 +389,7 @@ pub use crate::value::OCaml;
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{GCFrame, GCFrameNoKeep, GCResult, GCToken};
+    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep, GCResult, GCToken};
 }
 
 #[doc(hidden)]

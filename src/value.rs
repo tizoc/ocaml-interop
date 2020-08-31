@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::GCFrame;
+use crate::memory::{GCFrame, OCamlRef};
 use crate::mlvalues::tag;
 use crate::mlvalues::*;
 use std::marker;
@@ -58,6 +58,10 @@ impl<'a, T> OCaml<'a, T> {
 
     pub unsafe fn raw(self) -> RawOCaml {
         self.raw
+    }
+
+    pub fn keep<'gc>(self, gc: &GCFrame<'gc>) -> OCamlRef<'gc, T> {
+        gc.keep(self)
     }
 }
 
