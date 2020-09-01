@@ -56,6 +56,11 @@ impl<'a, T> OCaml<'a, T> {
         is_long(self.raw)
     }
 
+    pub fn tag_value(&self) -> u8 {
+        assert!(self.is_block());
+        unsafe { tag_val(self.raw) }
+    }
+
     pub unsafe fn raw(self) -> RawOCaml {
         self.raw
     }
