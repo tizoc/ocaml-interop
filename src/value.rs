@@ -61,7 +61,7 @@ impl<'a, T> OCaml<'a, T> {
         unsafe { tag_val(self.raw) }
     }
 
-    pub unsafe fn raw(self) -> RawOCaml {
+    pub unsafe fn raw(&self) -> RawOCaml {
         self.raw
     }
 
