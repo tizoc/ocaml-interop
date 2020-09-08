@@ -88,6 +88,11 @@ impl<'gc> GCFrame<'gc> {
         OCamlRef::new(self, value)
     }
 
+    pub fn keep_raw(&self, value: RawOCaml) {
+        let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(self) };
+        cell.set(value);
+    }
+
     pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
         make_ocaml(reference.cell.get())
     }
