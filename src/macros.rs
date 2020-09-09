@@ -39,14 +39,13 @@ macro_rules! ocaml {
             $crate::ocaml_frame!(gc, {
                 let mut current = 0;
                 let mut field_count = $crate::count_fields!($($field)*);
-                let record = $crate::internal::caml_alloc(field_count, 0);
-                gc.keep_raw(record);
+                let record = gc.keep_raw($crate::internal::caml_alloc(field_count, 0));
                 $(
-                    let $field = $crate::to_ocaml!(gc, $field);
-                    $crate::internal::store_field(record, current, $field.raw());
+                    let $field: $crate::OCaml<$typ> = $crate::to_ocaml!(gc, $field);
+                    $crate::internal::store_field(record.get(), current, $field.raw());
                     current += 1;
                 )+
-                $crate::OCamlAllocResult::of(record)
+                $crate::OCamlAllocResult::of(record.get())
             })
         }
 
