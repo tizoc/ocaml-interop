@@ -1,8 +1,8 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use mlvalues::{field_val, Intnat, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList};
-use value::OCaml;
+use crate::mlvalues::{field_val, OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
+use crate::value::OCaml;
 
 /// Implements conversion from OCaml values into Rust values.
 pub unsafe trait FromOCaml<T> {
@@ -10,8 +10,8 @@ pub unsafe trait FromOCaml<T> {
     fn from_ocaml(v: OCaml<T>) -> Self;
 }
 
-unsafe impl FromOCaml<Intnat> for i64 {
-    fn from_ocaml(v: OCaml<Intnat>) -> Self {
+unsafe impl FromOCaml<OCamlInt> for i64 {
+    fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
         v.as_int()
     }
 }

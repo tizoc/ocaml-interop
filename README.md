@@ -182,15 +182,15 @@ use znfe::{
 
 // To call an OCaml function, it first has to be declared inside an `ocaml!` macro block:
 mod ocaml_funcs {
-    use znfe::{ocaml, Intnat};
+    use znfe::{ocaml, OCamlInt};
 
     ocaml! {
         // OCaml: `val increment_bytes: bytes -> int -> bytes`
         // registered with `Callback.register "increment_bytes" increment_bytes`
-        pub fn increment_bytes(bytes: String, first_n: Intnat) -> String;
+        pub fn increment_bytes(bytes: String, first_n: OCamlInt) -> String;
         // OCaml: `val twice: int -> int`
         // registered with `Callback.register "twice" twice`
-        pub fn twice(num: Intnat) -> Intnat;
+        pub fn twice(num: OCamlInt) -> OCamlInt;
     }
 
     // The two OCaml functions declared above can now be invoked with the
@@ -300,7 +300,7 @@ fn main() {
 To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `ocaml_export!` macro.
 
 ```rust
-use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, ToOCaml};
+use znfe::{ocaml_alloc, ocaml_export, FromOCaml, OCamlInt, OCaml, ToOCaml};
 
 // `ocaml_export` expands the function definitions by adding `pub` visibility and
 // the required `#[no_mangle]` and `extern` declarations. It also takes care of
@@ -308,12 +308,12 @@ use znfe::{ocaml_alloc, ocaml_export, FromOCaml, Intnat, OCaml, ToOCaml};
 ocaml_export! {
     // The first parameter is a name to which the GC frame handle will be bound to.
     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
-    fn rust_twice(_gc, num: OCaml<Intnat>) -> OCaml<Intnat> {
+    fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         let num = i64::from_ocaml(num);
         OCaml::of_int(num * 2)
     }
 
-    fn rust_increment_bytes(gc, bytes: OCaml<String>, first_n: OCaml<Intnat>) -> OCaml<String> {
+    fn rust_increment_bytes(gc, bytes: OCaml<String>, first_n: OCaml<OCamlInt>) -> OCaml<String> {
         let first_n = i64::from_ocaml(first_n) as usize;
         let mut vec = Vec::from_ocaml(bytes);
 

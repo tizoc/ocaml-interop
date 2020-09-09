@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 use znfe::{
-    ocaml_alloc, ocaml_export, Intnat, IntoRust, OCaml, OCamlBytes, OCamlInt32, OCamlInt64,
+    ocaml_alloc, ocaml_export, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64,
     OCamlList, ToOCaml,
 };
 
 ocaml_export! {
-    fn rust_twice(_gc, num: OCaml<Intnat>) -> OCaml<Intnat> {
+    fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         let num: i64 = num.into_rust();
         OCaml::of_int(num * 2)
     }
@@ -38,7 +38,7 @@ ocaml_export! {
         num * 2.0
     }
 
-    fn rust_increment_bytes(gc, bytes: OCaml<OCamlBytes>, first_n: OCaml<Intnat>) -> OCaml<OCamlBytes> {
+    fn rust_increment_bytes(gc, bytes: OCaml<OCamlBytes>, first_n: OCaml<OCamlInt>) -> OCaml<OCamlBytes> {
         let first_n: i64 = first_n.into_rust();
         let first_n = first_n as usize;
         let mut vec: Vec<u8> = bytes.into_rust();
@@ -50,7 +50,7 @@ ocaml_export! {
         ocaml_alloc!(vec.to_ocaml(gc))
     }
 
-    fn rust_increment_ints_list(gc, ints: OCaml<OCamlList<Intnat>>) -> OCaml<OCamlList<Intnat>> {
+    fn rust_increment_ints_list(gc, ints: OCaml<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
         let mut vec: Vec<i64> = ints.into_rust();
 
         for i in 0..vec.len() {
@@ -60,7 +60,7 @@ ocaml_export! {
         ocaml_alloc!(vec.to_ocaml(gc))
     }
 
-    fn rust_make_tuple(gc, fst: OCaml<String>, snd: OCaml<Intnat>) -> OCaml<(String, Intnat)> {
+    fn rust_make_tuple(gc, fst: OCaml<String>, snd: OCaml<OCamlInt>) -> OCaml<(String, OCamlInt)> {
         let fst: String = fst.into_rust();
         let snd: i64 = snd.into_rust();
         let tuple = (fst, snd);

@@ -6,7 +6,7 @@ use crate::memory::{
     alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlAllocResult, OCamlAllocToken,
 };
 use crate::mlvalues::{
-    Intnat, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
+    OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
 };
 use crate::value::OCaml;
 use crate::{ocaml_alloc, ocaml_frame, to_ocaml};
@@ -17,14 +17,14 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml(&self, gc: OCamlAllocToken) -> OCamlAllocResult<T>;
 }
 
-unsafe impl ToOCaml<Intnat> for i64 {
-    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<Intnat> {
+unsafe impl ToOCaml<OCamlInt> for i64 {
+    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<OCamlInt> {
         OCamlAllocResult::of(((self << 1) | 1) as RawOCaml)
     }
 }
 
-unsafe impl ToOCaml<Intnat> for i32 {
-    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Intnat> {
+unsafe impl ToOCaml<OCamlInt> for i32 {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlInt> {
         (*self as i64).to_ocaml(token)
     }
 }

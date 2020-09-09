@@ -7,7 +7,7 @@ pub mod tag;
 
 pub type UIntnat = usize;
 
-/// `OCaml<Intnat>` is an OCaml `int` (fixnum) value.
+/// `OCaml<Intnat>` is an OCaml integer (tagged and unboxed) value.
 pub type Intnat = isize;
 
 /// Represent OCaml `value` values (fixnums or pointers).
@@ -27,6 +27,9 @@ pub struct OCamlList<A> {
 /// Unlike with `OCaml<String>`, there is no validation being performed when converting this
 /// value into `String`.
 pub struct OCamlBytes {}
+
+/// `OCaml<OCamlInt>` is an OCaml integer (tagged and unboxed) value.
+pub type OCamlInt = Intnat;
 
 /// `OCaml<OCamlInt32>` is a reference to an OCaml `Int32.t` (boxed `int32`) value.
 pub struct OCamlInt32 {}

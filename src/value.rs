@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 use crate::memory::{GCFrame, OCamlRef};
-use crate::mlvalues::tag;
 use crate::mlvalues::*;
 use std::marker;
 use std::slice;
@@ -111,12 +110,12 @@ impl<'a> OCaml<'a, OCamlBytes> {
     }
 }
 
-impl<'a> OCaml<'a, Intnat> {
+impl<'a> OCaml<'a, OCamlInt> {
     pub fn as_int(self) -> i64 {
         unsafe { raw_ocaml_to_i64(self.raw) }
     }
 
-    pub fn of_int(n: i64) -> Self {
+    pub fn of_int(n: i64) -> OCaml<'static, OCamlInt> {
         OCaml {
             _marker: Default::default(),
             raw: unsafe { raw_ocaml_of_i64(n) },

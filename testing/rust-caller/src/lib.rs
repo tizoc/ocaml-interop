@@ -4,12 +4,12 @@
 extern crate znfe;
 
 use znfe::{
-    ocaml_alloc, ocaml_call, ocaml_frame, Intnat, IntoRust, OCaml, OCamlBytes, OCamlList, ToOCaml,
+    ocaml_alloc, ocaml_call, ocaml_frame, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml,
 };
 
 mod ocaml {
     use znfe::{
-        ocaml, Intnat, OCamlAllocResult, OCamlAllocToken, OCamlInt32, OCamlInt64, OCamlList,
+        ocaml, OCamlAllocResult, OCamlAllocToken, OCamlInt, OCamlInt32, OCamlInt64, OCamlList,
         ToOCaml,
     };
 
@@ -33,11 +33,11 @@ mod ocaml {
     }
 
     ocaml! {
-        pub alloc fn alloc_test_record(i: Intnat, f: f64, i32: OCamlInt32, i64: OCamlInt64, s: String, t: (Intnat, f64)) -> TestRecord;
-        pub fn increment_bytes(bytes: String, first_n: Intnat) -> String;
-        pub fn increment_ints_list(ints: OCamlList<Intnat>) -> OCamlList<Intnat>;
-        pub fn twice(num: Intnat) -> Intnat;
-        pub fn make_tuple(fst: String, snd: Intnat) -> (String, Intnat);
+        pub alloc fn alloc_test_record(i: OCamlInt, f: f64, i32: OCamlInt32, i64: OCamlInt64, s: String, t: (OCamlInt, f64)) -> TestRecord;
+        pub fn increment_bytes(bytes: String, first_n: OCamlInt) -> String;
+        pub fn increment_ints_list(ints: OCamlList<OCamlInt>) -> OCamlList<OCamlInt>;
+        pub fn twice(num: OCamlInt) -> OCamlInt;
+        pub fn make_tuple(fst: String, snd: OCamlInt) -> (String, OCamlInt);
         pub fn make_some(value: String) -> Option<String>;
         pub fn verify_record(record: TestRecord) -> bool;
     }
@@ -58,7 +58,7 @@ pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
     ocaml_frame!(gc nokeep, {
         let ints = ocaml_alloc!(ints.to_ocaml(gc));
         let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
-        let result: OCaml<OCamlList<Intnat>> =
+        let result: OCaml<OCamlList<OCamlInt>> =
             result.expect("Error in 'increment_ints_list' call result");
         result.into_rust()
     })
@@ -68,7 +68,7 @@ pub fn twice(num: i64) -> i64 {
     ocaml_frame!(gc nokeep, {
         let num = OCaml::of_int(num);
         let result = ocaml_call!(ocaml::twice(gc, num));
-        let result: OCaml<Intnat> = result.expect("Error in 'twice' call result");
+        let result: OCaml<OCamlInt> = result.expect("Error in 'twice' call result");
         result.into_rust()
     })
 }
@@ -78,7 +78,7 @@ pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
         let num = OCaml::of_int(snd);
         let str = ocaml_alloc!(fst.to_ocaml(gc));
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
-        let result: OCaml<(String, Intnat)> = result.expect("Error in 'make_tuple' call result");
+        let result: OCaml<(String, OCamlInt)> = result.expect("Error in 'make_tuple' call result");
         result.into_rust()
     })
 }
