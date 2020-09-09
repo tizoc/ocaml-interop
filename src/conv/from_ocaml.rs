@@ -16,6 +16,12 @@ unsafe impl FromOCaml<OCamlInt> for i64 {
     }
 }
 
+unsafe impl FromOCaml<OCamlInt> for i32 {
+    fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
+        v.as_int() as i32
+    }
+}
+
 unsafe impl FromOCaml<OCamlInt32> for i32 {
     fn from_ocaml(v: OCaml<OCamlInt32>) -> Self {
         let val = unsafe { field_val(v.raw(), 1) };
