@@ -17,12 +17,6 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml(&self, gc: OCamlAllocToken) -> OCamlAllocResult<T>;
 }
 
-unsafe impl<'a, T> ToOCaml<T> for OCaml<'a, T> {
-    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<T> {
-        OCamlAllocResult::of(unsafe { self.raw() })
-    }
-}
-
 unsafe impl ToOCaml<Intnat> for i64 {
     fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<Intnat> {
         OCamlAllocResult::of(((self << 1) | 1) as RawOCaml)
