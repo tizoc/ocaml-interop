@@ -88,9 +88,8 @@ impl<'gc> GCFrame<'gc> {
         OCamlRef::new(self, value)
     }
 
-    pub fn keep_raw(&self, value: RawOCaml) {
-        let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(self) };
-        cell.set(value);
+    pub fn keep_raw(&self, value: RawOCaml) -> OCamlRawRef<'gc> {
+        OCamlRawRef::new(self, value)
     }
 
     pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
@@ -163,6 +162,11 @@ pub struct OCamlRef<'a, T> {
     _marker: marker::PhantomData<Cell<T>>,
 }
 
+/// A reference to a raw OCaml value. This location is tracked by the GC.
+pub struct OCamlRawRef<'a> {
+    cell: &'a Cell<RawOCaml>,
+}
+
 impl<'a, T> OCamlRef<'a, T> {
     pub fn new<'gc>(gc: &GCFrame<'gc>, x: OCaml<T>) -> OCamlRef<'gc, T> {
         let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
@@ -178,7 +182,29 @@ impl<'a, T> OCamlRef<'a, T> {
     }
 }
 
+impl<'a> OCamlRawRef<'a> {
+    pub fn new<'gc>(gc: &GCFrame<'gc>, x: RawOCaml) -> OCamlRawRef<'gc> {
+        let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
+        cell.set(x);
+        OCamlRawRef { cell }
+    }
+
+    pub fn set(&mut self, x: RawOCaml) {
+        self.cell.set(x);
+    }
+
+    pub fn get(&self) -> RawOCaml {
+        self.cell.get()
+    }
+}
+
 impl<'a, T> Drop for OCamlRef<'a, T> {
+    fn drop(&mut self) {
+        unsafe { free_local_root_cell(self.cell) }
+    }
+}
+
+impl<'a> Drop for OCamlRawRef<'a> {
     fn drop(&mut self) {
         unsafe { free_local_root_cell(self.cell) }
     }
@@ -257,7 +283,11 @@ pub fn alloc_some<A>(_token: OCamlAllocToken, value: OCaml<A>) -> OCamlAllocResu
     }
 }
 
-pub fn alloc_tuple<F, S>(_token: OCamlAllocToken, fst: OCaml<F>, snd: OCaml<S>) -> OCamlAllocResult<(F, S)> {
+pub fn alloc_tuple<F, S>(
+    _token: OCamlAllocToken,
+    fst: OCaml<F>,
+    snd: OCaml<S>,
+) -> OCamlAllocResult<(F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
         store_field(ocaml_tuple, 0, fst.raw());
