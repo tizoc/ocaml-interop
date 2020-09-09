@@ -1,4 +1,4 @@
 [package]
 name = "znfe"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
