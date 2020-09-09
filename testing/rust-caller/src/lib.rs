@@ -9,8 +9,8 @@ use znfe::{
 
 mod ocaml {
     use znfe::{
-        ocaml, ocaml_frame, to_ocaml, Intnat, OCaml, OCamlAllocResult, OCamlAllocToken, OCamlInt32,
-        OCamlInt64, OCamlList, ToOCaml,
+        ocaml, Intnat, OCamlAllocResult, OCamlAllocToken, OCamlInt32, OCamlInt64, OCamlList,
+        ToOCaml,
     };
 
     pub struct TestRecord {
@@ -24,18 +24,11 @@ mod ocaml {
 
     unsafe impl ToOCaml<TestRecord> for TestRecord {
         fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<TestRecord> {
-            ocaml_frame!(gc, {
-                let i = OCaml::of_int(self.i);
-                let ref f = to_ocaml!(gc, self.f).keep(gc);
-                let ref i32 = to_ocaml!(gc, self.i32).keep(gc);
-                let ref i64 = to_ocaml!(gc, self.i64).keep(gc);
-                let ref s = to_ocaml!(gc, self.s).keep(gc);
-                let t = to_ocaml!(gc, self.t);
-
-                unsafe {
-                    alloc_test_record(token, i, gc.get(f), gc.get(i32), gc.get(i64), gc.get(s), t)
-                }
-            })
+            unsafe {
+                alloc_test_record(
+                    token, &self.i, &self.f, &self.i32, &self.i64, &self.s, &self.t,
+                )
+            }
         }
     }
 
