@@ -42,10 +42,10 @@ macro_rules! ocaml {
                 let record = gc.keep_raw($crate::internal::caml_alloc(field_count, 0));
                 $(
                     let $field: $crate::OCaml<$typ> = $crate::to_ocaml!(gc, $field);
-                    $crate::internal::store_field(record.get(), current, $field.raw());
+                    $crate::internal::store_field(record.get_raw(), current, $field.raw());
                     current += 1;
                 )+
-                $crate::OCamlAllocResult::of(record.get())
+                $crate::OCamlAllocResult::of(record.get_raw())
             })
         }
 

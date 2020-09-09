@@ -180,6 +180,10 @@ impl<'a, T> OCamlRef<'a, T> {
     pub fn set(&mut self, x: OCaml<T>) {
         self.cell.set(unsafe { x.raw() });
     }
+
+    pub fn get_raw(&self) -> RawOCaml {
+        self.cell.get()
+    }
 }
 
 impl<'a> OCamlRawRef<'a> {
@@ -189,11 +193,11 @@ impl<'a> OCamlRawRef<'a> {
         OCamlRawRef { cell }
     }
 
-    pub fn set(&mut self, x: RawOCaml) {
+    pub fn set_raw(&mut self, x: RawOCaml) {
         self.cell.set(x);
     }
 
-    pub fn get(&self) -> RawOCaml {
+    pub fn get_raw(&self) -> RawOCaml {
         self.cell.get()
     }
 }
@@ -275,68 +279,68 @@ pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<f64> {
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<A>(_token: OCamlAllocToken, value: OCaml<A>) -> OCamlAllocResult<Option<A>> {
+pub fn alloc_some<A>(_token: OCamlAllocToken, value: &OCamlRef<A>) -> OCamlAllocResult<Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
-        store_field(ocaml_some, 0, value.raw());
+        store_field(ocaml_some, 0, value.get_raw());
         OCamlAllocResult::of(ocaml_some)
     }
 }
 
 pub fn alloc_tuple<F, S>(
     _token: OCamlAllocToken,
-    fst: OCaml<F>,
-    snd: OCaml<S>,
+    fst: &OCamlRef<F>,
+    snd: &OCamlRef<S>,
 ) -> OCamlAllocResult<(F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
-        store_field(ocaml_tuple, 0, fst.raw());
-        store_field(ocaml_tuple, 1, snd.raw());
+        store_field(ocaml_tuple, 0, fst.get_raw());
+        store_field(ocaml_tuple, 1, snd.get_raw());
         OCamlAllocResult::of(ocaml_tuple)
     }
 }
 
 pub fn alloc_tuple_3<F, S, T3>(
     _token: OCamlAllocToken,
-    fst: OCaml<F>,
-    snd: OCaml<S>,
-    elt3: OCaml<T3>,
+    fst: &OCamlRef<F>,
+    snd: &OCamlRef<S>,
+    elt3: &OCamlRef<T3>,
 ) -> OCamlAllocResult<(F, S, T3)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(3);
-        store_field(ocaml_tuple, 0, fst.raw());
-        store_field(ocaml_tuple, 1, snd.raw());
-        store_field(ocaml_tuple, 2, elt3.raw());
+        store_field(ocaml_tuple, 0, fst.get_raw());
+        store_field(ocaml_tuple, 1, snd.get_raw());
+        store_field(ocaml_tuple, 2, elt3.get_raw());
         OCamlAllocResult::of(ocaml_tuple)
     }
 }
 
 pub fn alloc_tuple_4<F, S, T3, T4>(
     _token: OCamlAllocToken,
-    fst: OCaml<F>,
-    snd: OCaml<S>,
-    elt3: OCaml<T3>,
-    elt4: OCaml<T4>,
+    fst: &OCamlRef<F>,
+    snd: &OCamlRef<S>,
+    elt3: &OCamlRef<T3>,
+    elt4: &OCamlRef<T4>,
 ) -> OCamlAllocResult<(F, S, T3, T4)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(4);
-        store_field(ocaml_tuple, 0, fst.raw());
-        store_field(ocaml_tuple, 1, snd.raw());
-        store_field(ocaml_tuple, 2, elt3.raw());
-        store_field(ocaml_tuple, 3, elt4.raw());
+        store_field(ocaml_tuple, 0, fst.get_raw());
+        store_field(ocaml_tuple, 1, snd.get_raw());
+        store_field(ocaml_tuple, 2, elt3.get_raw());
+        store_field(ocaml_tuple, 3, elt4.get_raw());
         OCamlAllocResult::of(ocaml_tuple)
     }
 }
 
 pub fn alloc_cons<A>(
     _token: OCamlAllocToken,
-    head: OCaml<A>,
-    tail: OCaml<OCamlList<A>>,
+    head: &OCamlRef<A>,
+    tail: &OCamlRef<OCamlList<A>>,
 ) -> OCamlAllocResult<OCamlList<A>> {
     unsafe {
         let ocaml_cons = caml_alloc(2, tag::LIST);
-        store_field(ocaml_cons, 0, head.raw());
-        store_field(ocaml_cons, 1, tail.raw());
+        store_field(ocaml_cons, 0, head.get_raw());
+        store_field(ocaml_cons, 1, tail.get_raw());
         OCamlAllocResult::of(ocaml_cons)
     }
 }

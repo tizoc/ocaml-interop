@@ -9,7 +9,7 @@ use crate::mlvalues::{
     Intnat, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
 };
 use crate::value::OCaml;
-use crate::{ocaml_alloc, ocaml_frame};
+use crate::{ocaml_alloc, ocaml_frame, to_ocaml};
 
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
@@ -72,7 +72,7 @@ where
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Option<ToA>> {
         if let Some(value) = self {
             ocaml_frame!(gc, {
-                let ocaml_value = ocaml_alloc!(value.to_ocaml(gc));
+                let ref ocaml_value = to_ocaml!(gc, value).keep(gc);
                 alloc_some(token, ocaml_value)
             })
         } else {
@@ -88,10 +88,9 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB)> {
         ocaml_frame!(gc, {
-            let fst = ocaml_alloc!((self.0).to_ocaml(gc));
-            let ref fst_ref = gc.keep(fst);
-            let snd = ocaml_alloc!((self.1).to_ocaml(gc));
-            alloc_tuple(token, gc.get(fst_ref), snd)
+            let ref fst = to_ocaml!(gc, self.0).keep(gc);
+            let ref snd = to_ocaml!(gc, self.1).keep(gc);
+            alloc_tuple(token, fst, snd)
         })
     }
 }
@@ -104,12 +103,10 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB, ToC)> {
         ocaml_frame!(gc, {
-            let fst = ocaml_alloc!((self.0).to_ocaml(gc));
-            let ref fst_ref = gc.keep(fst);
-            let snd = ocaml_alloc!((self.1).to_ocaml(gc));
-            let ref snd_ref = gc.keep(snd);
-            let elt3 = ocaml_alloc!((self.2).to_ocaml(gc));
-            alloc_tuple_3(token, gc.get(fst_ref), gc.get(snd_ref), elt3)
+            let ref fst = to_ocaml!(gc, self.0).keep(gc);
+            let ref snd = to_ocaml!(gc, self.1).keep(gc);
+            let ref elt3 = to_ocaml!(gc, self.2).keep(gc);
+            alloc_tuple_3(token, fst, snd, elt3)
         })
     }
 }
@@ -123,20 +120,11 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB, ToC, ToD)> {
         ocaml_frame!(gc, {
-            let fst = ocaml_alloc!((self.0).to_ocaml(gc));
-            let ref fst_ref = gc.keep(fst);
-            let snd = ocaml_alloc!((self.1).to_ocaml(gc));
-            let ref snd_ref = gc.keep(snd);
-            let elt3 = ocaml_alloc!((self.2).to_ocaml(gc));
-            let ref elt3_ref = gc.keep(elt3);
-            let elt4 = ocaml_alloc!((self.3).to_ocaml(gc));
-            alloc_tuple_4(
-                token,
-                gc.get(fst_ref),
-                gc.get(snd_ref),
-                gc.get(elt3_ref),
-                elt4,
-            )
+            let ref fst = to_ocaml!(gc, self.0).keep(gc);
+            let ref snd = to_ocaml!(gc, self.1).keep(gc);
+            let ref elt3 = to_ocaml!(gc, self.2).keep(gc);
+            let ref elt4 = to_ocaml!(gc, self.3).keep(gc);
+            alloc_tuple_4(token, fst, snd, elt3, elt4)
         })
     }
 }
@@ -158,8 +146,8 @@ where
         ocaml_frame!(gc, {
             let ref mut result_ref = gc.keep(OCaml::nil());
             for elt in self.iter().rev() {
-                let ov = ocaml_alloc!(elt.to_ocaml(gc));
-                let cons = ocaml_alloc!(alloc_cons(gc, ov, gc.get(result_ref)));
+                let ref ov = to_ocaml!(gc, elt).keep(gc);
+                let cons = ocaml_alloc!(alloc_cons(gc, ov, result_ref));
                 result_ref.set(cons);
             }
             OCamlAllocResult::of_ocaml(gc.get(result_ref))
