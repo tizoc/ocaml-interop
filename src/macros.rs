@@ -193,6 +193,105 @@ macro_rules! ocaml_call {
     };
 }
 
+#[macro_export]
+macro_rules! unpack_ocaml_block {
+    ($var:ident => $cons:ident {
+        $($field:ident : $ocaml_typ:ty),+ $(,)?
+    }) => {
+        let record = $var;
+        unsafe {
+            let mut current = 0;
+
+            $(
+                current += 1;
+                let $field = record.field::<$ocaml_typ>(current - 1).into_rust();
+            )+
+
+            $cons {
+                $($field),+
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! allocate_ocaml_block {
+    ($self:ident, $cons:ident {
+        $($field:ident : $ocaml_typ:ty $(= $conv_expr:expr)?),+ $(,)?
+    }) => {
+        unsafe {
+            $crate::ocaml_frame!(gc, {
+                let mut current = 0;
+                let field_count = $crate::count_fields!($($field)*);
+                let record = gc.keep_raw($crate::internal::caml_alloc(field_count, 0));
+                $(
+                    let ref $field = $self.$field;
+                    let $field = $crate::prepare_field_for_mapping!($field $(= $conv_expr)?);
+                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
+                    current += 1;
+                    $crate::internal::store_field(record.get_raw(), current - 1, $field.raw());
+                )+
+                $crate::OCamlAllocResult::of(record.get_raw())
+            })
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_from_ocaml_block_mapping {
+    ($ocaml_typ:ident => $rust_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty),+ $(,)?
+    }) => {
+        unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
+            fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                $crate::unpack_ocaml_block! { v =>
+                    $rust_typ {
+                        $($field : $ocaml_field_typ),+
+                    }
+                }
+            }
+        }
+    };
+
+    ($both_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty),+ $(,)?
+    }) => {
+        $crate::impl_from_ocaml_block_mapping! {
+            $both_typ => $both_typ {
+                $($field : $ocaml_field_typ),+
+            }
+        }
+    };
+}
+
+
+#[macro_export]
+macro_rules! impl_to_ocaml_block_mapping {
+    ($ocaml_typ:ident => $rust_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty $(= $conv_expr:expr)?),+ $(,)?
+    }) => {
+        unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
+            fn to_ocaml(&self, _token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
+                $crate::allocate_ocaml_block! { self,
+                    $ocaml_typ {
+                        $($field : $ocaml_field_typ $(= $conv_expr)?),+
+                    }
+                }
+            }
+        }
+    };
+
+    ($both_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty $(= $conv_expr:expr)?),+ $(,)?
+    }) => {
+        impl_to_ocaml_block_mapping! {
+            $both_typ => $both_typ {
+                $($field : $ocaml_field_typ $(= $conv_expr)?),+
+            }
+        }
+    };
+}
+
 // Utility macros
 
 #[doc(hidden)]
@@ -201,6 +300,18 @@ macro_rules! count_fields {
     () => {0usize};
     ($_f1:ident $_f2:ident $_f3:ident $_f4:ident $_f5:ident $($fields:ident)*) => {5usize + $crate::count_fields!($($fields)*)};
     ($field:ident $($fields:ident)*) => {1usize + $crate::count_fields!($($fields)*)};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! prepare_field_for_mapping {
+    ($field:ident) => {
+        $field
+    };
+
+    ($field:ident = $conv_expr:expr) => {
+        $conv_expr
+    };
 }
 
 #[doc(hidden)]
