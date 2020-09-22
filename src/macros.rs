@@ -194,7 +194,7 @@ macro_rules! ocaml_call {
 }
 
 #[macro_export]
-macro_rules! unpack_ocaml_block {
+macro_rules! ocaml_unpack_record {
     ($var:ident => $cons:ident {
         $($field:ident : $ocaml_typ:ty),+ $(,)?
     }) => {
@@ -215,7 +215,7 @@ macro_rules! unpack_ocaml_block {
 }
 
 #[macro_export]
-macro_rules! allocate_ocaml_block {
+macro_rules! ocaml_alloc_record {
     ($self:ident => $cons:ident {
         $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
@@ -237,13 +237,13 @@ macro_rules! allocate_ocaml_block {
 }
 
 #[macro_export]
-macro_rules! impl_from_ocaml_block_mapping {
+macro_rules! impl_from_ocaml_record {
     ($ocaml_typ:ident => $rust_typ:ident {
         $($field:ident : $ocaml_field_typ:ty),+ $(,)?
     }) => {
         unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
             fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
-                $crate::unpack_ocaml_block! { v =>
+                $crate::ocaml_unpack_record! { v =>
                     $rust_typ {
                         $($field : $ocaml_field_typ),+
                     }
@@ -255,7 +255,7 @@ macro_rules! impl_from_ocaml_block_mapping {
     ($both_typ:ident {
         $($t:tt)*
     }) => {
-        $crate::impl_from_ocaml_block_mapping! {
+        $crate::impl_from_ocaml_record! {
             $both_typ => $both_typ {
                 $($t)*
             }
@@ -265,13 +265,13 @@ macro_rules! impl_from_ocaml_block_mapping {
 
 
 #[macro_export]
-macro_rules! impl_to_ocaml_block_mapping {
+macro_rules! impl_to_ocaml_record {
     ($rust_typ:ty => $ocaml_typ:ident {
         $($field:ident : $ocaml_field_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
             fn to_ocaml(&self, _token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
-                $crate::allocate_ocaml_block! {
+                $crate::ocaml_alloc_record! {
                     self => $ocaml_typ {
                         $($field : $ocaml_field_typ $(=> $conv_expr)?),+
                     }
@@ -283,7 +283,7 @@ macro_rules! impl_to_ocaml_block_mapping {
     ($both_typ:ident {
         $($t:tt)*
     }) => {
-        impl_to_ocaml_block_mapping! {
+        impl_to_ocaml_record! {
             $both_typ => $both_typ {
                 $($t)*
             }
