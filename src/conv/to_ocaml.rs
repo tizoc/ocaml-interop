@@ -1,20 +1,29 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::{
-    alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
-    alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlAllocResult, OCamlAllocToken,
-};
 use crate::mlvalues::{
     OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
 };
 use crate::value::OCaml;
+use crate::{
+    memory::{
+        alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
+        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlAllocResult, OCamlAllocToken,
+    },
+    OCamlRef,
+};
 use crate::{ocaml_alloc, ocaml_frame, to_ocaml};
 
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
     /// Convert to OCaml value.
     fn to_ocaml(&self, gc: OCamlAllocToken) -> OCamlAllocResult<T>;
+}
+
+unsafe impl<'a, T> ToOCaml<T> for OCamlRef<'a, T> {
+    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<T> {
+        OCamlAllocResult::of(self.get_raw())
+    }
 }
 
 unsafe impl ToOCaml<OCamlInt> for i64 {
