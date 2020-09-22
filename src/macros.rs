@@ -216,8 +216,8 @@ macro_rules! unpack_ocaml_block {
 
 #[macro_export]
 macro_rules! allocate_ocaml_block {
-    ($self:ident, $cons:ident {
-        $($field:ident : $ocaml_typ:ty $(= $conv_expr:expr)?),+ $(,)?
+    ($self:ident => $cons:ident {
+        $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe {
             $crate::ocaml_frame!(gc, {
@@ -225,8 +225,7 @@ macro_rules! allocate_ocaml_block {
                 let field_count = $crate::count_fields!($($field)*);
                 let record = gc.keep_raw($crate::internal::caml_alloc(field_count, 0));
                 $(
-                    let ref $field = $self.$field;
-                    let $field = $crate::prepare_field_for_mapping!($field $(= $conv_expr)?);
+                    let ref $field = $crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
                     current += 1;
                     $crate::internal::store_field(record.get_raw(), current - 1, $field.raw());
@@ -254,11 +253,11 @@ macro_rules! impl_from_ocaml_block_mapping {
     };
 
     ($both_typ:ident {
-        $($field:ident : $ocaml_field_typ:ty),+ $(,)?
+        $($t:tt)*
     }) => {
         $crate::impl_from_ocaml_block_mapping! {
             $both_typ => $both_typ {
-                $($field : $ocaml_field_typ),+
+                $($t)*
             }
         }
     };
@@ -267,14 +266,14 @@ macro_rules! impl_from_ocaml_block_mapping {
 
 #[macro_export]
 macro_rules! impl_to_ocaml_block_mapping {
-    ($ocaml_typ:ident => $rust_typ:ident {
-        $($field:ident : $ocaml_field_typ:ty $(= $conv_expr:expr)?),+ $(,)?
+    ($rust_typ:ty => $ocaml_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
             fn to_ocaml(&self, _token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
-                $crate::allocate_ocaml_block! { self,
-                    $ocaml_typ {
-                        $($field : $ocaml_field_typ $(= $conv_expr)?),+
+                $crate::allocate_ocaml_block! {
+                    self => $ocaml_typ {
+                        $($field : $ocaml_field_typ $(=> $conv_expr)?),+
                     }
                 }
             }
@@ -282,11 +281,11 @@ macro_rules! impl_to_ocaml_block_mapping {
     };
 
     ($both_typ:ident {
-        $($field:ident : $ocaml_field_typ:ty $(= $conv_expr:expr)?),+ $(,)?
+        $($t:tt)*
     }) => {
         impl_to_ocaml_block_mapping! {
             $both_typ => $both_typ {
-                $($field : $ocaml_field_typ $(= $conv_expr)?),+
+                $($t)*
             }
         }
     };
@@ -305,12 +304,15 @@ macro_rules! count_fields {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! prepare_field_for_mapping {
-    ($field:ident) => {
-        $field
+    ($self:ident.$field:ident) => {
+        $self.$field
     };
 
-    ($field:ident = $conv_expr:expr) => {
-        $conv_expr
+    ($self:ident.$field:ident => $conv_expr:expr) => {
+        {
+            let ref $field = $self.$field;
+            $conv_expr
+        }
     };
 }
 
