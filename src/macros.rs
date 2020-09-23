@@ -264,7 +264,7 @@ macro_rules! ocaml_alloc_tagged_block {
 
 #[macro_export]
 macro_rules! ocaml_alloc_record {
-    ($self:ident => $cons:ident {
+    ($self:ident {
         $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe {
@@ -319,7 +319,7 @@ macro_rules! impl_to_ocaml_record {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
             fn to_ocaml(&self, _token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
                 $crate::ocaml_alloc_record! {
-                    self => $ocaml_typ {
+                    self {
                         $($field : $ocaml_field_typ $(=> $conv_expr)?),+
                     }
                 }
