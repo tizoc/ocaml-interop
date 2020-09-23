@@ -293,10 +293,10 @@ macro_rules! impl_to_ocaml_record {
 
 #[macro_export]
 macro_rules! ocaml_unpack_variant {
-    (($self:ident: $typ:ty) => {
+    ($self:ident => {
         $($($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? $(=> $conv:expr)?),+ $(,)?
     }) => {
-        {
+        (|| {
             let mut current_block_tag = 0;
             let mut current_long_tag = 0;
 
@@ -306,15 +306,8 @@ macro_rules! ocaml_unpack_variant {
                     $($tag)::+ $(($($slot_name: $slot_typ),+))? $(=> $conv)?);
             )+
 
-            // TODO: use Result instead?
-            if $self.is_block() {
-                panic!("Invalid tag value for OCaml<{}>, the memory representation may have changed: {}",
-                       stringify!($typ), $self.tag_value())
-            } else {
-                panic!("Invalid tag value for OCaml<{}>, the memory representation may have changed: {}",
-                       stringify!($typ), unsafe { $self.raw() })
-            }
-        }
+            Err("Invalid tag value found when converting from an OCaml variant")
+        })()
     };
 }
 
@@ -353,7 +346,7 @@ macro_rules! unpack_variant_tag {
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident, $($tag:ident)::+ => $conv:expr) => {
         $current_long_tag += 1;
         if $self.is_long() && unsafe { $self.raw() } == $current_long_tag - 1 {
-            return $conv;
+            return Ok($conv);
         }
     };
 
@@ -371,7 +364,7 @@ macro_rules! unpack_variant_tag {
                 let $slot_name = unsafe { $self.field::<$slot_typ>(current_field - 1).into_rust() };
             )+
 
-            return $conv;
+            return Ok($conv);
         }
     };
 }
