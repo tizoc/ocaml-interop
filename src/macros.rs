@@ -292,6 +292,34 @@ macro_rules! impl_to_ocaml_record {
 }
 
 #[macro_export]
+macro_rules! impl_from_ocaml_variant {
+    ($ocaml_typ:ty => $rust_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
+            fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                let result = $crate::ocaml_unpack_variant! {
+                    v => {
+                        $($t)*
+                    }
+                };
+                result.unwrap()
+            }
+        }
+    };
+
+    ($both_typ:ty {
+        $($t:tt)*
+    }) => {
+        $crate::impl_from_ocaml_variant!{
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! ocaml_unpack_variant {
     ($self:ident => {
         $($($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? $(=> $conv:expr)?),+ $(,)?
