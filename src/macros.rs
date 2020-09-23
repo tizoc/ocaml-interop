@@ -232,8 +232,8 @@ macro_rules! ocaml_unpack_record {
             let mut current = 0;
 
             $(
+                let $field = record.field::<$ocaml_typ>(current).into_rust();
                 current += 1;
-                let $field = record.field::<$ocaml_typ>(current - 1).into_rust();
             )+
 
             $cons {
@@ -253,8 +253,8 @@ macro_rules! ocaml_alloc_tagged_block {
                 let block = gc.keep_raw($crate::internal::caml_alloc(field_count, $tag));
                 $(
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
+                    $crate::internal::store_field(block.get_raw(), current, $field.raw());
                     current += 1;
-                    $crate::internal::store_field(block.get_raw(), current - 1, $field.raw());
                 )+
                 $crate::OCamlAllocResult::of(block.get_raw())
             })
@@ -275,8 +275,8 @@ macro_rules! ocaml_alloc_record {
                 $(
                     let ref $field = $crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
+                    $crate::internal::store_field(record.get_raw(), current, $field.raw());
                     current += 1;
-                    $crate::internal::store_field(record.get_raw(), current - 1, $field.raw());
                 )+
                 $crate::OCamlAllocResult::of(record.get_raw())
             })
@@ -473,10 +473,10 @@ macro_rules! unpack_variant_tag {
     };
 
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident, $($tag:ident)::+ => $conv:expr) => {
-        $current_long_tag += 1;
-        if $self.is_long() && unsafe { $self.raw() } == $current_long_tag - 1 {
+        if $self.is_long() && unsafe { $self.raw() } == $current_long_tag {
             return Ok($conv);
         }
+        $current_long_tag += 1;
     };
 
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
@@ -490,17 +490,17 @@ macro_rules! unpack_variant_tag {
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
         $($tag:ident)::+ ($($slot_name:ident: $slot_typ:ty),+) => $conv:expr) => {
 
-        $current_block_tag += 1;
-        if $self.is_block() && $self.tag_value() == $current_block_tag - 1 {
+        if $self.is_block() && $self.tag_value() == $current_block_tag {
             let mut current_field = 0;
 
             $(
+                let $slot_name = unsafe { $self.field::<$slot_typ>(current_field).into_rust() };
                 current_field += 1;
-                let $slot_name = unsafe { $self.field::<$slot_typ>(current_field - 1).into_rust() };
             )+
 
             return Ok($conv);
         }
+        $current_block_tag += 1;
     };
 }
 
@@ -508,20 +508,20 @@ macro_rules! unpack_variant_tag {
 #[macro_export]
 macro_rules! maybe_alloc_variant_tag {
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident, $($tag:ident)::+) => {
-        $current_long_tag += 1;
         if let $($tag)::+ = $self  {
-            return $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_int($current_long_tag - 1).raw() });
+            return $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_int($current_long_tag).raw() });
         }
+        $current_long_tag += 1;
     };
 
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
         $($tag:ident)::+ ($($slot_name:ident: $slot_typ:ty),+)) => {
 
-        $current_block_tag += 1;
         if let $($tag)::+($($slot_name),+) = $self {
             return $crate::ocaml_alloc_tagged_block!(
-                $current_block_tag - 1, $($slot_name: $slot_typ),+);
+                $current_block_tag, $($slot_name: $slot_typ),+);
         }
+        $current_block_tag += 1;
     };
 }
 
