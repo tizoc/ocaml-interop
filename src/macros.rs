@@ -215,6 +215,25 @@ macro_rules! ocaml_unpack_record {
 }
 
 #[macro_export]
+macro_rules! ocaml_alloc_tagged_block {
+    ($tag:expr, $($field:ident : $ocaml_typ:ty),+ $(,)?) => {
+        unsafe {
+            $crate::ocaml_frame!(gc, {
+                let mut current = 0;
+                let field_count = $crate::count_fields!($($field)*);
+                let block = gc.keep_raw($crate::internal::caml_alloc(field_count, $tag));
+                $(
+                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
+                    current += 1;
+                    $crate::internal::store_field(block.get_raw(), current - 1, $field.raw());
+                )+
+                $crate::OCamlAllocResult::of(block.get_raw())
+            })
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! ocaml_alloc_record {
     ($self:ident => $cons:ident {
         $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
@@ -303,9 +322,11 @@ macro_rules! impl_from_ocaml_variant {
                         $($t)*
                     }
                 };
-                result.expect(
-                    "Failure when unpacking an OCaml<{}> variant into {} (unexpected tag value)",
-                    stringify!($ocaml_typ), stringify!($rust_typ))
+                let msg = concat!(
+                    "Failure when unpacking an OCaml<", stringify!($ocaml_typ), "> variant into ",
+                    stringify!($rust_typ), " (unexpected tag value)");
+
+                result.expect(msg)
             }
         }
     };
@@ -338,6 +359,55 @@ macro_rules! ocaml_unpack_variant {
 
             Err("Invalid tag value found when converting from an OCaml variant")
         })()
+    };
+}
+
+#[macro_export]
+macro_rules! ocaml_alloc_variant {
+    ($self:ident => {
+        $($($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? $(,)?),+
+    }) => {
+        (|| {
+            #[allow(unused_variables, unused_mut)]
+            let mut current_block_tag = 0;
+            #[allow(unused_variables, unused_mut)]
+            let mut current_long_tag = 0;
+
+            $(
+                $crate::maybe_alloc_variant_tag!(
+                    $self, current_block_tag, current_long_tag,
+                    $($tag)::+ $(($($slot_name: $slot_typ),+))?);
+            )+
+
+            panic!("Enum case not handled when converting into an OCaml value")
+        })()
+    };
+}
+
+#[macro_export]
+macro_rules! impl_to_ocaml_variant {
+    ($ocaml_typ:ty => $rust_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
+            fn to_ocaml(&self, _token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
+                $crate::ocaml_alloc_variant! {
+                    self => {
+                        $($t)*
+                    }
+                }
+            }
+        }
+    };
+
+    ($both_typ:ty {
+        $($t:tt)*
+    }) => {
+        $crate::impl_to_ocaml_variant!{
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
     };
 }
 
@@ -395,6 +465,25 @@ macro_rules! unpack_variant_tag {
             )+
 
             return Ok($conv);
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! maybe_alloc_variant_tag {
+    ($self:ident, $current_block_tag:ident, $current_long_tag:ident, $($tag:ident)::+) => {
+        $current_long_tag += 1;
+        if let $($tag)::+ = $self  {
+            return $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_int($current_long_tag - 1).raw() });
+        }
+    };
+
+    ($self:ident, $current_block_tag:ident, $current_long_tag:ident, $($tag:ident)::+ ($($slot_name:ident: $slot_typ:ty),+)) => {
+        $current_block_tag += 1;
+        if let $($tag)::+($($slot_name),+) = $self {
+            return $crate::ocaml_alloc_tagged_block!(
+                $current_block_tag - 1, $($slot_name: $slot_typ),+);
         }
     };
 }
