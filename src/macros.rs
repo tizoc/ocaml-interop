@@ -303,7 +303,9 @@ macro_rules! impl_from_ocaml_variant {
                         $($t)*
                     }
                 };
-                result.unwrap()
+                result.expect(
+                    "Failure when unpacking an OCaml<{}> variant into {} (unexpected tag value)",
+                    stringify!($ocaml_typ), stringify!($rust_typ))
             }
         }
     };
