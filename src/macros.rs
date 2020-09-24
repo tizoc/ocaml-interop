@@ -396,20 +396,13 @@ macro_rules! ocaml_alloc_variant {
     ($self:ident => {
         $($($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? $(,)?),+
     }) => {
-        (|| {
-            #[allow(unused_variables, unused_mut)]
-            let mut current_block_tag = 0;
-            #[allow(unused_variables, unused_mut)]
-            let mut current_long_tag = 0;
+        $crate::ocaml_alloc_variant_match!{
+            $self, 0u8, 0u8,
+            $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })+
 
-            $(
-                $crate::maybe_alloc_variant_tag!(
-                    $self, current_block_tag, current_long_tag,
-                    $($tag)::+ $(($($slot_name: $slot_typ),+))?);
-            )+
-
-            panic!("Enum case not handled when converting into an OCaml value")
-        })()
+            @units
+            @blocks
+        }
     };
 }
 
@@ -506,22 +499,69 @@ macro_rules! unpack_variant_tag {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! maybe_alloc_variant_tag {
-    ($self:ident, $current_block_tag:ident, $current_long_tag:ident, $($tag:ident)::+) => {
-        if let $($tag)::+ = $self  {
-            return $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_int($current_long_tag).raw() });
+macro_rules! ocaml_alloc_variant_match {
+    // Base case, generate `match` expression
+    ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
+
+        @units
+            $({ $($unit_tag:ident)::+ @ $unit_tag_counter:expr })*
+        @blocks
+            $({ $($block_tag:ident)::+ ($($block_slot_name:ident: $block_slot_typ:ty),+) @ $block_tag_counter:expr })*
+    ) => {
+        match $self {
+            $(
+                $($unit_tag)::+ =>
+                    $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_int($unit_tag_counter as i64).raw() }),
+            )*
+            $(
+                $($block_tag)::+($($block_slot_name),+) =>
+                    $crate::ocaml_alloc_tagged_block!($block_tag_counter, $($block_slot_name: $block_slot_typ),+),
+            )*
         }
-        $current_long_tag += 1;
     };
 
-    ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
-        $($tag:ident)::+ ($($slot_name:ident: $slot_typ:ty),+)) => {
+    // Found unit tag, add to accumulator and increment unit variant tag number
+    ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
+        { $($ctag:ident)::+ }
+        $({ $($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+))? })*
 
-        if let $($tag)::+($($slot_name),+) = $self {
-            return $crate::ocaml_alloc_tagged_block!(
-                $current_block_tag, $($slot_name: $slot_typ),+);
+        @units
+            $({ $($unit_tag:ident)::+ @ $unit_tag_counter:expr })*
+        @blocks
+            $({ $($block_tag:ident)::+ ($($block_slot_name:ident: $block_slot_typ:ty),+) @ $block_tag_counter:expr })*
+    ) => {
+        $crate::ocaml_alloc_variant_match!{
+            $self, $current_block_tag, {1u8 + $current_long_tag},
+            $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })*
+
+            @units
+                $({ $($unit_tag)::+ @ $unit_tag_counter })*
+                { $($ctag)::+ @ $current_long_tag }
+            @blocks
+                $({ $($block_tag)::+ ($($block_slot_name: $block_slot_typ),+) @ $block_tag_counter })*
         }
-        $current_block_tag += 1;
+    };
+
+    // Found block tag, add to accumulator and increment block variant tag number
+    ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
+        { $($ctag:ident)::+ ($($cslot_name:ident: $cslot_typ:ty),+) }
+        $({ $($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+))? })*
+
+        @units
+            $({ $($unit_tag:ident)::+ @ $unit_tag_counter:expr })*
+        @blocks
+            $({ $($block_tag:ident)::+ ($($block_slot_name:ident: $block_slot_typ:ty),+) @ $block_tag_counter:expr })*
+    ) => {
+        $crate::ocaml_alloc_variant_match!{
+            $self, {1u8 + $current_block_tag}, $current_long_tag,
+            $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })*
+
+            @units
+                $({ $($unit_tag)::+ @ $unit_tag_counter })*
+            @blocks
+                $({ $($block_tag)::+ ($($block_slot_name: $block_slot_typ),+) @ $block_tag_counter })*
+                { $($ctag)::+ ($($cslot_name: $cslot_typ),+) @ $current_block_tag }
+        }
     };
 }
 
