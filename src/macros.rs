@@ -398,10 +398,11 @@ macro_rules! ocaml_alloc_variant {
     }) => {
         $crate::ocaml_alloc_variant_match!{
             $self, 0u8, 0u8,
-            $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })+
 
-            @units
-            @blocks
+            @units {}
+            @blocks {}
+
+            @pending $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })+
         }
     };
 }
@@ -503,10 +504,14 @@ macro_rules! ocaml_alloc_variant_match {
     // Base case, generate `match` expression
     ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
 
-        @units
+        @units {
             $({ $($unit_tag:ident)::+ @ $unit_tag_counter:expr })*
-        @blocks
+        }
+        @blocks {
             $({ $($block_tag:ident)::+ ($($block_slot_name:ident: $block_slot_typ:ty),+) @ $block_tag_counter:expr })*
+        }
+
+        @pending
     ) => {
         match $self {
             $(
@@ -522,45 +527,47 @@ macro_rules! ocaml_alloc_variant_match {
 
     // Found unit tag, add to accumulator and increment unit variant tag number
     ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
-        { $($found_tag:ident)::+ }
-        $({ $($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+))? })*
 
-        @units
-            $({ $($unit_tag:ident)::+ @ $unit_tag_counter:expr })*
-        @blocks
-            $({ $($block_tag:ident)::+ ($($block_slot_name:ident: $block_slot_typ:ty),+) @ $block_tag_counter:expr })*
+        @units { $($unit_tags_accum:tt)* }
+        @blocks { $($block_tags_accum:tt)* }
+
+        @pending
+            { $($found_tag:ident)::+ }
+            $($tail:tt)*
     ) => {
         $crate::ocaml_alloc_variant_match!{
             $self, $current_block_tag, {1u8 + $current_long_tag},
-            $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })*
 
-            @units
-                $({ $($unit_tag)::+ @ $unit_tag_counter })*
+            @units {
+                $($unit_tags_accum)*
                 { $($found_tag)::+ @ $current_long_tag }
-            @blocks
-                $({ $($block_tag)::+ ($($block_slot_name: $block_slot_typ),+) @ $block_tag_counter })*
+            }
+            @blocks { $($block_tags_accum)* }
+
+            @pending $($tail)*
         }
     };
 
     // Found block tag, add to accumulator and increment block variant tag number
     ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
-        { $($found_tag:ident)::+ ($($found_slot_name:ident: $found_slot_typ:ty),+) }
-        $({ $($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+))? })*
 
-        @units
-            $({ $($unit_tag:ident)::+ @ $unit_tag_counter:expr })*
-        @blocks
-            $({ $($block_tag:ident)::+ ($($block_slot_name:ident: $block_slot_typ:ty),+) @ $block_tag_counter:expr })*
+        @units { $($unit_tags_accum:tt)* }
+        @blocks { $($block_tags_accum:tt)* }
+
+        @pending
+            { $($found_tag:ident)::+ ($($found_slot_name:ident: $found_slot_typ:ty),+) }
+            $($tail:tt)*
     ) => {
         $crate::ocaml_alloc_variant_match!{
             $self, {1u8 + $current_block_tag}, $current_long_tag,
-            $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })*
 
-            @units
-                $({ $($unit_tag)::+ @ $unit_tag_counter })*
-            @blocks
-                $({ $($block_tag)::+ ($($block_slot_name: $block_slot_typ),+) @ $block_tag_counter })*
+            @units { $($unit_tags_accum)* }
+            @blocks {
+                $($block_tags_accum)*
                 { $($found_tag)::+ ($($found_slot_name: $found_slot_typ),+) @ $current_block_tag }
+            }
+
+            @pending $($tail)*
         }
     };
 }
