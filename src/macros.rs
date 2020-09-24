@@ -61,7 +61,7 @@ macro_rules! ocaml {
         $vis unsafe fn $name(
             token: $crate::OCamlAllocToken,
             $arg: $crate::OCaml<$typ>,
-        ) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+        ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call(token, $arg)
         }
@@ -77,7 +77,7 @@ macro_rules! ocaml {
             token: $crate::OCamlAllocToken,
             $arg1: $crate::OCaml<$typ1>,
             $arg2: $crate::OCaml<$typ2>,
-        ) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+        ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call2(token, $arg1, $arg2)
         }
@@ -95,7 +95,7 @@ macro_rules! ocaml {
             $arg1: $crate::OCaml<$typ1>,
             $arg2: $crate::OCaml<$typ2>,
             $arg3: $crate::OCaml<$typ3>,
-        ) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+        ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call3(token, $arg1, $arg2, $arg3)
         }
@@ -109,7 +109,7 @@ macro_rules! ocaml {
         $vis unsafe fn $name(
             token: $crate::OCamlAllocToken,
             $($arg: $crate::OCaml<$typ>),+
-    ) -> $crate::OCamlResult<$crate::default_to_unit!($(-> $rtyp)?)> {
+    ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call_n(token, &mut [$($arg.raw()),+])
         }
@@ -132,16 +132,20 @@ macro_rules! ocaml_export {
 
         $($t:tt)*
     } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, @proc_args $($args)*) -> f64
-                $body
-            #original_args $($args)*
+        $crate::expand_exported_function!(
+            @name $name
+            @gc { $gc $($nokeep)? }
+            @final_args { }
+            @proc_args { $($args)* }
+            @return { f64 }
+            @body $body
+            @original_args $($args)*
         );
 
         ocaml_export!{$($t)*}
     };
 
-    // Other return values
+    // Other (or empty) return value type
     {
         fn $name:ident( $gc:ident $($nokeep:ident)?, $($args:tt)*) $(-> $rtyp:ty)?
            $body:block
@@ -149,9 +153,13 @@ macro_rules! ocaml_export {
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, @proc_args $($args)*) $(-> $rtyp)?
-                $body
-            #original_args $($args)*
+            @name $name
+            @gc { $gc $($nokeep)? }
+            @final_args { }
+            @proc_args { $($args)* }
+            @return { $($rtyp)? }
+            @body $body
+            @original_args $($args)*
         );
 
         ocaml_export!{$($t)*}
@@ -604,7 +612,7 @@ macro_rules! default_to_ocaml_unit {
     () => ($crate::OCaml<()>);
 
     // Return value specified
-    (-> $rtyp:ty) => ($rtyp);
+    ($rtyp:ty) => ($rtyp);
 }
 
 #[doc(hidden)]
@@ -616,7 +624,7 @@ macro_rules! default_to_unit {
     };
 
     // Return value specified
-    (-> $rtyp:ty) => {
+    ($rtyp:ty) => {
         $rtyp
     };
 }
@@ -645,267 +653,87 @@ macro_rules! expand_args_init {
 #[macro_export]
 macro_rules! expand_exported_function {
     // Final expansions, with all argument types converted
+
     {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args) $(-> $rtyp:ty)?
-           $body:block
-        #original_args $($original_args:tt)*
+        @name $name:ident
+        @gc { $gc:ident $($nokeep:ident)? }
+        @final_args { $($arg:ident : $typ:ty,)+ }
+        @proc_args { }
+        @return { $($rtyp:tt)* }
+        @body $body:block
+        @original_args $($original_args:tt)*
     } => {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::RawOCaml {
             $crate::ocaml_frame!( $gc $($nokeep)?, {
                 $crate::expand_args_init!($gc, $($original_args)*);
-                let retval : $crate::default_to_ocaml_unit!($(-> $rtyp)?) = $body;
-                unsafe { retval.raw() }
+                $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
             })
         }
     };
 
-    // Handle unboxed floats
+    // Args processing
 
-    // fn func(gc, @proc_args arg: f64)
+    // Next arg is an unboxed float, leave as-is
+
     {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : f64) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
+        @name $name:ident
+        @gc { $($gc_decl:tt)+ }
+        @final_args { $($final_args:tt)* }
+        @proc_args { $next_arg:ident : f64, $($proc_args:tt)* }
+        @return { $($rtyp:tt)* }
+        @body $body:block
+        @original_args $($original_args:tt)*
     } => {
         $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $next_arg : f64, @proc_args) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
+            @name $name
+            @gc { $($gc_decl)+ }
+            @final_args { $($final_args)* $next_arg : f64, }
+            @proc_args { $($proc_args)* }
+            @return { $($rtyp)* }
+            @body $body
+            @original_args $($original_args)*
         );
     };
 
-    // fn func(gc, @proc_args arg: f64, ...)
+    // Next arg is not an uboxed float, replace with RawOCaml in output
+
     {
-        fn $name:ident(
-            $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : f64, $($proc_args:tt)*
-        ) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
+        @name $name:ident
+        @gc { $($gc_decl:tt)+ }
+        @final_args { $($final_args:tt)* }
+        @proc_args { $next_arg:ident : $typ:ty, $($proc_args:tt)* }
+        @return { $($rtyp:tt)* }
+        @body $body:block
+        @original_args $($original_args:tt)*
     } => {
         $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $next_arg : f64, @proc_args $($proc_args)*) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: f64)
-    {
-        fn $name:ident(
-            $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : f64
-        ) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : f64, @proc_args) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: f64, ....)
-    {
-        fn $name:ident(
-            $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : f64, $($proc_args:tt)*
-        ) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : f64, @proc_args $($proc_args)*) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // Handle other types
-
-    // fn func(gc, @proc_args arg: typ)
-    {
-        fn $name:ident(
-            $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : $next_typ:ty
-        ) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $next_arg : $crate::RawOCaml, @proc_args) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, @proc_args arg: typ, ...)
-    {
-        fn $name:ident(
-            $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : $next_typ:ty, $($proc_args:tt)*
-        ) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $next_arg : $crate::RawOCaml, @proc_args $($proc_args)*) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: typ)
-    {
-        fn $name:ident(
-            $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : $next_typ:ty
-        ) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : $crate::RawOCaml, @proc_args) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: typ, ....)
-    {
-        fn $name:ident(
-            $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : $next_typ:ty, $($proc_args:tt)*
-        ) $(-> $rtyp:ty)?
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : $crate::RawOCaml, @proc_args $($proc_args)*) $(-> $rtyp)?
-                $body
-            #original_args $($original_args)*
+            @name $name
+            @gc { $($gc_decl)+ }
+            @final_args { $($final_args)* $next_arg : $crate::RawOCaml, }
+            @proc_args { $($proc_args)* }
+            @return { $($rtyp)* }
+            @body $body
+            @original_args $($original_args)*
         );
     };
 }
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! expand_exported_function_with_unboxed_float_return {
-    // Final expansions, with all argument types converted
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        #[no_mangle]
-        pub extern "C" fn $name( $($arg: $typ),* ) -> f64 {
-            $crate::ocaml_frame!( $gc $($nokeep)?, {
-                $crate::expand_args_init!($gc, $($original_args)*);
-                $body
-            })
+macro_rules! expand_exported_function_body {
+    { @body $body:block @return f64 } => {
+        $body
+    };
+
+    { @body $body:block @return $rtyp:ty } => {
+        {
+            let retval : $rtyp = $body;
+            unsafe { retval.raw() }
         }
     };
 
-    // Handle unboxed floats
-
-    // fn func(gc, @proc_args arg: f64)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : f64) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $next_arg : f64, @proc_args) -> f64
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, @proc_args arg: f64, ...)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : f64, $($proc_args:tt)*) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $next_arg : f64, @proc_args $($proc_args)*) -> f64
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: f64)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : f64) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : f64, @proc_args) -> f64
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: f64, ....)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : f64, $($proc_args:tt)*) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : f64, @proc_args $($proc_args)*) -> f64
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // Handle other types
-
-    // fn func(gc, @proc_args arg: typ)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : $next_typ:ty) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $next_arg : $next_typ, @proc_args) -> f64
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, @proc_args arg: typ, ...)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, @proc_args $next_arg:ident : $next_typ:ty, $($proc_args:tt)*) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $next_arg : $next_typ, @proc_args $($proc_args)*) -> f64
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: typ)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : $next_typ:ty) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : $next_typ, @proc_args) -> f64
-                $body
-            #original_args $($original_args)*
-        );
-    };
-
-    // fn func(gc, arg1: typ1, ..., @proc_args arg: typ, ....)
-    {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($arg:ident : $typ:ty),+, @proc_args $next_arg:ident : $next_typ:ty, $($proc_args:tt)*) -> f64
-            $body:block
-        #original_args $($original_args:tt)*
-    } => {
-        $crate::expand_exported_function_with_unboxed_float_return!(
-            fn $name( $gc $($nokeep)?, $($arg : $typ),*, $next_arg : $next_typ, @proc_args $($proc_args)*) -> f64
-                $body
-            #original_args $($original_args)*
-        );
+    { @body $body:block @return } => {
+        $crate::expand_exported_function_body!(@body $body @return $crate::OCaml<()>)
     };
 }
