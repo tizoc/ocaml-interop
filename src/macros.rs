@@ -522,7 +522,7 @@ macro_rules! ocaml_alloc_variant_match {
 
     // Found unit tag, add to accumulator and increment unit variant tag number
     ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
-        { $($ctag:ident)::+ }
+        { $($found_tag:ident)::+ }
         $({ $($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+))? })*
 
         @units
@@ -536,7 +536,7 @@ macro_rules! ocaml_alloc_variant_match {
 
             @units
                 $({ $($unit_tag)::+ @ $unit_tag_counter })*
-                { $($ctag)::+ @ $current_long_tag }
+                { $($found_tag)::+ @ $current_long_tag }
             @blocks
                 $({ $($block_tag)::+ ($($block_slot_name: $block_slot_typ),+) @ $block_tag_counter })*
         }
@@ -544,7 +544,7 @@ macro_rules! ocaml_alloc_variant_match {
 
     // Found block tag, add to accumulator and increment block variant tag number
     ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
-        { $($ctag:ident)::+ ($($cslot_name:ident: $cslot_typ:ty),+) }
+        { $($found_tag:ident)::+ ($($found_slot_name:ident: $found_slot_typ:ty),+) }
         $({ $($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+))? })*
 
         @units
@@ -560,7 +560,7 @@ macro_rules! ocaml_alloc_variant_match {
                 $({ $($unit_tag)::+ @ $unit_tag_counter })*
             @blocks
                 $({ $($block_tag)::+ ($($block_slot_name: $block_slot_typ),+) @ $block_tag_counter })*
-                { $($ctag)::+ ($($cslot_name: $cslot_typ),+) @ $current_block_tag }
+                { $($found_tag)::+ ($($found_slot_name: $found_slot_typ),+) @ $current_block_tag }
         }
     };
 }
