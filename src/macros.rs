@@ -136,7 +136,7 @@ macro_rules! ocaml_export {
             @name $name
             @gc { $gc $($nokeep)? }
             @final_args { }
-            @proc_args { $($args)* }
+            @proc_args { $($args)*, }
             @return { f64 }
             @body $body
             @original_args $($args)*
@@ -156,7 +156,7 @@ macro_rules! ocaml_export {
             @name $name
             @gc { $gc $($nokeep)? }
             @final_args { }
-            @proc_args { $($args)* }
+            @proc_args { $($args)*, }
             @return { $($rtyp)? }
             @body $body
             @original_args $($args)*
@@ -442,7 +442,7 @@ macro_rules! impl_to_ocaml_variant {
     };
 }
 
-// Utility macros
+// Internal utility macros
 
 #[doc(hidden)]
 #[macro_export]
@@ -658,7 +658,7 @@ macro_rules! expand_exported_function {
         @name $name:ident
         @gc { $gc:ident $($nokeep:ident)? }
         @final_args { $($arg:ident : $typ:ty,)+ }
-        @proc_args { }
+        @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
         @body $body:block
         @original_args $($original_args:tt)*
