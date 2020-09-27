@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::{GCFrame, OCamlRef};
+use crate::memory::{GCFrame, GCFrameHandle, OCamlRef};
 use crate::mlvalues::*;
 use std::marker;
 use std::slice;
@@ -31,7 +31,7 @@ pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
 }
 
 impl<'a, T> OCaml<'a, T> {
-    pub unsafe fn new<'gc>(_gc: &'a GCFrame<'gc>, x: RawOCaml) -> OCaml<'a, T> {
+    pub unsafe fn new<'gc>(_gc: &'a dyn GCFrameHandle<'gc>, x: RawOCaml) -> OCaml<'a, T> {
         OCaml {
             _marker: Default::default(),
             raw: x,
