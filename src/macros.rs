@@ -664,7 +664,7 @@ macro_rules! expand_exported_function {
         @original_args $($original_args:tt)*
     } => {
         #[no_mangle]
-        pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::RawOCaml {
+        pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
             $crate::ocaml_frame!( $gc $($nokeep)?, {
                 $crate::expand_args_init!($gc, $($original_args)*);
                 $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
@@ -723,17 +723,27 @@ macro_rules! expand_exported_function {
 #[macro_export]
 macro_rules! expand_exported_function_body {
     { @body $body:block @return f64 } => {
+        #[allow(unused_braces)]
         $body
     };
 
-    { @body $body:block @return $rtyp:ty } => {
-        {
+    { @body $body:block @return $rtyp:ty } => {{
             let retval : $rtyp = $body;
             unsafe { retval.raw() }
-        }
-    };
+    }};
 
     { @body $body:block @return } => {
-        $crate::expand_exported_function_body!(@body $body @return $crate::OCaml<()>)
+        $crate::expand_exported_function_body!(
+            @body $body
+            @return $crate::OCaml<()>
+        )
     };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! expand_exported_function_return {
+    (f64) => { f64 };
+
+    ($rtyp:ty) => { $crate::RawOCaml };
 }
