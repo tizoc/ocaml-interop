@@ -131,7 +131,7 @@ impl<'gc> GCFrameNoKeep<'gc> {
 impl<'gc> GCFrameHandle<'gc> for GCFrame<'gc> {}
 impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
 
-// Token used for allocation functions.
+/// Token used by allocation functions. Used internally.
 pub struct OCamlAllocToken {}
 
 unsafe fn reserve_local_root_cell<'gc>(_gc: &GCFrame<'gc>) -> &'gc Cell<RawOCaml> {
@@ -156,13 +156,15 @@ unsafe fn free_local_root_cell(cell: &Cell<RawOCaml>) {
     block.nitems -= 1;
 }
 
-/// A reference to an OCaml value. This location is tracked by the GC.
+/// `OCamlRef<T>` is reference to an `OCaml<T>` value that is tracked by the GC.
+///
+/// Unlike `OCaml<T>` values, it can be re-referenced after OCaml allocations.
 pub struct OCamlRef<'a, T> {
     cell: &'a Cell<RawOCaml>,
     _marker: marker::PhantomData<Cell<T>>,
 }
 
-/// A reference to a raw OCaml value. This location is tracked by the GC.
+/// Like `OCamlRef` but for `OCamlRaw` values.
 pub struct OCamlRawRef<'a> {
     cell: &'a Cell<RawOCaml>,
 }
@@ -214,7 +216,7 @@ impl<'a> Drop for OCamlRawRef<'a> {
     }
 }
 
-// Intermediary allocation result.
+/// Intermediary allocation result.
 pub struct OCamlAllocResult<T> {
     raw: RawOCaml,
     _marker: marker::PhantomData<T>,

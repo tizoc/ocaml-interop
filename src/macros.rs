@@ -1,13 +1,50 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-/// `ocaml_frame!(gc, { ... })` opens a new frame, with the GC handle bound to `gc`. Code inside the passed block
-/// can allocate OCaml values and call OCaml functions.
+/// Opens a new frame inside which new OCaml values can be allocated, and OCaml functions called.
+///
+/// The first argument is the name to which the OCaml frame GC handle will be bound. It will be used
+/// to allocate OCaml values and call OCaml functions. Values that result from allocations
+/// or function calls using that handle, will have their lifetime bound to it.
 ///
 /// The variant `ocaml_frame!(gc nokeep, { ... })` (with `nokeep` after the GC handle variable name) avoids
-/// setting up the frame and can be used for blocks that do not keep OCaml pointers across OCaml calls
-/// (`gc.keep(value)` cannot be used). Keep in mind that this variant is likely to change in the future.
-// ocaml_frame!(gc, { ... })
+/// setting up the frame and can be used for blocks that do not keep OCaml pointers alive across OCaml calls
+/// (`gc.keep(value)` cannot be used).
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// # ocaml! {
+/// #    fn print_endline(s: String);
+/// # }
+/// # fn ocaml_frame_macro_example() {
+///     ocaml_frame!(gc, { // `gc` gets bound to the frame handle
+///         let ref hello_ocaml = to_ocaml!(gc, "hello OCaml!").keep(gc);
+///         let ref bye_ocaml = to_ocaml!(gc, "bye OCaml!").keep(gc);
+///         ocaml_call!(print_endline(gc, gc.get(hello_ocaml)));
+///         ocaml_call!(print_endline(gc, gc.get(bye_ocaml)));
+///         // Values that don't need to be keept across calls can be used directly
+///         let immediate_use = to_ocaml!(gc, "no need to `keep` me");
+///         ocaml_call!(print_endline(gc, immediate_use));
+///     });
+/// # }
+/// ```
+///
+/// When `keep` is not needed, a slightly more efficient variant is available
+/// by adding the `nokeep` annotation to the handle variable name. By doing so, no space
+/// is reserved for local roots:
+///
+/// ```
+/// # use znfe::*;
+/// # ocaml! { fn print_endline(s: String); }
+/// # fn ocaml_frame_macro_example() {
+///     ocaml_frame!(gc nokeep, { // `keep` will not be available
+///         let ocaml_string = to_ocaml!(gc, "hello OCaml!");
+///         ocaml_call!(print_endline(gc, ocaml_string));
+///     });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! ocaml_frame {
     ($gc:ident nokeep, $body:block) => {{
@@ -23,13 +60,31 @@ macro_rules! ocaml_frame {
     }};
 }
 
+/// Declares OCaml functions and allocators.
+///
 /// `ocaml! { pub fn ocaml_name(arg1: typ1, ...) -> ret_typ; ... }` declares a function that has been
 /// defined in OCaml code and registered with `Callback.register "ocaml_name" the_function`.
-/// Visibility and return value type can be omitted. If the return type is omitted, it defaults to
-/// unit.
-/// `ocaml! { pub alloc fn alloc_name(arg1: typ1, ...) -> ret_typ; ... }` (with `alloc` annotation) defines
-/// a record allocation function. In this case, an OCaml counterpart registered with
-/// `Callback.register "alloc_name" the_function` is not required (and will not be used if present).
+///
+/// Visibility and return value type can be omitted. The return type defaults to unit when omitted.
+///
+/// These functions must be invoked with the `ocaml_call!` macro.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// # struct MyRecord {};
+/// ocaml! {
+///     // Declares `print_endline`, with a single `String` (`OCaml<String>` when invoked)
+///     // argument and unit return type (default when omitted).
+///     pub fn print_endline(s: String);
+///
+///     // Declares `bytes_concat`, with two arguments, an OCaml `bytes` separator,
+///     // and an OCaml list of segments to concatenate. Return value is an OCaml `bytes`
+///     // value.
+///     fn bytes_concat(sep: OCamlBytes, segments: OCamlList<OCamlBytes>) -> OCamlBytes;
+/// }
+/// ```
 #[macro_export]
 macro_rules! ocaml {
     () => ();
@@ -52,7 +107,7 @@ macro_rules! ocaml {
             })
         }
 
-        ocaml!($($t)*);
+        $crate::ocaml!($($t)*);
     };
 
     ($vis:vis fn $name:ident(
@@ -66,7 +121,7 @@ macro_rules! ocaml {
             F.call(token, $arg)
         }
 
-        ocaml!($($t)*);
+        $crate::ocaml!($($t)*);
     };
 
     ($vis:vis fn $name:ident(
@@ -82,7 +137,7 @@ macro_rules! ocaml {
             F.call2(token, $arg1, $arg2)
         }
 
-        ocaml!($($t)*);
+        $crate::ocaml!($($t)*);
     };
 
     ($vis:vis fn $name:ident(
@@ -100,7 +155,7 @@ macro_rules! ocaml {
             F.call3(token, $arg1, $arg2, $arg3)
         }
 
-        ocaml!($($t)*);
+        $crate::ocaml!($($t)*);
     };
 
     ($vis:vis fn $name:ident(
@@ -114,13 +169,67 @@ macro_rules! ocaml {
             F.call_n(token, &mut [$($arg.raw()),+])
         }
 
-        ocaml!($($t)*);
+        $crate::ocaml!($($t)*);
     }
 }
 
-// ocaml_export! { fn export_name(gc, arg1: typ1, ...) -> res_typ ... }
-// ocaml_export! { fn export_name(gc, arg1: typ1, ...) ... }
-// If no return type is provided, defaults to unit
+/// Defines Rust functions callable from OCaml.
+///
+/// The first argument in these function declarations must be an identifier
+/// to which the OCaml frame GC handle will be bound. Optionally, it can be annotated
+/// with `nokeep` when local roots (registered with the `keep` method) are not needed.
+///
+/// Arguments and return values must be of type `OCaml<T>`, or `f64` in the case of unboxed floats.
+///
+/// The return type defaults to unit when omitted.
+///
+/// The body of the function has an implicit `ocaml_frame!` wrapper, with the lifetimes of every `OCaml<T>`
+/// argument bound to the lifetime of the variable bound to the function's OCaml frame GC handle.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// ocaml_export! {
+///     fn rust_twice(_gc nokeep, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+///         let num: i64 = num.into_rust();
+///         OCaml::of_int(num * 2)
+///     }
+///
+///     fn rust_twice_boxed_i32(gc, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
+///         let num: i32 = num.into_rust();
+///         let result = num * 2;
+///         ocaml_alloc!(result.to_ocaml(gc))
+///     }
+///
+///     fn rust_add_unboxed_floats_noalloc(_gc nokeep, num: f64, num2: f64) -> f64 {
+///         num * num2
+///     }
+///
+///     fn rust_twice_boxed_float(gc, num: OCaml<f64>) -> OCaml<f64> {
+///         let num: f64 = num.into_rust();
+///         let result = num * 2.0;
+///         ocaml_alloc!(result.to_ocaml(gc))
+///     }
+///
+///     fn rust_increment_ints_list(gc, ints: OCaml<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
+///         let mut vec: Vec<i64> = ints.into_rust();
+///
+///         for i in 0..vec.len() {
+///             vec[i] += 1;
+///         }
+///
+///         ocaml_alloc!(vec.to_ocaml(gc))
+///     }
+///
+///     fn rust_make_tuple(gc, fst: OCaml<String>, snd: OCaml<OCamlInt>) -> OCaml<(String, OCamlInt)> {
+///         let fst: String = fst.into_rust();
+///         let snd: i64 = snd.into_rust();
+///         let tuple = (fst, snd);
+///         ocaml_alloc!(tuple.to_ocaml(gc))
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! ocaml_export {
     {} => ();
@@ -142,7 +251,7 @@ macro_rules! ocaml_export {
             @original_args $($args)*
         );
 
-        ocaml_export!{$($t)*}
+        $crate::ocaml_export!{$($t)*}
     };
 
     // Other (or empty) return value type
@@ -162,11 +271,17 @@ macro_rules! ocaml_export {
             @original_args $($args)*
         );
 
-        ocaml_export!{$($t)*}
+        $crate::ocaml_export!{$($t)*}
     };
 }
 
-// ocaml_alloc!(expr.to_ocaml(gc, ...)))
+/// Calls an OCaml allocator function.
+///
+/// TODO: docs
+///
+/// # Examples
+///
+/// TODO
 #[macro_export]
 macro_rules! ocaml_alloc {
     ( $(($obj:expr).)?$($fn:ident).+($gc:ident $(,)?) ) => {
@@ -198,6 +313,24 @@ macro_rules! ocaml_alloc {
     };
 }
 
+/// Converts Rust values into OCaml values.
+///
+/// In `to_ocaml!(gc, value)`, `gc` is an OCaml frame GC handle, and `value` is
+/// a Rust value of a type that implements the `ToOCaml` trait. The resulting
+/// value's lifetime is bound to `gc`'s.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// # fn to_ocaml_macro_example() {
+///     ocaml_frame!(gc, {
+///         let ocaml_string: OCaml<String> = to_ocaml!(gc, "hello OCaml!");
+///         // ...
+///         # ()
+///     });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! to_ocaml {
     ($gc:ident, $obj:expr) => {
@@ -205,7 +338,29 @@ macro_rules! to_ocaml {
     };
 }
 
-// ocaml_call!(expr.func(gc, arg1, ...))
+/// Calls an OCaml function
+///
+/// The called function must be declared with `ocaml!`. This macro can
+/// only be used inside `ocaml_frame!` blocks, and the framce GC
+/// handle must be passed as the first argument to the function.
+///
+/// The result is either `Ok(result)` or `Err(ocaml_exception)` if
+/// an exception is raised by the OCaml function.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// ocaml! { fn print_endline(s: String); }
+///
+/// # fn ocaml_frame_macro_example() {
+/// // ...somewhere else inside a function
+/// ocaml_frame!(gc, {
+///     let ocaml_string = to_ocaml!(gc, "hello OCaml!");
+///     ocaml_call!(print_endline(gc, ocaml_string)).unwrap();
+/// });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! ocaml_call {
     ( $(($obj:expr).)?$($fn:ident).+($gc:ident, $($arg:expr),+ $(,)?)) => {
@@ -230,6 +385,42 @@ macro_rules! ocaml_call {
     };
 }
 
+/// Unpacks an OCaml record into a Rust record
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
+/// struct MyStruct {
+///     int_field: i64,
+///     string_field: String,
+/// }
+///
+/// // Assuming an OCaml record declaration like:
+/// //
+/// //      type my_struct = {
+/// //          int_field: int;
+/// //          string_field: string;
+/// //      }
+/// //
+/// // NOTE: What is important is the order of the fields, not their names.
+///
+/// # fn unpack_record_example() {
+/// #   ocaml_frame!(gc, {
+/// let ocaml_struct = ocaml_call!(make_mystruct(gc, OCaml::unit())).unwrap();
+/// ocaml_unpack_record! {
+///     //  value    => RustConstructor { field: OCamlType, ... }
+///     ocaml_struct => MyStruct {
+///         int_field: OCamlInt,
+///         string_field: String,
+///     }
+/// }
+/// #   });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! ocaml_unpack_record {
     ($var:ident => $cons:ident {
@@ -251,6 +442,10 @@ macro_rules! ocaml_unpack_record {
     };
 }
 
+/// Allocates an OCaml memory block tagged with the specified value.
+///
+/// It is used internally to allocate OCaml variants, its direct use is
+/// not recommended.
 #[macro_export]
 macro_rules! ocaml_alloc_tagged_block {
     ($tag:expr, $($field:ident : $ocaml_typ:ty),+ $(,)?) => {
@@ -270,6 +465,52 @@ macro_rules! ocaml_alloc_tagged_block {
     };
 }
 
+/// Allocates an OCaml record built from a Rust record
+///
+/// Most of the `impl_to_ocaml_record!` macro will be used to define how records
+/// should be converted. This macro is useful when implementing OCaml allocation
+/// functions directly.
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
+/// struct MyStruct {
+///     int_field: u8,
+///     string_field: String,
+/// }
+///
+/// // Assuming an OCaml record declaration like:
+/// //
+/// //      type my_struct = {
+/// //          int_field: int;
+/// //          string_field: string;
+/// //      }
+/// //
+/// // NOTE: What is important is the order of the fields, not their names.
+///
+/// # fn alloc_record_example() {
+/// #   ocaml_frame!(gc, {
+/// let ms = MyStruct { int_field: 132, string_field: "blah".to_owned() };
+/// let ocaml_ms: OCamlAllocResult<MyStruct> = ocaml_alloc_record! {
+///     //  value { field: OCamlType, ... }
+///     ms {
+///         // optionally `=> expr` can be used to preprocess the field value
+///         // before the conversion into OCaml takes place.
+///         // Inside the expression, a variable with the same name as the field
+///         // is bound to a reference to the field value.
+///         int_field: OCamlInt => { *int_field as i64 },
+///         string_field: String,
+///     }
+/// };
+/// // ...
+/// # ()
+/// #   });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! ocaml_alloc_record {
     ($self:ident {
@@ -292,6 +533,38 @@ macro_rules! ocaml_alloc_record {
     };
 }
 
+/// Implements `FromOCaml` for mapping an OCaml record into a Rust record.
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
+/// struct MyStruct {
+///     int_field: i64,
+///     string_field: String,
+/// }
+///
+/// // Assuming an OCaml record declaration like:
+/// //
+/// //      type my_struct = {
+/// //          int_field: int;
+/// //          string_field: string;
+/// //      }
+/// //
+/// // NOTE: What is important is the order of the fields, not their names.
+///
+/// impl_from_ocaml_record! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // OCamlType => RustType { ... }
+///     MyStruct {
+///         int_field: OCamlInt,
+///         string_field: String,
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! impl_from_ocaml_record {
     ($ocaml_typ:ident => $rust_typ:ident {
@@ -319,6 +592,41 @@ macro_rules! impl_from_ocaml_record {
     };
 }
 
+/// Implements `ToOCaml` for mapping a Rust record into an OCaml record.
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// ```
+/// # use znfe::*;
+/// struct MyStruct {
+///     int_field: u8,
+///     string_field: String,
+/// }
+///
+/// // Assuming an OCaml record declaration like:
+/// //
+/// //      type my_struct = {
+/// //          int_field: int;
+/// //          string_field: string;
+/// //      }
+/// //
+/// // NOTE: What is important is the order of the fields, not their names.
+///
+/// impl_to_ocaml_record! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // RustType => OCamlType { ... }
+///     MyStruct {
+///         // optionally `=> expr` can be used to preprocess the field value
+///         // before the conversion into OCaml takes place.
+///         // Inside the expression, a variable with the same name as the field
+///         // is bound to a reference to the field value.
+///         int_field: OCamlInt => { *int_field as i64 },
+///         string_field: String,
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! impl_to_ocaml_record {
     ($rust_typ:ty => $ocaml_typ:ident {
@@ -338,7 +646,7 @@ macro_rules! impl_to_ocaml_record {
     ($both_typ:ident {
         $($t:tt)*
     }) => {
-        impl_to_ocaml_record! {
+        $crate::impl_to_ocaml_record! {
             $both_typ => $both_typ {
                 $($t)*
             }
@@ -346,6 +654,13 @@ macro_rules! impl_to_ocaml_record {
     };
 }
 
+/// Implements `FromOCaml` for mapping an OCaml variant into a Rust enum.
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// TODO
 #[macro_export]
 macro_rules! impl_from_ocaml_variant {
     ($ocaml_typ:ty => $rust_typ:ty {
@@ -379,6 +694,13 @@ macro_rules! impl_from_ocaml_variant {
     };
 }
 
+/// Unpacks an OCaml variant and maps it into a Rust enum.
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// TODO
 #[macro_export]
 macro_rules! ocaml_unpack_variant {
     ($self:ident => {
@@ -399,6 +721,15 @@ macro_rules! ocaml_unpack_variant {
     };
 }
 
+/// Allocates an OCaml variant, mapped from a Rust enum.
+///
+/// The conversion is exhaustive, and requires that every enum case is handled.
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// TODO
 #[macro_export]
 macro_rules! ocaml_alloc_variant {
     ($self:ident => {
@@ -415,6 +746,15 @@ macro_rules! ocaml_alloc_variant {
     };
 }
 
+/// Implements `ToOCaml` for mapping a Rust enum into an OCaml variant.
+///
+/// The conversion is exhaustive, and requires that every enum case is handled.
+///
+/// It is important that the order remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// TODO
 #[macro_export]
 macro_rules! impl_to_ocaml_variant {
     ($ocaml_typ:ty => $rust_typ:ty {
@@ -685,7 +1025,7 @@ macro_rules! expand_exported_function {
         @body $body:block
         @original_args $($original_args:tt)*
     } => {
-        $crate::expand_exported_function!(
+        $crate::expand_exported_function!{
             @name $name
             @gc { $($gc_decl)+ }
             @final_args { $($final_args)* $next_arg : f64, }
@@ -693,7 +1033,7 @@ macro_rules! expand_exported_function {
             @return { $($rtyp)* }
             @body $body
             @original_args $($original_args)*
-        );
+        }
     };
 
     // Next arg is not an uboxed float, replace with RawOCaml in output
@@ -707,7 +1047,7 @@ macro_rules! expand_exported_function {
         @body $body:block
         @original_args $($original_args:tt)*
     } => {
-        $crate::expand_exported_function!(
+        $crate::expand_exported_function!{
             @name $name
             @gc { $($gc_decl)+ }
             @final_args { $($final_args)* $next_arg : $crate::RawOCaml, }
@@ -715,7 +1055,7 @@ macro_rules! expand_exported_function {
             @return { $($rtyp)* }
             @body $body
             @original_args $($original_args)*
-        );
+        }
     };
 }
 
@@ -728,8 +1068,8 @@ macro_rules! expand_exported_function_body {
     };
 
     { @body $body:block @return $rtyp:ty } => {{
-            let retval : $rtyp = $body;
-            unsafe { retval.raw() }
+        let retval : $rtyp = $body;
+        unsafe { retval.raw() }
     }};
 
     { @body $body:block @return } => {

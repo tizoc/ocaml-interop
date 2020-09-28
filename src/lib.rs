@@ -3,9 +3,7 @@
 
 //! _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 //!
-//! [ZnFe](https://github.com/tizoc/znfe) is an OCaml<->Rust FFI with an emphasis on safety based on the ideas of [caml-oxide](https://github.com/stedolan/caml-oxide).
-//!
-//! Status: **API UNSTABLE**
+//! [ZnFe](https://github.com/simplestaking/znfe) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
 //!
 //! ## Table of Contents
 //!
@@ -197,11 +195,11 @@
 //! - Calls to functions that allocate OCaml values must be wrapped by the `ocaml_alloc!` macro. These always return a value and cannot signal failure.
 //! - Calls to functions exported by OCaml with `Callback.register` must be wrapped by the `ocaml_call!` macro. These return a value of type `Result<OCaml<T>, znfe::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
 //!
-//! Example:
+//! #### Example
 //!
 //! ```rust,no_run
 //! use znfe::{
-//!     ocaml_alloc, ocaml_call, ocaml_frame, FromOCaml, OCaml, OCamlRef, ToOCaml,
+//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, IntoRust, FromOCaml, OCaml, OCamlRef, ToOCaml,
 //!     OCamlRuntime
 //! };
 //!
@@ -231,12 +229,12 @@
 //!     // The first argument to the macro is a name for the GC handle, the second
 //!     // is the block of code that will run inside that frame.
 //!     ocaml_frame!(gc, {
-//!         // The `ToOCaml` trait provides the `to_ocaml` function to convert Rust
+//!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values. Because such conversions usually require
 //!         // the OCaml runtime to perform an allocation, calls to `to_ocaml` have
-//!         // to be made by using the `ocaml_alloc!` macro, and a GC handle has
-//!         // to be passed as an argument.
-//!         let ocaml_bytes1: OCaml<String> = ocaml_alloc!(bytes1.to_ocaml(gc));
+//!         // to be wrapped by the `ocaml_alloc!` macro. A shorter version uses
+//!         // the `to_ocaml!` macro.
+//!         let ocaml_bytes1: OCaml<String> = to_ocaml!(gc, bytes1);
 //!
 //!         // `ocaml_bytes1` is going to be referenced later, but there calls into the
 //!         // OCaml runtime that perform allocations happening before this value is used again.
@@ -247,18 +245,20 @@
 //!         // to obtain the kept value.
 //!         let ref bytes1_ref: OCamlRef<String> = gc.keep(ocaml_bytes1);
 //!
+//!         // A shorter way to write the above two lines is:
+//!         // let ref bytes1_ref = to_ocaml!(gc, bytes1).keep(gc);
+//!
 //!         // Same as above. Note that if we waited to perform this conversion
 //!         // until after `ocaml_bytes1` is used, no references would have to be
 //!         // kept for either of the two OCaml values, because they would be
 //!         // used immediately, with no allocations being performed by the
 //!         // OCaml runtime in-between.
-//!         let ocaml_bytes2: OCaml<String> = ocaml_alloc!(bytes2.to_ocaml(gc));
-//!         let ref bytes2_ref: OCamlRef<String> = gc.keep(ocaml_bytes2);
+//!         let ref bytes2_ref = to_ocaml!(gc, bytes2).keep(gc);
 //!
 //!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_int`.
 //!         // Such conversion doesn't require any allocation on the OCaml side,
-//!         // so this call doesn't have to be wrapped by `ocaml_alloc!`, and no GC handle
-//!         // is passed as an argument.
+//!         // so this call doesn't have to be wrapped by `ocaml_alloc!` or `to_ocaml!`,
+//!         // and no GC handle is passed as an argument.
 //!         let ocaml_first_n = OCaml::of_int(first_n as i64);
 //!
 //!         // To call an OCaml function (declared above in a `ocaml!` block) the
@@ -272,26 +272,26 @@
 //!             // of `ocaml_bytes1`
 //!             gc.get(bytes1_ref),
 //!             ocaml_first_n
-//!         ))
-//!         .unwrap();
+//!         )).unwrap();
 //!
 //!         // Perform the conversion of the OCaml result value into a
 //!         // Rust value while the reference is still valid because the
 //!         // `ocaml_call!` that follows will invalidate it.
 //!         // Alternatively, the result of `gc.keep(result1)` could be used
 //!         // to be able to reference the value later through an `OCamlRef` value.
-//!         let new_bytes1 = String::from_ocaml(result1);
+//!         let new_bytes1: String = result1.into_rust();
 //!         let result2 = ocaml_call!(ocaml_funcs::increment_bytes(
 //!             gc,
 //!             gc.get(bytes2_ref),
 //!             ocaml_first_n
-//!         ))
-//!         .unwrap();
+//!         )).unwrap();
 //!
-//!         // The `FromOCaml` trait provides the `from_ocaml` function to convert from
-//!         // OCaml values into OCaml values. Unlike the `to_ocaml` function, it doesn't
+//!         // The `FromOCaml` trait provides the `from_ocaml` method to convert from
+//!         // OCaml values into OCaml values. Unlike the `to_ocaml` method, it doesn't
 //!         // require a GC handle argument, because no allocation is performed by the
 //!         // OCaml runtime when converting into Rust values.
+//!         // A more convenient alternative, is to use the `into_rust` method as
+//!         // above when `result1` was converted.
 //!         (new_bytes1, String::from_ocaml(result2))
 //!     })
 //! }
@@ -324,8 +324,10 @@
 //!
 //! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `ocaml_export!` macro.
 //!
+//! #### Example
+//!
 //! ```rust,no_run
-//! use znfe::{ocaml_alloc, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, ToOCaml};
+//! use znfe::{to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, ToOCaml};
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
@@ -349,7 +351,7 @@
 //!         // Note that unlike in `ocaml_frame!` blocks, where values of type `OCaml<T>`
 //!         // cannot escape, in functions defined inside `ocaml_export!` blocks,
 //!         // only results of type `OCaml<T>` are valid.
-//!         ocaml_alloc!(vec.to_ocaml(gc))
+//!         to_ocaml!(gc, vec)
 //!     }
 //! }
 //! ```
