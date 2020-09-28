@@ -304,7 +304,7 @@
 //!     })
 //! }
 //!
-//! fn main() {
+//! fn entry_point() {
 //!     // IMPORTANT: the OCaml runtime has to be initialized first.
 //!     let ocaml_runtime = OCamlRuntime::init();
 //!     let first_n = twice(5);
