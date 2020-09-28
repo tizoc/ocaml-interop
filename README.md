@@ -72,7 +72,7 @@ Example:
 ocaml_frame!(gc, {
     let arg1 = ocaml_alloc!(arg1.to_ocaml(gc));
     let result = ocaml_call!(ocaml_function(gc, arg1, /* ..., argN */)).unwrap();
-    let ref result_ref = gc.keep(result);
+    let result_ref = &gc.keep(result);
     let arg2 = ocaml_alloc!(arg2.to_ocaml(gc));
     let another_result = ocaml_call!(ocaml_function(gc, arg2, /* ..., argN */)).unwrap();
     // ...
@@ -225,17 +225,17 @@ fn increment_bytes(bytes1: String, bytes2: String, first_n: usize) -> (String, S
         // a reference to an OCaml value that is going to be valid during the scope of
         // the current `ocaml_frame!` block. Later `gc.get(the_reference)` can be used
         // to obtain the kept value.
-        let ref bytes1_ref: OCamlRef<String> = gc.keep(ocaml_bytes1);
+        let bytes1_ref: &OCamlRef<String> = &gc.keep(ocaml_bytes1);
 
         // A shorter way to write the above two lines is:
-        // let ref bytes1_ref = to_ocaml!(gc, bytes1).keep(gc);
+        // let bytes1_ref = &to_ocaml!(gc, bytes1).keep(gc);
 
         // Same as above. Note that if we waited to perform this conversion
         // until after `ocaml_bytes1` is used, no references would have to be
         // kept for either of the two OCaml values, because they would be
         // used immediately, with no allocations being performed by the
         // OCaml runtime in-between.
-        let ref bytes2_ref = to_ocaml!(gc, bytes2).keep(gc);
+        let bytes2_ref = &to_ocaml!(gc, bytes2).keep(gc);
 
         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_int`.
         // Such conversion doesn't require any allocation on the OCaml side,

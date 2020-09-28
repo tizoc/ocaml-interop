@@ -20,8 +20,8 @@
 /// # }
 /// # fn ocaml_frame_macro_example() {
 ///     ocaml_frame!(gc, { // `gc` gets bound to the frame handle
-///         let ref hello_ocaml = to_ocaml!(gc, "hello OCaml!").keep(gc);
-///         let ref bye_ocaml = to_ocaml!(gc, "bye OCaml!").keep(gc);
+///         let hello_ocaml = &to_ocaml!(gc, "hello OCaml!").keep(gc);
+///         let bye_ocaml = &to_ocaml!(gc, "bye OCaml!").keep(gc);
 ///         ocaml_call!(print_endline(gc, gc.get(hello_ocaml)));
 ///         ocaml_call!(print_endline(gc, gc.get(bye_ocaml)));
 ///         // Values that don't need to be keept across calls can be used directly
@@ -522,7 +522,7 @@ macro_rules! ocaml_alloc_record {
                 let field_count = $crate::count_fields!($($field)*);
                 let record = gc.keep_raw($crate::internal::caml_alloc(field_count, 0));
                 $(
-                    let ref $field = $crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
+                    let $field = &$crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
                     $crate::internal::store_field(record.get_raw(), current, $field.raw());
                     current += 1;
@@ -802,7 +802,7 @@ macro_rules! prepare_field_for_mapping {
     };
 
     ($self:ident.$field:ident => $conv_expr:expr) => {{
-        let ref $field = $self.$field;
+        let $field = &$self.$field;
         $conv_expr
     }};
 }

@@ -81,7 +81,7 @@ where
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Option<ToA>> {
         if let Some(value) = self {
             ocaml_frame!(gc, {
-                let ref ocaml_value = to_ocaml!(gc, value).keep(gc);
+                let ocaml_value = &to_ocaml!(gc, value).keep(gc);
                 alloc_some(token, ocaml_value)
             })
         } else {
@@ -97,8 +97,8 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB)> {
         ocaml_frame!(gc, {
-            let ref fst = to_ocaml!(gc, self.0).keep(gc);
-            let ref snd = to_ocaml!(gc, self.1).keep(gc);
+            let fst = &to_ocaml!(gc, self.0).keep(gc);
+            let snd = &to_ocaml!(gc, self.1).keep(gc);
             alloc_tuple(token, fst, snd)
         })
     }
@@ -112,9 +112,9 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB, ToC)> {
         ocaml_frame!(gc, {
-            let ref fst = to_ocaml!(gc, self.0).keep(gc);
-            let ref snd = to_ocaml!(gc, self.1).keep(gc);
-            let ref elt3 = to_ocaml!(gc, self.2).keep(gc);
+            let fst = &to_ocaml!(gc, self.0).keep(gc);
+            let snd = &to_ocaml!(gc, self.1).keep(gc);
+            let elt3 = &to_ocaml!(gc, self.2).keep(gc);
             alloc_tuple_3(token, fst, snd, elt3)
         })
     }
@@ -129,10 +129,10 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB, ToC, ToD)> {
         ocaml_frame!(gc, {
-            let ref fst = to_ocaml!(gc, self.0).keep(gc);
-            let ref snd = to_ocaml!(gc, self.1).keep(gc);
-            let ref elt3 = to_ocaml!(gc, self.2).keep(gc);
-            let ref elt4 = to_ocaml!(gc, self.3).keep(gc);
+            let fst = &to_ocaml!(gc, self.0).keep(gc);
+            let snd = &to_ocaml!(gc, self.1).keep(gc);
+            let elt3 = &to_ocaml!(gc, self.2).keep(gc);
+            let elt4 = &to_ocaml!(gc, self.3).keep(gc);
             alloc_tuple_4(token, fst, snd, elt3, elt4)
         })
     }
@@ -153,9 +153,9 @@ where
 {
     fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<ToA>> {
         ocaml_frame!(gc, {
-            let ref mut result_ref = gc.keep(OCaml::nil());
+            let result_ref = &mut gc.keep(OCaml::nil());
             for elt in self.iter().rev() {
-                let ref ov = to_ocaml!(gc, elt).keep(gc);
+                let ov = &to_ocaml!(gc, elt).keep(gc);
                 let cons = ocaml_alloc!(alloc_cons(gc, ov, result_ref));
                 result_ref.set(cons);
             }
