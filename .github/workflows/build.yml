@@ -5,6 +5,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: avsm/setup-ocaml@v1
+        with:
+            ocaml-version: 4.09.1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -16,8 +19,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-      #- name: test examples
-      #  run: make test-examples
+      - name: test examples
+        run: make test-examples
       - name: lint
         uses: actions-rs/clippy-check@v1
         with:
