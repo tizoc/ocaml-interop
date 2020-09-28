@@ -237,11 +237,11 @@ fn increment_bytes(bytes1: String, bytes2: String, first_n: usize) -> (String, S
         // OCaml runtime in-between.
         let bytes2_ref = &to_ocaml!(gc, bytes2).keep(gc);
 
-        // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_int`.
+        // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64`.
         // Such conversion doesn't require any allocation on the OCaml side,
         // so this call doesn't have to be wrapped by `ocaml_alloc!` or `to_ocaml!`,
         // and no GC handle is passed as an argument.
-        let ocaml_first_n = OCaml::of_int(first_n as i64);
+        let ocaml_first_n = unsafe { OCaml::of_i64(first_n as i64) };
 
         // To call an OCaml function (declared above in a `ocaml!` block) the
         // `ocaml_call!` macro is used. The GC handle has to be passed as the first argument,
@@ -280,7 +280,7 @@ fn increment_bytes(bytes1: String, bytes2: String, first_n: usize) -> (String, S
 
 fn twice(num: usize) -> usize {
     ocaml_frame!(gc, {
-        let ocaml_num = OCaml::of_int(num as i64);
+        let ocaml_num = unsafe { OCaml::of_i64(num as i64) };
         let result = ocaml_call!(ocaml_funcs::twice(gc, ocaml_num));
         i64::from_ocaml(result.unwrap()) as usize
     })
@@ -319,7 +319,7 @@ ocaml_export! {
     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
     fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         let num = i64::from_ocaml(num);
-        OCaml::of_int(num * 2)
+        unsafe { OCaml::of_i64(num * 2) }
     }
 
     fn rust_increment_bytes(gc, bytes: OCaml<OCamlBytes>, first_n: OCaml<OCamlInt>) -> OCaml<OCamlBytes> {

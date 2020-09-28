@@ -31,6 +31,7 @@ pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
 }
 
 impl<'a, T> OCaml<'a, T> {
+    #[doc(hidden)]
     pub unsafe fn new<'gc>(_gc: &'a dyn GCFrameHandle<'gc>, x: RawOCaml) -> OCaml<'a, T> {
         OCaml {
             _marker: Default::default(),
@@ -38,6 +39,7 @@ impl<'a, T> OCaml<'a, T> {
         }
     }
 
+    #[doc(hidden)]
     pub unsafe fn field<F>(&self, i: UIntnat) -> OCaml<'a, F> {
         assert!(tag_val(self.raw) < tag::NO_SCAN);
         assert!(i < wosize_val(self.raw));
@@ -47,29 +49,44 @@ impl<'a, T> OCaml<'a, T> {
         }
     }
 
+    #[doc(hidden)]
     pub fn is_block(&self) -> bool {
         is_block(self.raw)
     }
 
+    #[doc(hidden)]
     pub fn is_long(&self) -> bool {
         is_long(self.raw)
     }
 
+    #[doc(hidden)]
     pub fn tag_value(&self) -> u8 {
         assert!(self.is_block());
         unsafe { tag_val(self.raw) }
     }
 
+    /// Gets the raw representation for this value reference (pointer or int).
+    ///
+    /// # Safety
+    ///
+    /// The resulting raw pointer will not be tracked, and may become invalid
+    /// after any call into the OCaml runtime. Great care must be taken when
+    /// working with these values.
     pub unsafe fn raw(&self) -> RawOCaml {
         self.raw
     }
 
+    /// Returns a tracked reference to this value.
+    ///
+    /// This method must be used with values that will be referenced after
+    /// calls into the OCaml runtime have been made.
     pub fn keep<'gc>(self, gc: &GCFrame<'gc>) -> OCamlRef<'gc, T> {
         gc.keep(self)
     }
 }
 
 impl OCaml<'static, ()> {
+    /// Returns a value that represent OCaml's unit value.
     pub fn unit() -> OCaml<'static, ()> {
         OCaml {
             _marker: Default::default(),
@@ -111,23 +128,40 @@ impl<'a> OCaml<'a, OCamlBytes> {
 }
 
 impl<'a> OCaml<'a, OCamlInt> {
-    pub fn as_int(self) -> i64 {
+    /// Converts an OCaml int to an i64.
+    pub fn as_i64(&self) -> i64 {
         unsafe { raw_ocaml_to_i64(self.raw) }
     }
 
-    pub fn of_int(n: i64) -> OCaml<'static, OCamlInt> {
+    /// Creates an OCaml int from an i64.
+    ///
+    /// # Safety
+    ///
+    /// OCaml ints are represented as 63bits + 1bit tag, so when converting
+    /// from an i64, a bit of precision is lost.
+    pub unsafe fn of_i64(n: i64) -> OCaml<'static, OCamlInt> {
         OCaml {
             _marker: Default::default(),
-            raw: unsafe { raw_ocaml_of_i64(n) },
+            raw: raw_ocaml_of_i64(n),
+        }
+    }
+
+    /// Creates an OCaml int from an i32.
+    pub fn of_i32(n: i32) -> OCaml<'static, OCamlInt> {
+        OCaml {
+            _marker: Default::default(),
+            raw: unsafe { raw_ocaml_of_i64(n as i64) },
         }
     }
 }
 
 impl<'a> OCaml<'a, bool> {
+    /// Converts an OCaml boolean into a Rust boolean.
     pub fn as_bool(self) -> bool {
         unsafe { raw_ocaml_to_i64(self.raw) != 0 }
     }
 
+    /// Creates an OCaml boolean from a Rust boolean.
     pub fn of_bool(b: bool) -> Self {
         OCaml {
             _marker: Default::default(),
@@ -137,14 +171,17 @@ impl<'a> OCaml<'a, bool> {
 }
 
 impl<'a, A> OCaml<'a, Option<A>> {
+    /// Returns true if this OCaml option value is an OCaml `None`.
     pub fn is_none(&self) -> bool {
         self.raw == NONE
     }
 
+    /// Returns true if this OCaml option value is an OCaml `Some`.
     pub fn is_some(&self) -> bool {
         self.is_block()
     }
 
+    /// Converts an OCaml `Option<T>` value into a Rust `Option<OCaml<T>>`.
     pub fn to_option(&self) -> Option<OCaml<'a, A>> {
         if self.is_none() {
             None
@@ -201,6 +238,7 @@ impl<'a, A, B, C, D> OCaml<'a, (A, B, C, D)> {
 }
 
 impl<'a, A> OCaml<'a, OCamlList<A>> {
+    /// Returns an OCaml nil (empty list) value.
     pub fn nil() -> Self {
         OCaml {
             _marker: Default::default(),
@@ -208,10 +246,12 @@ impl<'a, A> OCaml<'a, OCamlList<A>> {
         }
     }
 
+    /// Returns true if the value is OCaml's nil (empty list).
     pub fn is_empty(&self) -> bool {
         self.raw == EMPTY_LIST
     }
 
+    /// Returns the tail of an OCaml list.
     pub fn tl(&self) -> Option<OCaml<'a, A>> {
         if self.is_empty() {
             None
@@ -220,6 +260,7 @@ impl<'a, A> OCaml<'a, OCamlList<A>> {
         }
     }
 
+    /// Returns the head of an OCaml list.
     pub fn hd(&self) -> Option<OCaml<'a, A>> {
         if self.is_empty() {
             None
@@ -228,6 +269,7 @@ impl<'a, A> OCaml<'a, OCamlList<A>> {
         }
     }
 
+    /// Returns a tuple of the head and tail of an OCaml list.
     pub fn uncons(&self) -> Option<(OCaml<'a, A>, Self)> {
         if self.is_empty() {
             None

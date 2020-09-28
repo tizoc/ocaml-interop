@@ -17,6 +17,9 @@ use crate::{ocaml_alloc, ocaml_frame, to_ocaml};
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
     /// Convert to OCaml value.
+    ///
+    /// Should not be called directly, use `to_ocaml!` macro instead.
+    /// If called directly, the call should be wrapped by `ocaml_alloc!`.
     fn to_ocaml(&self, gc: OCamlAllocToken) -> OCamlAllocResult<T>;
 }
 
