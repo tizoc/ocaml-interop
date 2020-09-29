@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 /// ```compile_fail
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// let s = ocaml_frame!(gc, {
 ///    let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(gc));
@@ -13,7 +13,7 @@
 pub struct FailsWithoutOCamlCallMacro;
 
 /// ```compile_fail
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// let s = ocaml_frame!(gc, {
 ///     let arg1 = ("test".to_owned()).to_ocaml(gc);
@@ -23,7 +23,7 @@ pub struct FailsWithoutOCamlCallMacro;
 pub struct FailsWithoutOCamlAllocMacro;
 
 /// ```compile_fail
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// ocaml_frame!(gc, {
 ///     let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(gc));
@@ -35,7 +35,7 @@ pub struct FailsWithoutOCamlAllocMacro;
 pub struct LivenessFailureCheck;
 
 /// ```compile_fail
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// let s = ocaml_frame!(gc, {
 ///     let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(gc));

@@ -14,7 +14,7 @@
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! {
 /// #    fn print_endline(s: String);
 /// # }
@@ -36,7 +36,7 @@
 /// is reserved for local roots:
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { fn print_endline(s: String); }
 /// # fn ocaml_frame_macro_example() {
 ///     ocaml_frame!(gc nokeep, { // `keep` will not be available
@@ -72,7 +72,7 @@ macro_rules! ocaml_frame {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # struct MyRecord {};
 /// ocaml! {
 ///     // Declares `print_endline`, with a single `String` (`OCaml<String>` when invoked)
@@ -189,7 +189,7 @@ macro_rules! ocaml {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// ocaml_export! {
 ///     fn rust_twice(_gc nokeep, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
 ///         let num: i64 = num.into_rust();
@@ -322,7 +322,7 @@ macro_rules! ocaml_alloc {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # fn to_ocaml_macro_example() {
 ///     ocaml_frame!(gc, {
 ///         let ocaml_string: OCaml<String> = to_ocaml!(gc, "hello OCaml!");
@@ -350,7 +350,7 @@ macro_rules! to_ocaml {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// ocaml! { fn print_endline(s: String); }
 ///
 /// # fn ocaml_frame_macro_example() {
@@ -458,7 +458,7 @@ macro_rules! impl_conv_ocaml_variant {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
 /// struct MyStruct {
 ///     int_field: i64,
@@ -542,7 +542,7 @@ macro_rules! ocaml_alloc_tagged_block {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
 /// struct MyStruct {
 ///     int_field: u8,
@@ -606,7 +606,7 @@ macro_rules! ocaml_alloc_record {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
 /// struct MyStruct {
 ///     int_field: i64,
@@ -665,7 +665,7 @@ macro_rules! impl_from_ocaml_record {
 /// # Examples
 ///
 /// ```
-/// # use znfe::*;
+/// # use ocaml_interop::*;
 /// struct MyStruct {
 ///     int_field: u8,
 ///     string_field: String,

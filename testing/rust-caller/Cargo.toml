@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 edition = "2018"
 
-[dependencies.znfe]
+[dependencies.ocaml-interop]
 path = "../.."
 
 [dev-dependencies]

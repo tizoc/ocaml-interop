@@ -3,7 +3,7 @@
 
 //! _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 //!
-//! [ZnFe](https://github.com/simplestaking/znfe) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
+//! [OCaml-Interop](https://github.com/simplestaking/ocaml_interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
 //!
 //! ## Table of Contents
 //!
@@ -23,7 +23,7 @@
 //!
 //! ## How does it work
 //!
-//! ZnFe, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
+//! OCaml-Interop, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
 //!
 //! This requires that the user is explicit about delimiting blocks that interact with the OCaml runtime, and that calls into the OCaml runtime are done only inside these blocks, and wrapped by a few special macros.
 //!
@@ -40,7 +40,7 @@
 //! Example:
 //!
 //! ```rust,no_run
-//! # use znfe::*;
+//! # use ocaml_interop::*;
 //! # ocaml! { fn ocaml_function(arg1: String); }
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
@@ -60,7 +60,7 @@
 //!   --> example.rs
 //!    |
 //!    |  let result = ocaml_function(gc, arg1, ..., argN);
-//!    |                              ^^ expected struct `znfe::OCamlAllocToken`, found `&mut znfe::GCFrame<'_>`
+//!    |                              ^^ expected struct `ocaml_interop::OCamlAllocToken`, found `&mut ocaml_interop::GCFrame<'_>`
 //! ```
 //!
 //! #### Rule 2: OCaml value references
@@ -70,7 +70,7 @@
 //! Example:
 //!
 //! ```rust,no_run
-//! # use znfe::*;
+//! # use ocaml_interop::*;
 //! # ocaml! {
 //! #     fn ocaml_function(arg1: String) -> String;
 //! #     fn another_ocaml_function(arg: String);
@@ -116,7 +116,7 @@
 //! Example:
 //!
 //! ```rust,no_run
-//! # use znfe::*;
+//! # use ocaml_interop::*;
 //! # ocaml! {
 //! #     fn ocaml_function(arg1: String) -> String;
 //! #     fn another_ocaml_function(arg: String);
@@ -193,19 +193,19 @@
 //! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the `ocaml!` macro.
 //! - Blocks of code that call OCaml functions, or allocate OCaml values, must be wrapped by the `ocaml_frame!` macro.
 //! - Calls to functions that allocate OCaml values must be wrapped by the `ocaml_alloc!` macro. These always return a value and cannot signal failure.
-//! - Calls to functions exported by OCaml with `Callback.register` must be wrapped by the `ocaml_call!` macro. These return a value of type `Result<OCaml<T>, znfe::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
+//! - Calls to functions exported by OCaml with `Callback.register` must be wrapped by the `ocaml_call!` macro. These return a value of type `Result<OCaml<T>, ocaml_interop::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
 //!
 //! #### Example
 //!
 //! ```rust,no_run
-//! use znfe::{
+//! use ocaml_interop::{
 //!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, IntoRust, FromOCaml, OCaml, OCamlRef, ToOCaml,
 //!     OCamlRuntime
 //! };
 //!
 //! // To call an OCaml function, it first has to be declared inside an `ocaml!` macro block:
 //! mod ocaml_funcs {
-//!     use znfe::{ocaml, OCamlInt};
+//!     use ocaml_interop::{ocaml, OCamlInt};
 //!
 //!     ocaml! {
 //!         // OCaml: `val increment_bytes: bytes -> int -> bytes`
@@ -264,7 +264,7 @@
 //!         // To call an OCaml function (declared above in a `ocaml!` block) the
 //!         // `ocaml_call!` macro is used. The GC handle has to be passed as the first argument,
 //!         // before all the other declared arguments.
-//!         // The result of this call is a Result<OCamlValue<T>, znfe::Error>, with `Err(...)`
+//!         // The result of this call is a Result<OCamlValue<T>, ocaml_interop::Error>, with `Err(...)`
 //!         // being the result of calls for which the OCaml runtime raises an exception.
 //!         let result1 = ocaml_call!(ocaml_funcs::increment_bytes(
 //!             gc,
@@ -327,7 +327,7 @@
 //! #### Example
 //!
 //! ```rust,no_run
-//! use znfe::{to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, ToOCaml};
+//! use ocaml_interop::{to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, ToOCaml};
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
