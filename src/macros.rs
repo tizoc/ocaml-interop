@@ -757,7 +757,7 @@ macro_rules! ocaml_alloc_variant {
 /// TODO
 #[macro_export]
 macro_rules! impl_to_ocaml_variant {
-    ($ocaml_typ:ty => $rust_typ:ty {
+    ($rust_typ:ty => $ocaml_typ:ty {
         $($t:tt)*
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
