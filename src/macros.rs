@@ -385,6 +385,72 @@ macro_rules! ocaml_call {
     };
 }
 
+/// Implements conversion between a Rust struct and an OCaml record.
+///
+/// See the `impl_to_ocaml_record!` and `impl_from_ocaml_record!` macros
+/// for more details.
+#[macro_export]
+macro_rules! impl_conv_ocaml_record {
+    ($rust_typ:ident => $ocaml_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
+    }) => {
+        $crate::impl_to_ocaml_record! {
+            $rust_typ => $ocaml_typ {
+                $($field : $ocaml_field_typ $(=> $conv_expr)?),+
+            }
+        }
+
+        $crate::impl_from_ocaml_record! {
+            $ocaml_typ => $rust_typ {
+                $($field : $ocaml_field_typ),+
+            }
+        }
+    };
+
+    ($both_typ:ident {
+        $($t:tt)*
+    }) => {
+        $crate::impl_conv_ocaml_record! {
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+}
+
+/// Implements conversion between a Rust enum and an OCaml variant.
+///
+/// See the `impl_to_ocaml_variant!` and `impl_from_ocaml_variant!` macros
+/// for more details.
+#[macro_export]
+macro_rules! impl_conv_ocaml_variant {
+    ($rust_typ:ty => $ocaml_typ:ty {
+        $($($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? $(=> $conv:expr)?),+ $(,)?
+    }) => {
+        $crate::impl_to_ocaml_variant! {
+            $rust_typ => $ocaml_typ {
+                $($($tag)::+ $(($($slot_name: $slot_typ),+))? $(=> $conv)?),+
+            }
+        }
+
+        $crate::impl_from_ocaml_variant! {
+            $ocaml_typ => $rust_typ {
+                $($($tag)::+ $(($($slot_name: $slot_typ),+))?),+
+            }
+        }
+    };
+
+    ($both_typ:ty {
+        $($t:tt)*
+    }) => {
+        $crate::impl_conv_ocaml_variant!{
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+}
+
 /// Unpacks an OCaml record into a Rust record
 ///
 /// It is important that the order remains the same as in the OCaml type declaration.
