@@ -89,27 +89,6 @@ macro_rules! ocaml_frame {
 macro_rules! ocaml {
     () => ();
 
-    ($vis:vis alloc fn $name:ident($($field:ident: $typ:ty),+ $(,)?) -> $rtyp:ty; $($t:tt)*) => {
-        $vis unsafe fn $name(
-            _token: $crate::OCamlAllocToken,
-            $($field: &dyn $crate::ToOCaml<$typ>),+
-        ) -> $crate::OCamlAllocResult<$rtyp> {
-            $crate::ocaml_frame!(gc, {
-                let mut current = 0;
-                let mut field_count = $crate::count_fields!($($field)*);
-                let record = gc.keep_raw($crate::internal::caml_alloc(field_count, 0));
-                $(
-                    let $field: $crate::OCaml<$typ> = $crate::to_ocaml!(gc, $field);
-                    $crate::internal::store_field(record.get_raw(), current, $field.raw());
-                    current += 1;
-                )+
-                $crate::OCamlAllocResult::of(record.get_raw())
-            })
-        }
-
-        $crate::ocaml!($($t)*);
-    };
-
     ($vis:vis fn $name:ident(
         $arg:ident: $typ:ty $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
@@ -1149,6 +1128,8 @@ macro_rules! expand_exported_function_body {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! expand_exported_function_return {
+    () => { $crate::RawOCaml };
+
     (f64) => { f64 };
 
     ($rtyp:ty) => { $crate::RawOCaml };
