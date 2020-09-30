@@ -3,7 +3,7 @@
 
 //! _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 //!
-//! [ocaml-interop](https://github.com/simplestaking/ocaml_interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
+//! [ocaml-interop](https://github.com/simplestaking/ocaml-interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
 //!
 //! ## Table of Contents
 //!
