@@ -12,13 +12,13 @@ pub unsafe trait FromOCaml<T> {
 
 unsafe impl FromOCaml<OCamlInt> for i64 {
     fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
-        v.as_int()
+        v.as_i64()
     }
 }
 
 unsafe impl FromOCaml<OCamlInt> for i32 {
     fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
-        v.as_int() as i32
+        v.as_i64() as i32
     }
 }
 

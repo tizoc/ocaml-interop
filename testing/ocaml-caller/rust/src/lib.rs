@@ -1,15 +1,15 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use znfe::{
+use ocaml_interop::{
     ocaml_alloc, ocaml_export, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64,
     OCamlList, ToOCaml,
 };
 
 ocaml_export! {
-    fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+    fn rust_twice(_gc nokeep, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         let num: i64 = num.into_rust();
-        OCaml::of_int(num * 2)
+        unsafe { OCaml::of_i64(num * 2) }
     }
 
     fn rust_twice_boxed_i64(gc, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {

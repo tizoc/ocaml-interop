@@ -8,6 +8,6 @@ edition = "2018"
 crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
-znfe = { path = "../../../../.." }
+ocaml-interop = { path = "../../../../.." }
 # Above is for building with dune, bellow is for biulding from this directory
-# znfe = { path = "../../.." }
+# ocaml-interop = { path = "../../.." }
