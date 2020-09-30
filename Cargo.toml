@@ -6,3 +6,4 @@ license = "MIT"
 description = "Utilities for Rust and OCaml interoperability"
 homepage = "http://github.com/simplestaking/ocaml-interop"
 repository = "http://github.com/simplestaking/ocaml-interop"
+keywords = ["ocaml", "rust", "ffi", "interop"]
