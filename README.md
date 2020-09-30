@@ -1,8 +1,16 @@
 # ocaml-interop
 
+<a href="https://crates.io/crates/ocaml">
+    <img src="https://img.shields.io/crates/v/ocaml-interop.svg">
+</a>
+
 _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 
 [ocaml-interop](https://github.com/simplestaking/ocaml-interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
+
+Read the full documentation [here](https://docs.rs/ocaml-interop/).
+
+Report issues on [Github](https://github.com/simplestaking/ocaml-interop/issues).
 
 ## Table of Contents
 
@@ -17,8 +25,6 @@ ocaml-interop, just like [caml-oxide](https://github.com/stedolan/caml-oxide), e
 This requires that the user is explicit about delimiting blocks that interact with the OCaml runtime, and that calls into the OCaml runtime are done only inside these blocks, and wrapped by a few special macros.
 
 ## A quick taste
-
-For the complete documentation please see [here](https://docs.rs/ocaml-interop).
 
 ### Convert between plain OCaml and Rust values
 
