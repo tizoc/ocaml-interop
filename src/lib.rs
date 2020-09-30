@@ -3,7 +3,7 @@
 
 //! _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 //!
-//! [OCaml-Interop](https://github.com/simplestaking/ocaml_interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
+//! [ocaml-interop](https://github.com/simplestaking/ocaml_interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
 //!
 //! ## Table of Contents
 //!
@@ -23,7 +23,7 @@
 //!
 //! ## How does it work
 //!
-//! OCaml-Interop, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
+//! ocaml-interop, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
 //!
 //! This requires that the user is explicit about delimiting blocks that interact with the OCaml runtime, and that calls into the OCaml runtime are done only inside these blocks, and wrapped by a few special macros.
 //!
