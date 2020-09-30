@@ -1,8 +1,10 @@
 # ocaml-interop
 
+![build](https://github.com/simplestaking/ocaml-interop/workflows/build/badge.svg)
 <a href="https://crates.io/crates/ocaml">
     <img src="https://img.shields.io/crates/v/ocaml-interop.svg">
 </a>
+
 
 _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 
