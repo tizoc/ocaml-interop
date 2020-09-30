@@ -1,6 +1,6 @@
 [package]
 name = "ocaml-interop"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 license = "MIT"
 description = "Utilities for Rust and OCaml interoperability"
