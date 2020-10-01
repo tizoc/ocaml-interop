@@ -96,32 +96,58 @@ impl OCaml<'static, ()> {
 }
 
 impl<'a> OCaml<'a, String> {
-    pub unsafe fn as_bytes(&self) -> &'a [u8] {
+    /// Returns an `[u8]` reference to the internal bytes of this value.
+    pub fn as_bytes(&self) -> &'a [u8] {
         let s = self.raw;
-        assert!(tag_val(s) == tag::STRING);
-        slice::from_raw_parts(string_val(s), caml_string_length(s))
+        unsafe {
+            assert!(tag_val(s) == tag::STRING);
+            slice::from_raw_parts(string_val(s), caml_string_length(s))
+        }
     }
 
-    pub unsafe fn as_str(&self) -> &'a str {
+    /// Returns a `str` reference to the internal bytes of this value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the bytes do not form a valid utf8 string.
+    pub fn as_str(&self) -> &'a str {
         str::from_utf8(self.as_bytes()).unwrap()
     }
 
+    /// Returns a `str` reference to the internal bytes of this value.
+    ///
+    /// # Safety
+    ///
+    /// No checks are performed to ensure that the returned value is a valid utf8 string.
     pub unsafe fn as_str_unchecked(&self) -> &'a str {
         str::from_utf8_unchecked(self.as_bytes())
     }
 }
 
 impl<'a> OCaml<'a, OCamlBytes> {
-    pub unsafe fn as_bytes(&self) -> &'a [u8] {
+    /// Returns an `[u8]` reference to the internal bytes of this value.
+    pub fn as_bytes(&self) -> &'a [u8] {
         let s = self.raw;
-        assert!(tag_val(s) == tag::STRING);
-        slice::from_raw_parts(string_val(s), caml_string_length(s))
+        unsafe {
+            assert!(tag_val(s) == tag::STRING);
+            slice::from_raw_parts(string_val(s), caml_string_length(s))
+        }
     }
 
-    pub unsafe fn as_str(&self) -> &'a str {
+    /// Returns a `str` reference to the internal bytes of this value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the bytes do not form a valid utf8 string.
+    pub fn as_str(&self) -> &'a str {
         str::from_utf8(self.as_bytes()).unwrap()
     }
 
+    /// Returns a `str` reference to the internal bytes of this value.
+    ///
+    /// # Safety
+    ///
+    /// No checks are performed to ensure that the returned value is a valid utf8 string.
     pub unsafe fn as_str_unchecked(&self) -> &'a str {
         str::from_utf8_unchecked(self.as_bytes())
     }

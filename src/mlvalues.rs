@@ -120,6 +120,7 @@ pub unsafe fn field_val(val: RawOCaml, i: UIntnat) -> *mut RawOCaml {
     (val as *mut RawOCaml).add(i)
 }
 
+#[doc(hidden)]
 #[inline]
 pub unsafe fn raw_ocaml_to_i64(raw: RawOCaml) -> i64 {
     assert!(!is_block(raw));

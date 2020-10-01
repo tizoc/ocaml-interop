@@ -52,6 +52,7 @@ extern "C" {
 //     value caml__temp_val = (val); \
 //     caml_modify (&Field ((block), caml__temp_offset), caml__temp_val); \
 //   }while(0)
+#[doc(hidden)]
 #[inline]
 pub unsafe fn store_field(block: RawOCaml, offset: MlsizeT, val: RawOCaml) {
     // TODO: see if all this can be made prettier
@@ -80,6 +81,7 @@ impl<'gc> GCFrame<'gc> {
         self
     }
 
+    #[doc(hidden)]
     pub unsafe fn initialize_empty(&mut self) -> &mut Self {
         self
     }
@@ -96,6 +98,7 @@ impl<'gc> GCFrame<'gc> {
         make_ocaml(reference.cell.get())
     }
 
+    #[doc(hidden)]
     pub unsafe fn token(&self) -> OCamlAllocToken {
         OCamlAllocToken {}
     }
@@ -123,6 +126,7 @@ impl<'gc> GCFrameNoKeep<'gc> {
         self
     }
 
+    #[doc(hidden)]
     pub unsafe fn token(&self) -> OCamlAllocToken {
         OCamlAllocToken {}
     }
