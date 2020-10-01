@@ -8,10 +8,7 @@ use ocaml_interop::{
 };
 
 mod ocaml {
-    use ocaml_interop::{
-        ocaml, OCamlAllocResult, OCamlAllocToken, OCamlInt, OCamlInt32, OCamlInt64, OCamlList,
-        ToOCaml,
-    };
+    use ocaml_interop::{impl_to_ocaml_record, ocaml, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
 
     pub struct TestRecord {
         pub i: i64,
@@ -22,18 +19,18 @@ mod ocaml {
         pub t: (i64, f64),
     }
 
-    unsafe impl ToOCaml<TestRecord> for TestRecord {
-        fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<TestRecord> {
-            unsafe {
-                alloc_test_record(
-                    token, &self.i, &self.f, &self.i32, &self.i64, &self.s, &self.t,
-                )
-            }
+    impl_to_ocaml_record! {
+        TestRecord {
+            i: OCamlInt,
+            f: f64,
+            i32: OCamlInt32,
+            i64: OCamlInt64,
+            s: String,
+            t: (OCamlInt, f64),
         }
     }
 
     ocaml! {
-        pub alloc fn alloc_test_record(i: OCamlInt, f: f64, i32: OCamlInt32, i64: OCamlInt64, s: String, t: (OCamlInt, f64)) -> TestRecord;
         pub fn increment_bytes(bytes: String, first_n: OCamlInt) -> String;
         pub fn increment_ints_list(ints: OCamlList<OCamlInt>) -> OCamlList<OCamlInt>;
         pub fn twice(num: OCamlInt) -> OCamlInt;
