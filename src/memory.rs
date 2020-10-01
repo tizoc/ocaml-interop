@@ -86,14 +86,17 @@ impl<'gc> GCFrame<'gc> {
         self
     }
 
+    /// Returns a GC tracked reference to an OCaml value.
     pub fn keep<T>(&self, value: OCaml<T>) -> OCamlRef<'gc, T> {
         OCamlRef::new(self, value)
     }
 
+    /// Returns a GC tracked reference to an raw OCaml pointer.
     pub fn keep_raw(&self, value: RawOCaml) -> OCamlRawRef<'gc> {
         OCamlRawRef::new(self, value)
     }
 
+    /// Returns the OCaml valued to which this GC tracked reference points to.
     pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
         make_ocaml(reference.cell.get())
     }
@@ -160,7 +163,7 @@ unsafe fn free_local_root_cell(cell: &Cell<RawOCaml>) {
     block.nitems -= 1;
 }
 
-/// `OCamlRef<T>` is reference to an `OCaml<T>` value that is tracked by the GC.
+/// `OCamlRef<T>` is a reference to an `OCaml<T>` value that is tracked by the GC.
 ///
 /// Unlike `OCaml<T>` values, it can be re-referenced after OCaml allocations.
 pub struct OCamlRef<'a, T> {
@@ -183,10 +186,12 @@ impl<'a, T> OCamlRef<'a, T> {
         }
     }
 
+    /// Updates the value of this GC tracked reference.
     pub fn set(&mut self, x: OCaml<T>) {
         self.cell.set(unsafe { x.raw() });
     }
 
+    /// Gets the raw value contained by this reference.
     pub fn get_raw(&self) -> RawOCaml {
         self.cell.get()
     }
@@ -199,10 +204,12 @@ impl<'a> OCamlRawRef<'a> {
         OCamlRawRef { cell }
     }
 
+    /// Updates the raw value of this GC tracked reference.
     pub fn set_raw(&mut self, x: RawOCaml) {
         self.cell.set(x);
     }
 
+    /// Gets the raw value contained by this reference.
     pub fn get_raw(&self) -> RawOCaml {
         self.cell.get()
     }
@@ -226,7 +233,7 @@ pub struct OCamlAllocResult<T> {
     _marker: marker::PhantomData<T>,
 }
 
-// Allocation result that has been marked by the GC.
+/// Allocation result that has been marked by the GC.
 pub struct GCMarkedResult<T> {
     raw: RawOCaml,
     _marker: marker::PhantomData<T>,
