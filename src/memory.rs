@@ -177,6 +177,7 @@ pub struct OCamlRawRef<'a> {
 }
 
 impl<'a, T> OCamlRef<'a, T> {
+    #[doc(hidden)]
     pub fn new<'gc>(gc: &GCFrame<'gc>, x: OCaml<T>) -> OCamlRef<'gc, T> {
         let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
         cell.set(unsafe { x.raw() });
@@ -198,6 +199,7 @@ impl<'a, T> OCamlRef<'a, T> {
 }
 
 impl<'a> OCamlRawRef<'a> {
+    #[doc(hidden)]
     pub fn new<'gc>(gc: &GCFrame<'gc>, x: RawOCaml) -> OCamlRawRef<'gc> {
         let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
         cell.set(x);

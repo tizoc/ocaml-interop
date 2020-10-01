@@ -10,7 +10,7 @@ pub type UIntnat = usize;
 /// `OCaml<Intnat>` is an OCaml integer (tagged and unboxed) value.
 pub type Intnat = isize;
 
-/// Represent OCaml `value` values (fixnums or pointers).
+/// Represents OCaml `value` values (fixnums or pointers).
 pub type RawOCaml = isize;
 pub type MlsizeT = UIntnat;
 

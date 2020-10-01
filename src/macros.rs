@@ -256,11 +256,22 @@ macro_rules! ocaml_export {
 
 /// Calls an OCaml allocator function.
 ///
-/// TODO: docs
+/// Useful for calling functions that construct new values and never raise an exception.
+///
+/// It is used internally by the `to_ocaml` macro, and may be used directly only in rare occasions.
 ///
 /// # Examples
 ///
-/// TODO
+/// ```
+/// # use ocaml_interop::*;
+/// # fn to_ocaml_macro_example() {
+///     let hello_string = "hello OCaml!";
+///     ocaml_frame!(gc, {
+///         let ocaml_string: OCaml<String> = ocaml_alloc!(hello_string.to_ocaml(gc));
+///         // ...
+///     });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! ocaml_alloc {
     ( $(($obj:expr).)?$($fn:ident).+($gc:ident $(,)?) ) => {
@@ -522,7 +533,6 @@ macro_rules! ocaml_alloc_tagged_block {
 ///
 /// ```
 /// # use ocaml_interop::*;
-/// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
 /// struct MyStruct {
 ///     int_field: u8,
 ///     string_field: String,
@@ -705,7 +715,36 @@ macro_rules! impl_to_ocaml_record {
 ///
 /// # Examples
 ///
-/// TODO
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement =
+/// //        | StepLeft
+/// //        | StepRight
+/// //        | Rotate of float
+/// //
+/// // NOTE: What is important is the order of the tags, not their names.
+///
+/// impl_from_ocaml_variant! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // OCamlType => RustType { ... }
+///     Movement {
+///         // Alternative: StepLeft  => Movement::StepLeft
+///         //              <anyname> => <build-expr>
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: f64),
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! impl_from_ocaml_variant {
     ($ocaml_typ:ty => $rust_typ:ty {
@@ -745,7 +784,40 @@ macro_rules! impl_from_ocaml_variant {
 ///
 /// # Examples
 ///
-/// TODO
+/// ```
+/// # use ocaml_interop::*;
+/// # ocaml! { fn make_ocaml_movement(unit: ()) -> Movement; }
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type my_struct =
+/// //        | StepLeft
+/// //        | StepRight
+/// //        | Rotate of float
+/// //
+/// // NOTE: What is important is the order of the tags, not their names.
+///
+/// # fn unpack_variant_example() {
+/// #   ocaml_frame!(gc, {
+/// let ocaml_variant = ocaml_call!(make_ocaml_movement(gc, OCaml::unit())).unwrap();
+/// let result = ocaml_unpack_variant! {
+///     ocaml_variant => {
+///         // Alternative: StepLeft  => Movement::StepLeft
+///         //              <anyname> => <build-expr>
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: f64),
+///     }
+/// }.unwrap();
+/// // ...
+/// #   });
+/// # }
 #[macro_export]
 macro_rules! ocaml_unpack_variant {
     ($self:ident => {
@@ -774,7 +846,39 @@ macro_rules! ocaml_unpack_variant {
 ///
 /// # Examples
 ///
-/// TODO
+/// ```
+/// # use ocaml_interop::*;
+/// # ocaml! { fn make_ocaml_movement(unit: ()) -> Movement; }
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement =
+/// //        | StepLeft
+/// //        | StepRight
+/// //        | Rotate of float
+/// //
+/// // NOTE: What is important is the order of the tags, not their names.
+///
+/// # fn alloc_variant_example() {
+/// #   ocaml_frame!(gc, {
+/// let movement = Movement::Rotate(180.0);
+/// let ocaml_movement: OCamlAllocResult<Movement> = ocaml_alloc_variant! {
+///     movement => {
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: f64),
+///     }
+/// };
+/// // ...
+/// #   });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! ocaml_alloc_variant {
     ($self:ident => {
@@ -799,7 +903,36 @@ macro_rules! ocaml_alloc_variant {
 ///
 /// # Examples
 ///
-/// TODO
+/// # Examples
+///
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement =
+/// //        | StepLeft
+/// //        | StepRight
+/// //        | Rotate of float
+/// //
+/// // NOTE: What is important is the order of the tags, not their names.
+///
+/// impl_to_ocaml_variant! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // RustType => OCamlType { ... }
+///     Movement {
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: f64),
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! impl_to_ocaml_variant {
     ($rust_typ:ty => $ocaml_typ:ty {
