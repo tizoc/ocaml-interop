@@ -34,4 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Nothing.
 
-[Unreleased]: https://github.com/simplestaking/tezedge/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.2.4...HEAD
