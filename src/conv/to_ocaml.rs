@@ -65,23 +65,29 @@ unsafe impl ToOCaml<bool> for bool {
     }
 }
 
-unsafe impl<T: AsRef<str>> ToOCaml<String> for T {
+unsafe impl<T> ToOCaml<String> for T
+where
+    T: AsRef<str>,
+{
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<String> {
         alloc_string(token, self.as_ref())
     }
 }
 
-unsafe impl<T: AsRef<[u8]>> ToOCaml<OCamlBytes> for T {
+unsafe impl<T> ToOCaml<OCamlBytes> for T
+where
+    T: AsRef<[u8]>,
+{
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlBytes> {
         alloc_bytes(token, self.as_ref())
     }
 }
 
-unsafe impl<A, ToA> ToOCaml<Option<ToA>> for Option<A>
+unsafe impl<A, OCamlA> ToOCaml<Option<OCamlA>> for Option<A>
 where
-    A: ToOCaml<ToA>,
+    A: ToOCaml<OCamlA>,
 {
-    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Option<ToA>> {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Option<OCamlA>> {
         if let Some(value) = self {
             ocaml_frame!(gc, {
                 let ocaml_value = &to_ocaml!(gc, value).keep(gc);
@@ -93,12 +99,12 @@ where
     }
 }
 
-unsafe impl<A, B, ToA, ToB> ToOCaml<(ToA, ToB)> for (A, B)
+unsafe impl<A, B, OCamlA, OCamlB> ToOCaml<(OCamlA, OCamlB)> for (A, B)
 where
-    A: ToOCaml<ToA>,
-    B: ToOCaml<ToB>,
+    A: ToOCaml<OCamlA>,
+    B: ToOCaml<OCamlB>,
 {
-    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB)> {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(OCamlA, OCamlB)> {
         ocaml_frame!(gc, {
             let fst = &to_ocaml!(gc, self.0).keep(gc);
             let snd = &to_ocaml!(gc, self.1).keep(gc);
@@ -107,13 +113,13 @@ where
     }
 }
 
-unsafe impl<A, B, C, ToA, ToB, ToC> ToOCaml<(ToA, ToB, ToC)> for (A, B, C)
+unsafe impl<A, B, C, OCamlA, OCamlB, OCamlC> ToOCaml<(OCamlA, OCamlB, OCamlC)> for (A, B, C)
 where
-    A: ToOCaml<ToA>,
-    B: ToOCaml<ToB>,
-    C: ToOCaml<ToC>,
+    A: ToOCaml<OCamlA>,
+    B: ToOCaml<OCamlB>,
+    C: ToOCaml<OCamlC>,
 {
-    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB, ToC)> {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(OCamlA, OCamlB, OCamlC)> {
         ocaml_frame!(gc, {
             let fst = &to_ocaml!(gc, self.0).keep(gc);
             let snd = &to_ocaml!(gc, self.1).keep(gc);
@@ -123,14 +129,18 @@ where
     }
 }
 
-unsafe impl<A, B, C, D, ToA, ToB, ToC, ToD> ToOCaml<(ToA, ToB, ToC, ToD)> for (A, B, C, D)
+unsafe impl<A, B, C, D, OCamlA, OCamlB, OCamlC, OCamlD> ToOCaml<(OCamlA, OCamlB, OCamlC, OCamlD)>
+    for (A, B, C, D)
 where
-    A: ToOCaml<ToA>,
-    B: ToOCaml<ToB>,
-    C: ToOCaml<ToC>,
-    D: ToOCaml<ToD>,
+    A: ToOCaml<OCamlA>,
+    B: ToOCaml<OCamlB>,
+    C: ToOCaml<OCamlC>,
+    D: ToOCaml<OCamlD>,
 {
-    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(ToA, ToB, ToC, ToD)> {
+    fn to_ocaml(
+        &self,
+        token: OCamlAllocToken,
+    ) -> OCamlAllocResult<(OCamlA, OCamlB, OCamlC, OCamlD)> {
         ocaml_frame!(gc, {
             let fst = &to_ocaml!(gc, self.0).keep(gc);
             let snd = &to_ocaml!(gc, self.1).keep(gc);
@@ -141,20 +151,20 @@ where
     }
 }
 
-unsafe impl<A, ToA> ToOCaml<OCamlList<ToA>> for Vec<A>
+unsafe impl<A, OCamlA> ToOCaml<OCamlList<OCamlA>> for Vec<A>
 where
-    A: ToOCaml<ToA>,
+    A: ToOCaml<OCamlA>,
 {
-    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<ToA>> {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<OCamlA>> {
         (&self).to_ocaml(token)
     }
 }
 
-unsafe impl<A, ToA> ToOCaml<OCamlList<ToA>> for &Vec<A>
+unsafe impl<A, OCamlA> ToOCaml<OCamlList<OCamlA>> for &Vec<A>
 where
-    A: ToOCaml<ToA>,
+    A: ToOCaml<OCamlA>,
 {
-    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<ToA>> {
+    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<OCamlA>> {
         ocaml_frame!(gc, {
             let result_ref = &mut gc.keep(OCaml::nil());
             for elt in self.iter().rev() {

@@ -78,11 +78,11 @@ unsafe impl FromOCaml<OCamlBytes> for String {
     }
 }
 
-unsafe impl<A, FromA> FromOCaml<Option<FromA>> for Option<A>
+unsafe impl<A, OCamlA> FromOCaml<Option<OCamlA>> for Option<A>
 where
-    A: FromOCaml<FromA>,
+    A: FromOCaml<OCamlA>,
 {
-    fn from_ocaml(v: OCaml<Option<FromA>>) -> Self {
+    fn from_ocaml(v: OCaml<Option<OCamlA>>) -> Self {
         if let Some(value) = v.to_option() {
             Some(A::from_ocaml(value))
         } else {
@@ -91,23 +91,23 @@ where
     }
 }
 
-unsafe impl<A, B, FromA, FromB> FromOCaml<(FromA, FromB)> for (A, B)
+unsafe impl<A, B, OCamlA, OCamlB> FromOCaml<(OCamlA, OCamlB)> for (A, B)
 where
-    A: FromOCaml<FromA>,
-    B: FromOCaml<FromB>,
+    A: FromOCaml<OCamlA>,
+    B: FromOCaml<OCamlB>,
 {
-    fn from_ocaml(v: OCaml<(FromA, FromB)>) -> Self {
+    fn from_ocaml(v: OCaml<(OCamlA, OCamlB)>) -> Self {
         (A::from_ocaml(v.fst()), B::from_ocaml(v.snd()))
     }
 }
 
-unsafe impl<A, B, C, FromA, FromB, FromC> FromOCaml<(FromA, FromB, FromC)> for (A, B, C)
+unsafe impl<A, B, C, OCamlA, OCamlB, OCamlC> FromOCaml<(OCamlA, OCamlB, OCamlC)> for (A, B, C)
 where
-    A: FromOCaml<FromA>,
-    B: FromOCaml<FromB>,
-    C: FromOCaml<FromC>,
+    A: FromOCaml<OCamlA>,
+    B: FromOCaml<OCamlB>,
+    C: FromOCaml<OCamlC>,
 {
-    fn from_ocaml(v: OCaml<(FromA, FromB, FromC)>) -> Self {
+    fn from_ocaml(v: OCaml<(OCamlA, OCamlB, OCamlC)>) -> Self {
         (
             A::from_ocaml(v.fst()),
             B::from_ocaml(v.snd()),
@@ -116,15 +116,15 @@ where
     }
 }
 
-unsafe impl<A, B, C, D, FromA, FromB, FromC, FromD> FromOCaml<(FromA, FromB, FromC, FromD)>
+unsafe impl<A, B, C, D, OCamlA, OCamlB, OCamlC, OCamlD> FromOCaml<(OCamlA, OCamlB, OCamlC, OCamlD)>
     for (A, B, C, D)
 where
-    A: FromOCaml<FromA>,
-    B: FromOCaml<FromB>,
-    C: FromOCaml<FromC>,
-    D: FromOCaml<FromD>,
+    A: FromOCaml<OCamlA>,
+    B: FromOCaml<OCamlB>,
+    C: FromOCaml<OCamlC>,
+    D: FromOCaml<OCamlD>,
 {
-    fn from_ocaml(v: OCaml<(FromA, FromB, FromC, FromD)>) -> Self {
+    fn from_ocaml(v: OCaml<(OCamlA, OCamlB, OCamlC, OCamlD)>) -> Self {
         (
             A::from_ocaml(v.fst()),
             B::from_ocaml(v.snd()),
@@ -134,11 +134,11 @@ where
     }
 }
 
-unsafe impl<A, FromA> FromOCaml<OCamlList<FromA>> for Vec<A>
+unsafe impl<A, OCamlA> FromOCaml<OCamlList<OCamlA>> for Vec<A>
 where
-    A: FromOCaml<FromA>,
+    A: FromOCaml<OCamlA>,
 {
-    fn from_ocaml(v: OCaml<OCamlList<FromA>>) -> Self {
+    fn from_ocaml(v: OCaml<OCamlList<OCamlA>>) -> Self {
         // TODO: pre-calculate actual required capacity?
         let mut vec = Vec::new();
         let mut current = v;
