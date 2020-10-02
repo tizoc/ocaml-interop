@@ -13,6 +13,7 @@ use crate::{
     OCamlRef,
 };
 use crate::{ocaml_alloc, ocaml_frame, to_ocaml};
+use std::str;
 
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
@@ -65,21 +66,60 @@ unsafe impl ToOCaml<bool> for bool {
     }
 }
 
-unsafe impl<T> ToOCaml<String> for T
-where
-    T: AsRef<str>,
-{
+unsafe impl ToOCaml<String> for &str {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<String> {
-        alloc_string(token, self.as_ref())
+        alloc_string(token, self)
     }
 }
 
-unsafe impl<T> ToOCaml<OCamlBytes> for T
-where
-    T: AsRef<[u8]>,
-{
+unsafe impl ToOCaml<OCamlBytes> for &str {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlBytes> {
-        alloc_bytes(token, self.as_ref())
+        alloc_bytes(token, self.as_bytes())
+    }
+}
+
+unsafe impl ToOCaml<OCamlBytes> for &[u8] {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlBytes> {
+        alloc_bytes(token, self)
+    }
+}
+
+unsafe impl ToOCaml<String> for &[u8] {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<String> {
+        alloc_string(token, unsafe { str::from_utf8_unchecked(self) })
+    }
+}
+
+unsafe impl ToOCaml<String> for String {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<String> {
+        self.as_str().to_ocaml(token)
+    }
+}
+
+unsafe impl ToOCaml<OCamlBytes> for String {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlBytes> {
+        self.as_str().to_ocaml(token)
+    }
+}
+
+unsafe impl ToOCaml<String> for Vec<u8> {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<String> {
+        self.as_slice().to_ocaml(token)
+    }
+}
+
+unsafe impl ToOCaml<OCamlBytes> for Vec<u8> {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlBytes> {
+        self.as_slice().to_ocaml(token)
+    }
+}
+
+unsafe impl<A, OCamlA> ToOCaml<OCamlA> for Box<A>
+where
+    A: ToOCaml<OCamlA>,
+{
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlA> {
+        self.as_ref().to_ocaml(token)
     }
 }
 

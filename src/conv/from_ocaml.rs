@@ -78,6 +78,12 @@ unsafe impl FromOCaml<OCamlBytes> for String {
     }
 }
 
+unsafe impl<OCamlT, T: FromOCaml<OCamlT>> FromOCaml<OCamlT> for Box<T> {
+    fn from_ocaml(v: OCaml<OCamlT>) -> Self {
+        Box::new(T::from_ocaml(v))
+    }
+}
+
 unsafe impl<A, OCamlA> FromOCaml<Option<OCamlA>> for Option<A>
 where
     A: FromOCaml<OCamlA>,

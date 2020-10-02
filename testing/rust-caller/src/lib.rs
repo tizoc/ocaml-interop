@@ -14,7 +14,7 @@ mod ocaml {
         pub i: i64,
         pub f: f64,
         pub i32: i32,
-        pub i64: i64,
+        pub i64: Box<i64>,
         pub s: String,
         pub t: (i64, f64),
     }
@@ -169,7 +169,7 @@ fn test_record_conversion() {
         i: 10,
         f: 5.0,
         i32: 10,
-        i64: 10,
+        i64: Box::new(10),
         s: "string".to_owned(),
         t: (10, 5.0),
     };
