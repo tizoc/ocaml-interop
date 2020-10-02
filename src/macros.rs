@@ -782,6 +782,11 @@ macro_rules! impl_from_ocaml_variant {
 ///
 /// It is important that the order remains the same as in the OCaml type declaration.
 ///
+/// # Note
+///
+/// Unlike with `ocaml_unpack_record!`, the result of `ocaml_unpack_variant!` is a `Result` value.
+/// An error will be returned in the case of an expected tag value. This may change in the future.
+///
 /// # Examples
 ///
 /// ```
