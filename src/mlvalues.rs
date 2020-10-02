@@ -37,6 +37,9 @@ pub struct OCamlInt32 {}
 /// `OCaml<OCamlInt64>` is a reference to an OCaml `Int64.t` (boxed `int64`) value.
 pub struct OCamlInt64 {}
 
+/// `OCaml<OCamlFloat>` is a reference to an OCaml `float` (boxed `float`) value.
+pub struct OCamlFloat {}
+
 // #define Val_unit Val_int(0)
 pub const UNIT: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 

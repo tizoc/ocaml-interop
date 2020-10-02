@@ -1,8 +1,9 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::tag;
-use crate::mlvalues::{Intnat, MlsizeT, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
+use crate::mlvalues::{
+    tag, Intnat, MlsizeT, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+};
 use crate::value::{make_ocaml, OCaml};
 use std::cell::Cell;
 use std::marker;
@@ -286,7 +287,7 @@ pub fn alloc_int64(_token: OCamlAllocToken, i: i64) -> OCamlAllocResult<OCamlInt
     OCamlAllocResult::of(unsafe { caml_copy_int64(i) })
 }
 
-pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<f64> {
+pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<OCamlFloat> {
     OCamlAllocResult::of(unsafe { caml_copy_double(d) })
 }
 

@@ -4,12 +4,15 @@
 extern crate ocaml_interop;
 
 use ocaml_interop::{
-    ocaml_alloc, ocaml_call, ocaml_frame, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml,
-    to_ocaml,
+    ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, IntoRust, OCaml, OCamlBytes, OCamlInt,
+    OCamlList, ToOCaml,
 };
 
 mod ocaml {
-    use ocaml_interop::{impl_to_ocaml_record, impl_to_ocaml_variant, ocaml, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
+    use ocaml_interop::{
+        impl_to_ocaml_record, impl_to_ocaml_variant, ocaml, OCamlFloat, OCamlInt, OCamlInt32,
+        OCamlInt64, OCamlList,
+    };
 
     pub struct TestRecord {
         pub i: i64,
@@ -29,11 +32,11 @@ mod ocaml {
     impl_to_ocaml_record! {
         TestRecord {
             i: OCamlInt,
-            f: f64,
+            f: OCamlFloat,
             i32: OCamlInt32,
             i64: OCamlInt64,
             s: String,
-            t: (OCamlInt, f64),
+            t: (OCamlInt, OCamlFloat),
         }
     }
 
@@ -206,7 +209,16 @@ fn test_record_conversion() {
 #[serial]
 fn test_variant_conversion() {
     ocaml_interop::OCamlRuntime::init_persistent();
-    assert_eq!(verify_variant_test(ocaml::Movement::RotateLeft), "RotateLeft".to_owned());
-    assert_eq!(verify_variant_test(ocaml::Movement::RotateRight), "RotateRight".to_owned());
-    assert_eq!(verify_variant_test(ocaml::Movement::Step(10)), "Step(10)".to_owned());
+    assert_eq!(
+        verify_variant_test(ocaml::Movement::RotateLeft),
+        "RotateLeft".to_owned()
+    );
+    assert_eq!(
+        verify_variant_test(ocaml::Movement::RotateRight),
+        "RotateRight".to_owned()
+    );
+    assert_eq!(
+        verify_variant_test(ocaml::Movement::Step(10)),
+        "Step(10)".to_owned()
+    );
 }

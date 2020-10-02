@@ -1,9 +1,6 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::{
-    OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
-};
 use crate::value::OCaml;
 use crate::{
     memory::{
@@ -11,6 +8,12 @@ use crate::{
         alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlAllocResult, OCamlAllocToken,
     },
     OCamlRef,
+};
+use crate::{
+    mlvalues::{
+        OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
+    },
+    OCamlFloat,
 };
 use crate::{ocaml_alloc, ocaml_frame, to_ocaml};
 use std::str;
@@ -54,8 +57,8 @@ unsafe impl ToOCaml<OCamlInt64> for i64 {
     }
 }
 
-unsafe impl ToOCaml<f64> for f64 {
-    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<f64> {
+unsafe impl ToOCaml<OCamlFloat> for f64 {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlFloat> {
         alloc_double(token, *self)
     }
 }

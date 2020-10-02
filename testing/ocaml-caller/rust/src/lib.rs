@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_interop::{
-    ocaml_alloc, ocaml_export, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64,
-    OCamlList, ToOCaml,
+    ocaml_alloc, ocaml_export, IntoRust, OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32,
+    OCamlInt64, OCamlList, ToOCaml,
 };
 
 ocaml_export! {
@@ -28,7 +28,7 @@ ocaml_export! {
         num * num2
     }
 
-    fn rust_twice_boxed_float(gc, num: OCaml<f64>) -> OCaml<f64> {
+    fn rust_twice_boxed_float(gc, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
         let num: f64 = num.into_rust();
         let result = num * 2.0;
         ocaml_alloc!(result.to_ocaml(gc))

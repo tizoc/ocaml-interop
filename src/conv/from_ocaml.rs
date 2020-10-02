@@ -1,8 +1,10 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::{field_val, OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
-use crate::value::OCaml;
+use crate::{
+    mlvalues::{field_val, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList},
+    value::OCaml,
+};
 
 /// Implements conversion from OCaml values into Rust values.
 pub unsafe trait FromOCaml<T> {
@@ -42,8 +44,8 @@ unsafe impl FromOCaml<bool> for bool {
     }
 }
 
-unsafe impl FromOCaml<f64> for f64 {
-    fn from_ocaml(v: OCaml<f64>) -> Self {
+unsafe impl FromOCaml<OCamlFloat> for f64 {
+    fn from_ocaml(v: OCaml<OCamlFloat>) -> Self {
         unsafe { *(v.raw() as *const f64) }
     }
 }

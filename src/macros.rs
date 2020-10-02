@@ -185,7 +185,7 @@ macro_rules! ocaml {
 ///         num * num2
 ///     }
 ///
-///     fn rust_twice_boxed_float(gc, num: OCaml<f64>) -> OCaml<f64> {
+///     fn rust_twice_boxed_float(gc, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
 ///         let num: f64 = num.into_rust();
 ///         let result = num * 2.0;
 ///         ocaml_alloc!(result.to_ocaml(gc))
@@ -741,7 +741,7 @@ macro_rules! impl_to_ocaml_record {
 ///         Movement::StepLeft,
 ///         Movement::StepRight,
 ///         // Tag field names are mandatory
-///         Movement::Rotate(rotation: f64),
+///         Movement::Rotate(rotation: OCamlFloat),
 ///     }
 /// }
 /// ```
@@ -817,7 +817,7 @@ macro_rules! impl_from_ocaml_variant {
 ///         Movement::StepLeft,
 ///         Movement::StepRight,
 ///         // Tag field names are mandatory
-///         Movement::Rotate(rotation: f64),
+///         Movement::Rotate(rotation: OCamlFloat),
 ///     }
 /// }.unwrap();
 /// // ...
@@ -877,7 +877,7 @@ macro_rules! ocaml_unpack_variant {
 ///         Movement::StepLeft,
 ///         Movement::StepRight,
 ///         // Tag field names are mandatory
-///         Movement::Rotate(rotation: f64),
+///         Movement::Rotate(rotation: OCamlFloat),
 ///     }
 /// };
 /// // ...
@@ -934,7 +934,7 @@ macro_rules! ocaml_alloc_variant {
 ///         Movement::StepLeft,
 ///         Movement::StepRight,
 ///         // Tag field names are mandatory
-///         Movement::Rotate(rotation: f64),
+///         Movement::Rotate(rotation: OCamlFloat),
 ///     }
 /// }
 /// ```
