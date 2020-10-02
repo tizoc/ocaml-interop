@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support for `Box<T>` conversions (boxed values get converted the same as their contents).
 - More documentation.
+- More tests.
 
 ### Changed
 
