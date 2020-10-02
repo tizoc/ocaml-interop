@@ -12,6 +12,14 @@ fn main() {
         .args(&["build", &format!("{}/callable.exe.o", ocaml_callable_dir)])
         .status()
         .expect("Dune failed");
+    Command::new("rm")
+        .args(&["-f", &format!("{}/libcallable.a", out_dir)])
+        .status()
+        .expect("rm failed");
+    Command::new("rm")
+        .args(&["-f", &format!("{}/libcallable.o", out_dir)])
+        .status()
+        .expect("rm failed");
     Command::new("cp")
         .args(&[
             &format!("{}/callable.exe.o", dune_dir),
@@ -19,10 +27,6 @@ fn main() {
         ])
         .status()
         .expect("File copy failed.");
-    Command::new("rm")
-        .args(&["-f", &format!("{}/libcallable.a", out_dir)])
-        .status()
-        .expect("rm failed");
     Command::new("ar")
         .args(&[
             "qs",
