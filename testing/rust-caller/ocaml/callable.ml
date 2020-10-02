@@ -40,14 +40,9 @@ let make_tuple a b = (a, b)
 
 let make_some x = Some x
 
-let verify_record { i; f; i32; i64; s; t = (t1, t2); } =
-  i = 10 &&
-  Float.equal f 5.0 &&
-  Int32.equal i32 10l &&
-  Int64.equal i64 10L &&
-  String.equal s "string" &&
-  t1 = 10 &&
-  Float.equal t2 5.0
+let stringify_record { i; f; i32; i64; s; t = (t1, t2); } =
+  Printf.sprintf "{ i=%d; f=%.2f; i32=%ld; i64=%Ld; s=%s; t=(%d, %.2f) }"
+    i f i32 i64 s t1 t2
 
 let stringify_variant = function
   | RotateLeft -> "RotateLeft"
@@ -61,5 +56,5 @@ let () =
   Callback.register "twice" twice;
   Callback.register "make_tuple" make_tuple;
   Callback.register "make_some" make_some;
-  Callback.register "verify_record" verify_record;
+  Callback.register "stringify_record" stringify_record;
   Callback.register "stringify_variant" stringify_variant

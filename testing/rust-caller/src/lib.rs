@@ -51,7 +51,7 @@ mod ocaml {
         pub fn twice(num: OCamlInt) -> OCamlInt;
         pub fn make_tuple(fst: String, snd: OCamlInt) -> (String, OCamlInt);
         pub fn make_some(value: String) -> Option<String>;
-        pub fn verify_record(record: TestRecord) -> bool;
+        pub fn stringify_record(record: TestRecord) -> String;
         pub fn stringify_variant(variant: Movement) -> String;
     }
 }
@@ -105,11 +105,11 @@ pub fn make_some(value: String) -> Option<String> {
     })
 }
 
-pub fn verify_record_test(record: ocaml::TestRecord) -> bool {
+pub fn verify_record_test(record: ocaml::TestRecord) -> String {
     ocaml_frame!(gc, {
         let ocaml_record = ocaml_alloc!(record.to_ocaml(gc));
-        let result = ocaml_call!(ocaml::verify_record(gc, ocaml_record));
-        let result: OCaml<bool> = result.expect("Error in 'verify_record' call result");
+        let result = ocaml_call!(ocaml::stringify_record(gc, ocaml_record));
+        let result: OCaml<String> = result.expect("Error in 'stringify_record' call result");
         result.into_rust()
     })
 }
@@ -198,7 +198,8 @@ fn test_record_conversion() {
         s: "string".to_owned(),
         t: (10, 5.0),
     };
-    assert_eq!(verify_record_test(record), true);
+    let expected = "{ i=10; f=5.00; i32=10; i64=10; s=string; t=(10, 5.00) }".to_owned();
+    assert_eq!(verify_record_test(record), expected);
 }
 
 #[test]
