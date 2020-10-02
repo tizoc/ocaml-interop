@@ -4,6 +4,8 @@
 <a href="https://crates.io/crates/ocaml-interop">
     <img src="https://img.shields.io/crates/v/ocaml-interop.svg">
 </a>
+[![documentation](https://docs.rs/ocaml-interop/badge.svg)](https://docs.rs/ocaml-interop)
+[![license](https://img.shields.io/crates/l/ocaml-interop.svg)](https://github.com/simplestaking/ocaml-interop/blob/master/LICENSE)
 
 
 _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
