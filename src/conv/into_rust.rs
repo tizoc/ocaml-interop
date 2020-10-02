@@ -1,20 +1,20 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::value::OCaml;
 use crate::conv::FromOCaml;
+use crate::value::OCaml;
 
-/// Counterpart to `FromOCaml`, usually more comfortable to use.
+/// Counterpart to `FromOCaml`, usually more convenient to use.
 pub trait IntoRust<T>: Sized {
     /// Convert into a Rust value.
     fn into_rust(self) -> T;
 }
 
-impl<'a, T, U> IntoRust<U> for OCaml<'a, T>
+impl<'a, OCamlT, RustT> IntoRust<RustT> for OCaml<'a, OCamlT>
 where
-    U: FromOCaml<T>,
+    RustT: FromOCaml<OCamlT>,
 {
-    fn into_rust(self) -> U {
-        U::from_ocaml(self)
+    fn into_rust(self) -> RustT {
+        RustT::from_ocaml(self)
     }
 }

@@ -385,7 +385,7 @@ pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCaml
 pub use crate::conv::{FromOCaml, IntoRust, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::{OCamlAllocResult, OCamlAllocToken, OCamlRef};
-pub use crate::mlvalues::{OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
+pub use crate::mlvalues::{OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
 pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;
 

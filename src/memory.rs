@@ -1,8 +1,9 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::tag;
-use crate::mlvalues::{Intnat, MlsizeT, OCamlBytes, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
+use crate::mlvalues::{
+    tag, Intnat, MlsizeT, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+};
 use crate::value::{make_ocaml, OCaml};
 use std::cell::Cell;
 use std::marker;
@@ -52,6 +53,7 @@ extern "C" {
 //     value caml__temp_val = (val); \
 //     caml_modify (&Field ((block), caml__temp_offset), caml__temp_val); \
 //   }while(0)
+#[doc(hidden)]
 #[inline]
 pub unsafe fn store_field(block: RawOCaml, offset: MlsizeT, val: RawOCaml) {
     // TODO: see if all this can be made prettier
@@ -80,22 +82,27 @@ impl<'gc> GCFrame<'gc> {
         self
     }
 
+    #[doc(hidden)]
     pub unsafe fn initialize_empty(&mut self) -> &mut Self {
         self
     }
 
+    /// Returns a GC tracked reference to an OCaml value.
     pub fn keep<T>(&self, value: OCaml<T>) -> OCamlRef<'gc, T> {
         OCamlRef::new(self, value)
     }
 
+    /// Returns a GC tracked reference to an raw OCaml pointer.
     pub fn keep_raw(&self, value: RawOCaml) -> OCamlRawRef<'gc> {
         OCamlRawRef::new(self, value)
     }
 
+    /// Returns the OCaml valued to which this GC tracked reference points to.
     pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
         make_ocaml(reference.cell.get())
     }
 
+    #[doc(hidden)]
     pub unsafe fn token(&self) -> OCamlAllocToken {
         OCamlAllocToken {}
     }
@@ -123,6 +130,7 @@ impl<'gc> GCFrameNoKeep<'gc> {
         self
     }
 
+    #[doc(hidden)]
     pub unsafe fn token(&self) -> OCamlAllocToken {
         OCamlAllocToken {}
     }
@@ -156,7 +164,7 @@ unsafe fn free_local_root_cell(cell: &Cell<RawOCaml>) {
     block.nitems -= 1;
 }
 
-/// `OCamlRef<T>` is reference to an `OCaml<T>` value that is tracked by the GC.
+/// `OCamlRef<T>` is a reference to an `OCaml<T>` value that is tracked by the GC.
 ///
 /// Unlike `OCaml<T>` values, it can be re-referenced after OCaml allocations.
 pub struct OCamlRef<'a, T> {
@@ -170,6 +178,7 @@ pub struct OCamlRawRef<'a> {
 }
 
 impl<'a, T> OCamlRef<'a, T> {
+    #[doc(hidden)]
     pub fn new<'gc>(gc: &GCFrame<'gc>, x: OCaml<T>) -> OCamlRef<'gc, T> {
         let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
         cell.set(unsafe { x.raw() });
@@ -179,26 +188,31 @@ impl<'a, T> OCamlRef<'a, T> {
         }
     }
 
+    /// Updates the value of this GC tracked reference.
     pub fn set(&mut self, x: OCaml<T>) {
         self.cell.set(unsafe { x.raw() });
     }
 
+    /// Gets the raw value contained by this reference.
     pub fn get_raw(&self) -> RawOCaml {
         self.cell.get()
     }
 }
 
 impl<'a> OCamlRawRef<'a> {
+    #[doc(hidden)]
     pub fn new<'gc>(gc: &GCFrame<'gc>, x: RawOCaml) -> OCamlRawRef<'gc> {
         let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
         cell.set(x);
         OCamlRawRef { cell }
     }
 
+    /// Updates the raw value of this GC tracked reference.
     pub fn set_raw(&mut self, x: RawOCaml) {
         self.cell.set(x);
     }
 
+    /// Gets the raw value contained by this reference.
     pub fn get_raw(&self) -> RawOCaml {
         self.cell.get()
     }
@@ -222,7 +236,7 @@ pub struct OCamlAllocResult<T> {
     _marker: marker::PhantomData<T>,
 }
 
-// Allocation result that has been marked by the GC.
+/// Allocation result that has been marked by the GC.
 pub struct GCMarkedResult<T> {
     raw: RawOCaml,
     _marker: marker::PhantomData<T>,
@@ -273,7 +287,7 @@ pub fn alloc_int64(_token: OCamlAllocToken, i: i64) -> OCamlAllocResult<OCamlInt
     OCamlAllocResult::of(unsafe { caml_copy_int64(i) })
 }
 
-pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<f64> {
+pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<OCamlFloat> {
     OCamlAllocResult::of(unsafe { caml_copy_double(d) })
 }
 

@@ -10,7 +10,7 @@ pub type UIntnat = usize;
 /// `OCaml<Intnat>` is an OCaml integer (tagged and unboxed) value.
 pub type Intnat = isize;
 
-/// Represent OCaml `value` values (fixnums or pointers).
+/// Represents OCaml `value` values (fixnums or pointers).
 pub type RawOCaml = isize;
 pub type MlsizeT = UIntnat;
 
@@ -36,6 +36,9 @@ pub struct OCamlInt32 {}
 
 /// `OCaml<OCamlInt64>` is a reference to an OCaml `Int64.t` (boxed `int64`) value.
 pub struct OCamlInt64 {}
+
+/// `OCaml<OCamlFloat>` is a reference to an OCaml `float` (boxed `float`) value.
+pub struct OCamlFloat {}
 
 // #define Val_unit Val_int(0)
 pub const UNIT: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
@@ -120,6 +123,7 @@ pub unsafe fn field_val(val: RawOCaml, i: UIntnat) -> *mut RawOCaml {
     (val as *mut RawOCaml).add(i)
 }
 
+#[doc(hidden)]
 #[inline]
 pub unsafe fn raw_ocaml_to_i64(raw: RawOCaml) -> i64 {
     assert!(!is_block(raw));

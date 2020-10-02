@@ -1,8 +1,10 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::{field_val, OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
-use crate::value::OCaml;
+use crate::{
+    mlvalues::{field_val, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList},
+    value::OCaml,
+};
 
 /// Implements conversion from OCaml values into Rust values.
 pub unsafe trait FromOCaml<T> {
@@ -42,15 +44,15 @@ unsafe impl FromOCaml<bool> for bool {
     }
 }
 
-unsafe impl FromOCaml<f64> for f64 {
-    fn from_ocaml(v: OCaml<f64>) -> Self {
+unsafe impl FromOCaml<OCamlFloat> for f64 {
+    fn from_ocaml(v: OCaml<OCamlFloat>) -> Self {
         unsafe { *(v.raw() as *const f64) }
     }
 }
 
 unsafe impl FromOCaml<String> for Vec<u8> {
     fn from_ocaml(v: OCaml<String>) -> Self {
-        let raw_bytes = unsafe { v.as_bytes() };
+        let raw_bytes = v.as_bytes();
         let mut vec: Vec<u8> = Vec::with_capacity(raw_bytes.len());
         vec.extend_from_slice(raw_bytes);
         vec
@@ -59,13 +61,13 @@ unsafe impl FromOCaml<String> for Vec<u8> {
 
 unsafe impl FromOCaml<String> for String {
     fn from_ocaml(v: OCaml<String>) -> Self {
-        unsafe { v.as_str() }.to_owned()
+        v.as_str().to_owned()
     }
 }
 
 unsafe impl FromOCaml<OCamlBytes> for Vec<u8> {
     fn from_ocaml(v: OCaml<OCamlBytes>) -> Self {
-        let raw_bytes = unsafe { v.as_bytes() };
+        let raw_bytes = v.as_bytes();
         let mut vec: Vec<u8> = Vec::with_capacity(raw_bytes.len());
         vec.extend_from_slice(raw_bytes);
         vec
@@ -78,11 +80,17 @@ unsafe impl FromOCaml<OCamlBytes> for String {
     }
 }
 
-unsafe impl<A, FromA> FromOCaml<Option<FromA>> for Option<A>
+unsafe impl<OCamlT, T: FromOCaml<OCamlT>> FromOCaml<OCamlT> for Box<T> {
+    fn from_ocaml(v: OCaml<OCamlT>) -> Self {
+        Box::new(T::from_ocaml(v))
+    }
+}
+
+unsafe impl<A, OCamlA> FromOCaml<Option<OCamlA>> for Option<A>
 where
-    A: FromOCaml<FromA>,
+    A: FromOCaml<OCamlA>,
 {
-    fn from_ocaml(v: OCaml<Option<FromA>>) -> Self {
+    fn from_ocaml(v: OCaml<Option<OCamlA>>) -> Self {
         if let Some(value) = v.to_option() {
             Some(A::from_ocaml(value))
         } else {
@@ -91,23 +99,23 @@ where
     }
 }
 
-unsafe impl<A, B, FromA, FromB> FromOCaml<(FromA, FromB)> for (A, B)
+unsafe impl<A, B, OCamlA, OCamlB> FromOCaml<(OCamlA, OCamlB)> for (A, B)
 where
-    A: FromOCaml<FromA>,
-    B: FromOCaml<FromB>,
+    A: FromOCaml<OCamlA>,
+    B: FromOCaml<OCamlB>,
 {
-    fn from_ocaml(v: OCaml<(FromA, FromB)>) -> Self {
+    fn from_ocaml(v: OCaml<(OCamlA, OCamlB)>) -> Self {
         (A::from_ocaml(v.fst()), B::from_ocaml(v.snd()))
     }
 }
 
-unsafe impl<A, B, C, FromA, FromB, FromC> FromOCaml<(FromA, FromB, FromC)> for (A, B, C)
+unsafe impl<A, B, C, OCamlA, OCamlB, OCamlC> FromOCaml<(OCamlA, OCamlB, OCamlC)> for (A, B, C)
 where
-    A: FromOCaml<FromA>,
-    B: FromOCaml<FromB>,
-    C: FromOCaml<FromC>,
+    A: FromOCaml<OCamlA>,
+    B: FromOCaml<OCamlB>,
+    C: FromOCaml<OCamlC>,
 {
-    fn from_ocaml(v: OCaml<(FromA, FromB, FromC)>) -> Self {
+    fn from_ocaml(v: OCaml<(OCamlA, OCamlB, OCamlC)>) -> Self {
         (
             A::from_ocaml(v.fst()),
             B::from_ocaml(v.snd()),
@@ -116,15 +124,15 @@ where
     }
 }
 
-unsafe impl<A, B, C, D, FromA, FromB, FromC, FromD> FromOCaml<(FromA, FromB, FromC, FromD)>
+unsafe impl<A, B, C, D, OCamlA, OCamlB, OCamlC, OCamlD> FromOCaml<(OCamlA, OCamlB, OCamlC, OCamlD)>
     for (A, B, C, D)
 where
-    A: FromOCaml<FromA>,
-    B: FromOCaml<FromB>,
-    C: FromOCaml<FromC>,
-    D: FromOCaml<FromD>,
+    A: FromOCaml<OCamlA>,
+    B: FromOCaml<OCamlB>,
+    C: FromOCaml<OCamlC>,
+    D: FromOCaml<OCamlD>,
 {
-    fn from_ocaml(v: OCaml<(FromA, FromB, FromC, FromD)>) -> Self {
+    fn from_ocaml(v: OCaml<(OCamlA, OCamlB, OCamlC, OCamlD)>) -> Self {
         (
             A::from_ocaml(v.fst()),
             B::from_ocaml(v.snd()),
@@ -134,11 +142,11 @@ where
     }
 }
 
-unsafe impl<A, FromA> FromOCaml<OCamlList<FromA>> for Vec<A>
+unsafe impl<A, OCamlA> FromOCaml<OCamlList<OCamlA>> for Vec<A>
 where
-    A: FromOCaml<FromA>,
+    A: FromOCaml<OCamlA>,
 {
-    fn from_ocaml(v: OCaml<OCamlList<FromA>>) -> Self {
+    fn from_ocaml(v: OCaml<OCamlList<OCamlA>>) -> Self {
         // TODO: pre-calculate actual required capacity?
         let mut vec = Vec::new();
         let mut current = v;

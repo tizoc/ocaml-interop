@@ -4,29 +4,47 @@
 extern crate ocaml_interop;
 
 use ocaml_interop::{
-    ocaml_alloc, ocaml_call, ocaml_frame, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml,
+    ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, IntoRust, OCaml, OCamlBytes, OCamlInt,
+    OCamlList, ToOCaml,
 };
 
 mod ocaml {
-    use ocaml_interop::{impl_to_ocaml_record, ocaml, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
+    use ocaml_interop::{
+        impl_to_ocaml_record, impl_to_ocaml_variant, ocaml, OCamlFloat, OCamlInt, OCamlInt32,
+        OCamlInt64, OCamlList,
+    };
 
     pub struct TestRecord {
         pub i: i64,
         pub f: f64,
         pub i32: i32,
-        pub i64: i64,
+        pub i64: Box<i64>,
         pub s: String,
         pub t: (i64, f64),
+    }
+
+    pub enum Movement {
+        Step(i64),
+        RotateLeft,
+        RotateRight,
     }
 
     impl_to_ocaml_record! {
         TestRecord {
             i: OCamlInt,
-            f: f64,
+            f: OCamlFloat,
             i32: OCamlInt32,
             i64: OCamlInt64,
             s: String,
-            t: (OCamlInt, f64),
+            t: (OCamlInt, OCamlFloat),
+        }
+    }
+
+    impl_to_ocaml_variant! {
+        Movement {
+            Movement::Step(count: OCamlInt),
+            Movement::RotateLeft,
+            Movement::RotateRight,
         }
     }
 
@@ -36,7 +54,8 @@ mod ocaml {
         pub fn twice(num: OCamlInt) -> OCamlInt;
         pub fn make_tuple(fst: String, snd: OCamlInt) -> (String, OCamlInt);
         pub fn make_some(value: String) -> Option<String>;
-        pub fn verify_record(record: TestRecord) -> bool;
+        pub fn stringify_record(record: TestRecord) -> String;
+        pub fn stringify_variant(variant: Movement) -> String;
     }
 }
 
@@ -89,11 +108,20 @@ pub fn make_some(value: String) -> Option<String> {
     })
 }
 
-pub fn verify_record_test(record: ocaml::TestRecord) -> bool {
+pub fn verify_record_test(record: ocaml::TestRecord) -> String {
     ocaml_frame!(gc, {
         let ocaml_record = ocaml_alloc!(record.to_ocaml(gc));
-        let result = ocaml_call!(ocaml::verify_record(gc, ocaml_record));
-        let result: OCaml<bool> = result.expect("Error in 'verify_record' call result");
+        let result = ocaml_call!(ocaml::stringify_record(gc, ocaml_record));
+        let result: OCaml<String> = result.expect("Error in 'stringify_record' call result");
+        result.into_rust()
+    })
+}
+
+pub fn verify_variant_test(variant: ocaml::Movement) -> String {
+    ocaml_frame!(gc, {
+        let ocaml_variant = to_ocaml!(gc, variant);
+        let result = ocaml_call!(ocaml::stringify_variant(gc, ocaml_variant));
+        let result: OCaml<String> = result.expect("Error in 'stringify_variant' call result");
         result.into_rust()
     })
 }
@@ -169,9 +197,28 @@ fn test_record_conversion() {
         i: 10,
         f: 5.0,
         i32: 10,
-        i64: 10,
+        i64: Box::new(10),
         s: "string".to_owned(),
         t: (10, 5.0),
     };
-    assert_eq!(verify_record_test(record), true);
+    let expected = "{ i=10; f=5.00; i32=10; i64=10; s=string; t=(10, 5.00) }".to_owned();
+    assert_eq!(verify_record_test(record), expected);
+}
+
+#[test]
+#[serial]
+fn test_variant_conversion() {
+    ocaml_interop::OCamlRuntime::init_persistent();
+    assert_eq!(
+        verify_variant_test(ocaml::Movement::RotateLeft),
+        "RotateLeft".to_owned()
+    );
+    assert_eq!(
+        verify_variant_test(ocaml::Movement::RotateRight),
+        "RotateRight".to_owned()
+    );
+    assert_eq!(
+        verify_variant_test(ocaml::Movement::Step(10)),
+        "Step(10)".to_owned()
+    );
 }
