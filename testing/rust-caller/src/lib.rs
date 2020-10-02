@@ -5,10 +5,11 @@ extern crate ocaml_interop;
 
 use ocaml_interop::{
     ocaml_alloc, ocaml_call, ocaml_frame, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml,
+    to_ocaml,
 };
 
 mod ocaml {
-    use ocaml_interop::{impl_to_ocaml_record, ocaml, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
+    use ocaml_interop::{impl_to_ocaml_record, impl_to_ocaml_variant, ocaml, OCamlInt, OCamlInt32, OCamlInt64, OCamlList};
 
     pub struct TestRecord {
         pub i: i64,
@@ -17,6 +18,12 @@ mod ocaml {
         pub i64: Box<i64>,
         pub s: String,
         pub t: (i64, f64),
+    }
+
+    pub enum Movement {
+        Step(i64),
+        RotateLeft,
+        RotateRight,
     }
 
     impl_to_ocaml_record! {
@@ -30,6 +37,14 @@ mod ocaml {
         }
     }
 
+    impl_to_ocaml_variant! {
+        Movement {
+            Movement::Step(count: OCamlInt),
+            Movement::RotateLeft,
+            Movement::RotateRight,
+        }
+    }
+
     ocaml! {
         pub fn increment_bytes(bytes: String, first_n: OCamlInt) -> String;
         pub fn increment_ints_list(ints: OCamlList<OCamlInt>) -> OCamlList<OCamlInt>;
@@ -37,6 +52,7 @@ mod ocaml {
         pub fn make_tuple(fst: String, snd: OCamlInt) -> (String, OCamlInt);
         pub fn make_some(value: String) -> Option<String>;
         pub fn verify_record(record: TestRecord) -> bool;
+        pub fn stringify_variant(variant: Movement) -> String;
     }
 }
 
@@ -94,6 +110,15 @@ pub fn verify_record_test(record: ocaml::TestRecord) -> bool {
         let ocaml_record = ocaml_alloc!(record.to_ocaml(gc));
         let result = ocaml_call!(ocaml::verify_record(gc, ocaml_record));
         let result: OCaml<bool> = result.expect("Error in 'verify_record' call result");
+        result.into_rust()
+    })
+}
+
+pub fn verify_variant_test(variant: ocaml::Movement) -> String {
+    ocaml_frame!(gc, {
+        let ocaml_variant = to_ocaml!(gc, variant);
+        let result = ocaml_call!(ocaml::stringify_variant(gc, ocaml_variant));
+        let result: OCaml<String> = result.expect("Error in 'stringify_variant' call result");
         result.into_rust()
     })
 }
@@ -174,4 +199,13 @@ fn test_record_conversion() {
         t: (10, 5.0),
     };
     assert_eq!(verify_record_test(record), true);
+}
+
+#[test]
+#[serial]
+fn test_variant_conversion() {
+    ocaml_interop::OCamlRuntime::init_persistent();
+    assert_eq!(verify_variant_test(ocaml::Movement::RotateLeft), "RotateLeft".to_owned());
+    assert_eq!(verify_variant_test(ocaml::Movement::RotateRight), "RotateRight".to_owned());
+    assert_eq!(verify_variant_test(ocaml::Movement::Step(10)), "Step(10)".to_owned());
 }

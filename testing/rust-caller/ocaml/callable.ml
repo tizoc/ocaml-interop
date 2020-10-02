@@ -10,6 +10,11 @@ type test_record = {
   t: int * float;
 }
 
+type movement =
+  | Step of int
+  | RotateLeft
+  | RotateRight
+
 let increment_bytes bytes first_n =
   let limit = (min (Bytes.length bytes) first_n) - 1 in
   for i = 0 to limit do
@@ -44,6 +49,11 @@ let verify_record { i; f; i32; i64; s; t = (t1, t2); } =
   t1 = 10 &&
   Float.equal t2 5.0
 
+let stringify_variant = function
+  | RotateLeft -> "RotateLeft"
+  | RotateRight -> "RotateRight"
+  | Step n -> Printf.sprintf "Step(%d)" n
+
 let () =
   Callback.register "increment_bytes" increment_bytes;
   Callback.register "decrement_bytes" decrement_bytes;
@@ -51,4 +61,5 @@ let () =
   Callback.register "twice" twice;
   Callback.register "make_tuple" make_tuple;
   Callback.register "make_some" make_some;
-  Callback.register "verify_record" verify_record
+  Callback.register "verify_record" verify_record;
+  Callback.register "stringify_variant" stringify_variant
