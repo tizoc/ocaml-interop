@@ -4,8 +4,7 @@
 extern crate ocaml_interop;
 
 use ocaml_interop::{
-    ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, IntoRust, OCaml, OCamlBytes, OCamlInt,
-    OCamlList, ToOCaml,
+    ocaml_call, ocaml_frame, to_ocaml, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml,
 };
 
 mod ocaml {
@@ -61,10 +60,9 @@ mod ocaml {
 
 pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
     ocaml_frame!(gc, {
-        let bytes = ocaml_alloc!(bytes.to_ocaml(gc));
-        let bytes_ref = &gc.keep(bytes);
-        let first_n = ocaml_alloc!((first_n as i64).to_ocaml(gc));
-        let result = ocaml_call!(ocaml::increment_bytes(gc, gc.get(bytes_ref), first_n));
+        let bytes = &to_ocaml!(gc, bytes).keep(gc);
+        let first_n = to_ocaml!(gc, first_n as i64);
+        let result = ocaml_call!(ocaml::increment_bytes(gc, gc.get(bytes), first_n));
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
         result.into_rust()
     })
@@ -72,7 +70,7 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
 
 pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
     ocaml_frame!(gc nokeep, {
-        let ints = ocaml_alloc!(ints.to_ocaml(gc));
+        let ints = to_ocaml!(gc, ints);
         let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
         let result: OCaml<OCamlList<OCamlInt>> =
             result.expect("Error in 'increment_ints_list' call result");
@@ -92,7 +90,7 @@ pub fn twice(num: i64) -> i64 {
 pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
     ocaml_frame!(gc nokeep, {
         let num = unsafe { OCaml::of_i64(snd) };
-        let str = ocaml_alloc!(fst.to_ocaml(gc));
+        let str = to_ocaml!(gc, fst);
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
         let result: OCaml<(String, OCamlInt)> = result.expect("Error in 'make_tuple' call result");
         result.into_rust()
@@ -101,7 +99,7 @@ pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
 
 pub fn make_some(value: String) -> Option<String> {
     ocaml_frame!(gc nokeep, {
-        let str = ocaml_alloc!(value.to_ocaml(gc));
+        let str = to_ocaml!(gc, value);
         let result = ocaml_call!(ocaml::make_some(gc, str));
         let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
         result.into_rust()
@@ -110,7 +108,7 @@ pub fn make_some(value: String) -> Option<String> {
 
 pub fn verify_record_test(record: ocaml::TestRecord) -> String {
     ocaml_frame!(gc, {
-        let ocaml_record = ocaml_alloc!(record.to_ocaml(gc));
+        let ocaml_record = to_ocaml!(gc, record);
         let result = ocaml_call!(ocaml::stringify_record(gc, ocaml_record));
         let result: OCaml<String> = result.expect("Error in 'stringify_record' call result");
         result.into_rust()
@@ -130,9 +128,9 @@ pub fn allocate_alot() -> bool {
     let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     for _n in 1..50000 {
         ocaml_frame!(gc, {
-            let _x: OCaml<OCamlBytes> = ocaml_alloc!(vec.to_ocaml(gc));
-            let _y: OCaml<OCamlBytes> = ocaml_alloc!(vec.to_ocaml(gc));
-            let _z: OCaml<OCamlBytes> = ocaml_alloc!(vec.to_ocaml(gc));
+            let _x: OCaml<OCamlBytes> = to_ocaml!(gc, vec);
+            let _y: OCaml<OCamlBytes> = to_ocaml!(gc, vec);
+            let _z: OCaml<OCamlBytes> = to_ocaml!(gc, vec);
             ()
         });
     }
