@@ -58,6 +58,10 @@ macro_rules! ocaml_frame {
         let $gc = frame.initialize();
         $body
     }};
+
+    ($($t:tt)*) => {
+        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame! { gc [nokeep]?, { body-block } }`.")
+    };
 }
 
 /// Declares OCaml functions and allocators.
@@ -325,6 +329,10 @@ macro_rules! ocaml_alloc {
 macro_rules! to_ocaml {
     ($gc:ident, $obj:expr) => {
         $crate::ocaml_alloc!(($obj).to_ocaml($gc))
+    };
+
+    ($($t:tt)*) => {
+        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(gc, expr)`")
     };
 }
 
