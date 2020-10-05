@@ -78,10 +78,10 @@
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
 //! # let arg2 = "arg2";
-//! ocaml_frame!(gc, {
+//! ocaml_frame!(gc(result_ref), {
 //!     let arg1 = ocaml_alloc!(arg1.to_ocaml(gc));
 //!     let result = ocaml_call!(ocaml_function(gc, arg1, /* ..., argN */)).unwrap();
-//!     let result_ref = &gc.keep(result);
+//!     let result_ref = &result_ref.keep(result);
 //!     let arg2 = ocaml_alloc!(arg2.to_ocaml(gc));
 //!     let another_result = ocaml_call!(ocaml_function(gc, arg2, /* ..., argN */)).unwrap();
 //!     // ...
@@ -228,7 +228,7 @@
 //!     // to OCaml allocated values are tracked and validated by Rust's borrow checker.
 //!     // The first argument to the macro is a name for the GC handle, the second
 //!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(gc, {
+//!     ocaml_frame!(gc(bytes1_ref, bytes2_ref), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values. Because such conversions usually require
 //!         // the OCaml runtime to perform an allocation, calls to `to_ocaml` have
@@ -243,7 +243,7 @@
 //!         // a reference to an OCaml value that is going to be valid during the scope of
 //!         // the current `ocaml_frame!` block. Later `gc.get(the_reference)` can be used
 //!         // to obtain the kept value.
-//!         let bytes1_ref: &OCamlRef<String> = &gc.keep(ocaml_bytes1);
+//!         let bytes1_ref: &OCamlRef<String> = &bytes1_ref.keep(ocaml_bytes1);
 //!
 //!         // A shorter way to write the above two lines is:
 //!         // let bytes1_ref = &to_ocaml!(gc, bytes1).keep(gc);
@@ -253,7 +253,7 @@
 //!         // kept for either of the two OCaml values, because they would be
 //!         // used immediately, with no allocations being performed by the
 //!         // OCaml runtime in-between.
-//!         let bytes2_ref = &to_ocaml!(gc, bytes2).keep(gc);
+//!         let bytes2_ref = &to_ocaml!(gc, bytes2, bytes2_ref);
 //!
 //!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64`.
 //!         // Such conversion doesn't require any allocation on the OCaml side,
@@ -385,7 +385,7 @@ pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCaml
 pub use crate::conv::{FromOCaml, IntoRust, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::{OCamlAllocResult, OCamlAllocToken, OCamlRef};
-pub use crate::mlvalues::{OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
+pub use crate::mlvalues::{OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, UNIT};
 pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;
 
@@ -393,7 +393,7 @@ pub use crate::value::OCaml;
 pub mod internal {
     pub use crate::mlvalues::raw_ocaml_to_i64;
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep};
+    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep, KeepVar};
 }
 
 #[doc(hidden)]

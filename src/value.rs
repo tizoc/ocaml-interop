@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::{GCFrame, GCFrameHandle, OCamlRef};
+use crate::memory::GCFrameHandle;
 use crate::mlvalues::*;
 use std::marker;
 use std::slice;
@@ -74,14 +74,6 @@ impl<'a, T> OCaml<'a, T> {
     /// working with these values.
     pub unsafe fn raw(&self) -> RawOCaml {
         self.raw
-    }
-
-    /// Returns a tracked reference to this value.
-    ///
-    /// This method must be used with values that will be referenced after
-    /// calls into the OCaml runtime have been made.
-    pub fn keep<'gc>(self, gc: &GCFrame<'gc>) -> OCamlRef<'gc, T> {
-        gc.keep(self)
     }
 }
 

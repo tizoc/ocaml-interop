@@ -19,9 +19,9 @@
 /// #    fn print_endline(s: String);
 /// # }
 /// # fn ocaml_frame_macro_example() {
-///     ocaml_frame!(gc, { // `gc` gets bound to the frame handle
-///         let hello_ocaml = &to_ocaml!(gc, "hello OCaml!").keep(gc);
-///         let bye_ocaml = &to_ocaml!(gc, "bye OCaml!").keep(gc);
+///     ocaml_frame!(gc(hello_ocaml, bye_ocaml), { // `gc` gets bound to the frame handle
+///         let hello_ocaml = &to_ocaml!(gc, "hello OCaml!", hello_ocaml);
+///         let bye_ocaml = &to_ocaml!(gc, "bye OCaml!", bye_ocaml);
 ///         ocaml_call!(print_endline(gc, gc.get(hello_ocaml)));
 ///         ocaml_call!(print_endline(gc, gc.get(bye_ocaml)));
 ///         // Values that don't need to be keept across calls can be used directly
@@ -39,7 +39,7 @@
 /// # use ocaml_interop::*;
 /// # ocaml! { fn print_endline(s: String); }
 /// # fn ocaml_frame_macro_example() {
-///     ocaml_frame!(gc nokeep, { // `keep` will not be available
+///     ocaml_frame!(gc, { // `keep` will not be available
 ///         let ocaml_string = to_ocaml!(gc, "hello OCaml!");
 ///         ocaml_call!(print_endline(gc, ocaml_string));
 ///     });
@@ -47,20 +47,24 @@
 /// ```
 #[macro_export]
 macro_rules! ocaml_frame {
-    ($gc:ident nokeep, $body:block) => {{
+    ($gc:ident, $body:block) => {{
         let mut frame: $crate::internal::GCFrameNoKeep = Default::default();
         let $gc = frame.initialize();
         $body
     }};
 
-    ($gc:ident, $body:block) => {{
+    ($gc:ident($($keeper:ident),+ $(,)?), $body:block) => {{
         let mut frame: $crate::internal::GCFrame = Default::default();
-        let $gc = frame.initialize();
+        let local_roots = $crate::repeat_slice!(::std::cell::Cell::new($crate::UNIT), $($keeper)+);
+        let $gc = frame.initialize(&local_roots);
+        $(
+            let mut $keeper = unsafe { $crate::internal::KeepVar::reserve(&$gc) };
+        )+
         $body
     }};
 
     ($($t:tt)*) => {
-        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame! { gc [nokeep]?, { body-block } }`.")
+        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame! { gc | gc(vars, ...), { body-block } }`.")
     };
 }
 
@@ -174,7 +178,7 @@ macro_rules! ocaml {
 /// ```
 /// # use ocaml_interop::*;
 /// ocaml_export! {
-///     fn rust_twice(_gc nokeep, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+///     fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
 ///         let num: i64 = num.into_rust();
 ///         unsafe { OCaml::of_i64(num * 2) }
 ///     }
@@ -185,7 +189,7 @@ macro_rules! ocaml {
 ///         ocaml_alloc!(result.to_ocaml(gc))
 ///     }
 ///
-///     fn rust_add_unboxed_floats_noalloc(_gc nokeep, num: f64, num2: f64) -> f64 {
+///     fn rust_add_unboxed_floats_noalloc(_gc, num: f64, num2: f64) -> f64 {
 ///         num * num2
 ///     }
 ///
@@ -327,12 +331,16 @@ macro_rules! ocaml_alloc {
 /// ```
 #[macro_export]
 macro_rules! to_ocaml {
+    ($gc:ident, $obj:expr, $keepvar:ident) => {
+        $keepvar.keep($crate::to_ocaml!($gc, $obj))
+    };
+
     ($gc:ident, $obj:expr) => {
         $crate::ocaml_alloc!(($obj).to_ocaml($gc))
     };
 
     ($($t:tt)*) => {
-        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(gc, expr)`")
+        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(gc, expr[, keepvar])`")
     };
 }
 
@@ -514,10 +522,10 @@ macro_rules! ocaml_unpack_record {
 macro_rules! ocaml_alloc_tagged_block {
     ($tag:expr, $($field:ident : $ocaml_typ:ty),+ $(,)?) => {
         unsafe {
-            $crate::ocaml_frame!(gc, {
+            $crate::ocaml_frame!(gc(block), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
-                let block = gc.keep_raw($crate::internal::caml_alloc(field_count, $tag));
+                let block = block.keep_raw($crate::internal::caml_alloc(field_count, $tag));
                 $(
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
                     $crate::internal::store_field(block.get_raw(), current, $field.raw());
@@ -580,10 +588,10 @@ macro_rules! ocaml_alloc_record {
         $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe {
-            $crate::ocaml_frame!(gc, {
+            $crate::ocaml_frame!(gc(record), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
-                let record = gc.keep_raw($crate::internal::caml_alloc(field_count, 0));
+                let record = record.keep_raw($crate::internal::caml_alloc(field_count, 0));
                 $(
                     let $field = &$crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
@@ -974,6 +982,43 @@ macro_rules! impl_to_ocaml_variant {
 }
 
 // Internal utility macros
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! repeat_slice {
+    (@expr $value:expr;
+     @accum [$($accum:expr),+];
+     @rest) => {
+         [$($accum),+]
+     };
+
+    (@expr $value:expr;
+     @accum [$($accum:expr),+];
+     @rest $_v1:ident $_v2:ident $_v3:ident $_v4:ident $_v5:ident $($vars:ident)*) => {
+        $crate::repeat_slice!(
+            @expr $value;
+            @accum [$value, $value, $value, $value, $value, $($accum),+];
+            @rest $vars)
+    };
+
+    (@expr $value:expr;
+        @accum [$($accum:expr),+];
+        @rest $_v1:ident $($vars:ident)*) => {
+
+        $crate::repeat_slice!(
+            @expr $value;
+            @accum [$value, $($accum),+];
+            @rest $($vars)*)
+    };
+
+    ($value:expr, $field:ident $($vars:ident)*) => {
+        $crate::repeat_slice!(
+            @expr $value;
+            @accum [$value];
+            @rest $($vars)*)
+    };
+}
+
 
 #[doc(hidden)]
 #[macro_export]
