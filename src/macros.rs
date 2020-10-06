@@ -1,16 +1,16 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-/// Opens a new frame inside which new OCaml values can be allocated, and OCaml functions called.
+/// Opens a new frame inside of which new OCaml values can be allocated and OCaml functions called.
 ///
-/// The first argument is the name to which the OCaml frame GC handle will be bound. It will be used
-/// to allocate OCaml values and call OCaml functions. Values that result from allocations
-/// or function calls using that handle, will have their lifetime bound to it.
+/// The first argument to this macro must be an identifier to which the OCaml frame GC handle will be bound.
+/// It will be used to allocate OCaml values and call OCaml functions. Value references that result from allocations
+/// or function calls, will have their lifetime bound to this handle.
 ///
 /// Optionally, this identifier can be followed by a list of names to which "keep variables" will be bound.
-/// For each one of these variables, a new location for tracked pointers will be reserved. Each one of these
+/// For each one of these variables, a new location for a tracked pointer will be reserved. Each one of these
 /// "keep variables" can be consumed to produce an `OCamlRef` that will be used to re-reference OCaml values
-/// across OCaml allocations.
+/// what would otherwise be unavailable after an OCaml allocation of OCaml function call.
 ///
 /// # Notes
 ///
@@ -18,6 +18,8 @@
 /// local roots frame, because it is not necessary in that case.
 ///
 /// # Examples
+///
+/// The following example reserves space for two tracked pointers:
 ///
 /// ```
 /// # use ocaml_interop::*;
@@ -37,7 +39,7 @@
 /// # }
 /// ```
 ///
-/// In the following example, no "keep variables" are declared, so no space is reserved for local roots:
+/// The following example does not declare "keep variables". As a result no space is reserved for local roots:
 ///
 /// ```
 /// # use ocaml_interop::*;
@@ -166,13 +168,7 @@ macro_rules! ocaml {
 
 /// Defines Rust functions callable from OCaml.
 ///
-/// The first argument in these function declarations must be an identifier
-/// to which the OCaml frame GC handle will be bound.
-///
-/// Optionally, this identifier can be followed by a list of names to which "keep variables" will be bound.
-/// For each one of these variables, a new location for tracked pointers will be reserved. Each one of these
-/// "keep variables" can be consumed to produce an `OCamlRef` that will be used to re-reference OCaml values
-/// across OCaml allocations.
+/// The first argument in these functions declarations is the same as in the [`ocaml_frame!`] macro.
 ///
 /// Arguments and return values must be of type `OCaml<T>`, or `f64` in the case of unboxed floats.
 ///
@@ -225,20 +221,22 @@ macro_rules! ocaml {
 ///     }
 /// }
 /// ```
+///
+/// [`ocaml_frame!`]: ./macro.ocaml_frame.html
 #[macro_export]
 macro_rules! ocaml_export {
     {} => ();
 
     // Unboxed float return
     {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($args:tt)*) -> f64
+        fn $name:ident( $gc:ident $(($($keeper:ident),+ $(,)?))?, $($args:tt)*) -> f64
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @gc { $gc $($nokeep)? }
+            @gc { $gc $(($($keeper),+))? }
             @final_args { }
             @proc_args { $($args)*, }
             @return { f64 }
@@ -251,14 +249,14 @@ macro_rules! ocaml_export {
 
     // Other (or empty) return value type
     {
-        fn $name:ident( $gc:ident $($nokeep:ident)?, $($args:tt)*) $(-> $rtyp:ty)?
+        fn $name:ident( $gc:ident $(($($keeper:ident),+ $(,)?))?, $($args:tt)*) $(-> $rtyp:ty)?
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @gc { $gc $($nokeep)? }
+            @gc { $gc $(($($keeper),+))? }
             @final_args { }
             @proc_args { $($args)*, }
             @return { $($rtyp)? }
@@ -1257,7 +1255,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @gc { $gc:ident $($nokeep:ident)? }
+        @gc { $gc:ident $(($($keeper:ident),+))? }
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
@@ -1266,7 +1264,7 @@ macro_rules! expand_exported_function {
     } => {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
-            $crate::ocaml_frame!( $gc $($nokeep)?, {
+            $crate::ocaml_frame!( $gc $(($($keeper),+))?, {
                 $crate::expand_args_init!($gc, $($original_args)*);
                 $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
             })
