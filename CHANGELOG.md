@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `nokeep` annotation when opening an `ocaml_frame!`/`ocaml_export!` function was removed. Opening the frame without any root variable declaration behaves the same as the old `nokeep` annotation.
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
