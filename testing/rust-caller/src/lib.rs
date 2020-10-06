@@ -3,9 +3,7 @@
 
 extern crate ocaml_interop;
 
-use ocaml_interop::{
-    ocaml_call, ocaml_frame, to_ocaml, IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml,
-};
+use ocaml_interop::{IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml, ocaml_call, ocaml_frame, to_ocaml};
 
 mod ocaml {
     use ocaml_interop::{
@@ -59,8 +57,8 @@ mod ocaml {
 }
 
 pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
-    ocaml_frame!(gc, {
-        let bytes = &to_ocaml!(gc, bytes).keep(gc);
+    ocaml_frame!(gc(bytesvar), {
+        let bytes = &bytesvar.keep(to_ocaml!(gc, bytes));
         let first_n = to_ocaml!(gc, first_n as i64);
         let result = ocaml_call!(ocaml::increment_bytes(gc, gc.get(bytes), first_n));
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
@@ -69,7 +67,7 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
 }
 
 pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
-    ocaml_frame!(gc nokeep, {
+    ocaml_frame!(gc, {
         let ints = to_ocaml!(gc, ints);
         let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
         let result: OCaml<OCamlList<OCamlInt>> =
@@ -79,7 +77,7 @@ pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
 }
 
 pub fn twice(num: i64) -> i64 {
-    ocaml_frame!(gc nokeep, {
+    ocaml_frame!(gc, {
         let num = unsafe { OCaml::of_i64(num) };
         let result = ocaml_call!(ocaml::twice(gc, num));
         let result: OCaml<OCamlInt> = result.expect("Error in 'twice' call result");
@@ -88,7 +86,7 @@ pub fn twice(num: i64) -> i64 {
 }
 
 pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
-    ocaml_frame!(gc nokeep, {
+    ocaml_frame!(gc, {
         let num = unsafe { OCaml::of_i64(snd) };
         let str = to_ocaml!(gc, fst);
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
@@ -98,7 +96,7 @@ pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
 }
 
 pub fn make_some(value: String) -> Option<String> {
-    ocaml_frame!(gc nokeep, {
+    ocaml_frame!(gc, {
         let str = to_ocaml!(gc, value);
         let result = ocaml_call!(ocaml::make_some(gc, str));
         let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");

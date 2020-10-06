@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::{GCFrame, GCFrameHandle, OCamlRef};
+use crate::memory::GCFrameHandle;
 use crate::mlvalues::*;
 use std::marker;
 use std::slice;
@@ -11,11 +11,11 @@ extern "C" {
     pub fn caml_string_length(s: RawOCaml) -> usize;
 }
 
-/// Representation of OCaml values inside `ocaml_frame` blocks.
+/// Representation of OCaml values inside [`ocaml_frame!`] blocks.
 ///
 /// Should not be instantiated directly, and will usually be the result
-/// of `ocaml_alloc!` and `ocaml_call!` expressions, or the input arguments
-/// of functions defined inside `ocaml_export!` blocks.
+/// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
+/// of functions defined inside [`ocaml_export!`] blocks.
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct OCaml<'a, T: 'a> {
@@ -74,14 +74,6 @@ impl<'a, T> OCaml<'a, T> {
     /// working with these values.
     pub unsafe fn raw(&self) -> RawOCaml {
         self.raw
-    }
-
-    /// Returns a tracked reference to this value.
-    ///
-    /// This method must be used with values that will be referenced after
-    /// calls into the OCaml runtime have been made.
-    pub fn keep<'gc>(self, gc: &GCFrame<'gc>) -> OCamlRef<'gc, T> {
-        gc.keep(self)
     }
 }
 

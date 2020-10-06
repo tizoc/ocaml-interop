@@ -7,7 +7,7 @@ use ocaml_interop::{
 };
 
 ocaml_export! {
-    fn rust_twice(_gc nokeep, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+    fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         let num: i64 = num.into_rust();
         unsafe { OCaml::of_i64(num * 2) }
     }
@@ -24,7 +24,7 @@ ocaml_export! {
         ocaml_alloc!(result.to_ocaml(gc))
     }
 
-    fn rust_add_unboxed_floats_noalloc(_gc nokeep, num: f64, num2: f64) -> f64 {
+    fn rust_add_unboxed_floats_noalloc(_gc, num: f64, num2: f64) -> f64 {
         num * num2
     }
 
@@ -34,7 +34,7 @@ ocaml_export! {
         ocaml_alloc!(result.to_ocaml(gc))
     }
 
-    fn rust_twice_unboxed_float(_gc nokeep, num: f64) -> f64 {
+    fn rust_twice_unboxed_float(_gc, num: f64) -> f64 {
         num * 2.0
     }
 

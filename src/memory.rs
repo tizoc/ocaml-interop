@@ -15,7 +15,9 @@ struct CamlRootsBlock {
     next: *mut CamlRootsBlock,
     ntables: Intnat,
     nitems: Intnat,
-    tables: [*mut RawOCaml; 5],
+    local_roots: *mut RawOCaml,
+    // NOTE: in C this field is defined instead, but we only need a single pointer
+    // tables: [*mut RawOCaml; 5],
 }
 
 impl Default for CamlRootsBlock {
@@ -24,17 +26,12 @@ impl Default for CamlRootsBlock {
             next: ptr::null_mut(),
             ntables: 0,
             nitems: 0,
-            tables: [ptr::null_mut(); 5],
+            local_roots: ptr::null_mut(),
+            // NOTE: to mirror C's definition this would be
+            // tables: [ptr::null_mut(); 5],
         }
     }
 }
-
-// TODO: like in caml-oxide, local root slots are reserved in a way equivalent
-// to CAMLlocalN, with a fixed size of 8 slots. Look into using an hybrid approach
-// for when we know there will be less than 5 slots required, and also handle
-// more than 8 slots gracefully.
-const LOCALS_BLOCK_SIZE: usize = 8;
-type LocalsBlock = [Cell<RawOCaml>; LOCALS_BLOCK_SIZE];
 
 extern "C" {
     static mut caml_local_roots: *mut CamlRootsBlock;
@@ -68,33 +65,26 @@ pub trait GCFrameHandle<'gc> {}
 pub struct GCFrame<'gc> {
     _marker: marker::PhantomData<&'gc i32>,
     block: CamlRootsBlock,
-    locals: LocalsBlock,
 }
 
+// OCaml GC frame handle
+#[derive(Default)]
+pub struct GCFrameNoKeep<'gc> {
+    _marker: marker::PhantomData<&'gc i32>,
+}
+
+// Impl
+
 impl<'gc> GCFrame<'gc> {
-    pub fn initialize(&mut self) -> &mut Self {
-        self.block.tables[0] = self.locals[0].as_ptr();
+    #[doc(hidden)]
+    pub fn initialize(&mut self, local_roots: &[Cell<RawOCaml>]) -> &mut Self {
+        self.block.local_roots = local_roots[0].as_ptr();
         self.block.ntables = 1;
         unsafe {
             self.block.next = caml_local_roots;
             caml_local_roots = &mut self.block;
         };
         self
-    }
-
-    #[doc(hidden)]
-    pub unsafe fn initialize_empty(&mut self) -> &mut Self {
-        self
-    }
-
-    /// Returns a GC tracked reference to an OCaml value.
-    pub fn keep<T>(&self, value: OCaml<T>) -> OCamlRef<'gc, T> {
-        OCamlRef::new(self, value)
-    }
-
-    /// Returns a GC tracked reference to an raw OCaml pointer.
-    pub fn keep_raw(&self, value: RawOCaml) -> OCamlRawRef<'gc> {
-        OCamlRawRef::new(self, value)
     }
 
     /// Returns the OCaml valued to which this GC tracked reference points to.
@@ -110,19 +100,11 @@ impl<'gc> GCFrame<'gc> {
 
 impl<'gc> Drop for GCFrame<'gc> {
     fn drop(&mut self) {
-        assert!(self.block.nitems == 0);
-        assert!(self.block.ntables == 1);
         unsafe {
             assert!(caml_local_roots == &mut self.block);
             caml_local_roots = self.block.next;
         }
     }
-}
-
-// OCaml GC frame handle
-#[derive(Default)]
-pub struct GCFrameNoKeep<'gc> {
-    _marker: marker::PhantomData<&'gc i32>,
 }
 
 impl<'gc> GCFrameNoKeep<'gc> {
@@ -142,52 +124,52 @@ impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
 /// Token used by allocation functions. Used internally.
 pub struct OCamlAllocToken {}
 
-unsafe fn reserve_local_root_cell<'gc>(_gc: &GCFrame<'gc>) -> &'gc Cell<RawOCaml> {
-    let block = &mut *caml_local_roots;
-    if (block.nitems as usize) < LOCALS_BLOCK_SIZE {
-        let locals: &'gc LocalsBlock = &*(block.tables[0] as *const LocalsBlock);
-        let pos = block.nitems;
-        let cell = &locals[pos as usize];
-        block.nitems = pos + 1;
-        cell
-    } else {
-        panic!(
-            "Out of local roots. Max is LOCALS_BLOCK_SIZE={}",
-            LOCALS_BLOCK_SIZE
-        );
+pub struct OCamlRoot<'a> {
+    cell: &'a Cell<RawOCaml>,
+}
+
+impl<'a> OCamlRoot<'a> {
+    #[doc(hidden)]
+    pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> OCamlRoot<'gc> {
+        assert_eq!(&_gc.block as *const _, caml_local_roots);
+        let block = &mut *caml_local_roots;
+        let locals: *const Cell<RawOCaml> = &*(block.local_roots as *const Cell<RawOCaml>);
+        let cell = &*locals.offset(block.nitems);
+        block.nitems += 1;
+        OCamlRoot { cell }
+    }
+
+    pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
+        self.cell.set(unsafe { val.raw() });
+        OCamlRef {
+            _marker: Default::default(),
+            cell: self.cell,
+        }
+    }
+
+    #[allow(clippy::needless_lifetimes)]
+    pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRef<'tmp> {
+        self.cell.set(val);
+        OCamlRawRef {
+            cell: self.cell,
+        }
     }
 }
 
-unsafe fn free_local_root_cell(cell: &Cell<RawOCaml>) {
-    let block = &mut *caml_local_roots;
-    assert!(block.tables[0].offset(block.nitems - 1) == cell.as_ptr());
-    block.nitems -= 1;
-}
-
-/// `OCamlRef<T>` is a reference to an `OCaml<T>` value that is tracked by the GC.
+/// `OCamlRef<T>` is a reference to an [`OCaml`]`<T>` value that is tracked by the GC.
 ///
-/// Unlike `OCaml<T>` values, it can be re-referenced after OCaml allocations.
+/// Unlike [`OCaml`]`<T>` values, it can be re-referenced after OCaml allocations.
 pub struct OCamlRef<'a, T> {
     cell: &'a Cell<RawOCaml>,
     _marker: marker::PhantomData<Cell<T>>,
 }
 
-/// Like `OCamlRef` but for `OCamlRaw` values.
+/// Like [`OCamlRef`] but for [`RawOCaml`] values.
 pub struct OCamlRawRef<'a> {
     cell: &'a Cell<RawOCaml>,
 }
 
 impl<'a, T> OCamlRef<'a, T> {
-    #[doc(hidden)]
-    pub fn new<'gc>(gc: &GCFrame<'gc>, x: OCaml<T>) -> OCamlRef<'gc, T> {
-        let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
-        cell.set(unsafe { x.raw() });
-        OCamlRef {
-            _marker: Default::default(),
-            cell,
-        }
-    }
-
     /// Updates the value of this GC tracked reference.
     pub fn set(&mut self, x: OCaml<T>) {
         self.cell.set(unsafe { x.raw() });
@@ -200,13 +182,6 @@ impl<'a, T> OCamlRef<'a, T> {
 }
 
 impl<'a> OCamlRawRef<'a> {
-    #[doc(hidden)]
-    pub fn new<'gc>(gc: &GCFrame<'gc>, x: RawOCaml) -> OCamlRawRef<'gc> {
-        let cell: &'gc Cell<RawOCaml> = unsafe { reserve_local_root_cell(gc) };
-        cell.set(x);
-        OCamlRawRef { cell }
-    }
-
     /// Updates the raw value of this GC tracked reference.
     pub fn set_raw(&mut self, x: RawOCaml) {
         self.cell.set(x);
@@ -215,18 +190,6 @@ impl<'a> OCamlRawRef<'a> {
     /// Gets the raw value contained by this reference.
     pub fn get_raw(&self) -> RawOCaml {
         self.cell.get()
-    }
-}
-
-impl<'a, T> Drop for OCamlRef<'a, T> {
-    fn drop(&mut self) {
-        unsafe { free_local_root_cell(self.cell) }
-    }
-}
-
-impl<'a> Drop for OCamlRawRef<'a> {
-    fn drop(&mut self) {
-        unsafe { free_local_root_cell(self.cell) }
     }
 }
 
