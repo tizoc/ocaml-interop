@@ -7,14 +7,14 @@
 /// It will be used to allocate OCaml values and call OCaml functions. Value references that result from allocations
 /// or function calls, will have their lifetime bound to this handle.
 ///
-/// Optionally, this identifier can be followed by a list of names to which "keep variables" will be bound.
+/// Optionally, this identifier can be followed by a list of names to which "root variables" will be bound.
 /// For each one of these variables, a new location for a tracked pointer will be reserved. Each one of these
-/// "keep variables" can be consumed to produce an `OCamlRef` that will be used to re-reference OCaml values
+/// "root variables" can be consumed to produce an `OCamlRef` that will be used to re-reference OCaml values
 /// what would otherwise be unavailable after an OCaml allocation of OCaml function call.
 ///
 /// # Notes
 ///
-/// When no "keep variables" are declared when opening a frame `ocaml-interop` will avoid setting up a new
+/// When no "root variables" are declared when opening a frame `ocaml-interop` will avoid setting up a new
 /// local roots frame, because it is not necessary in that case.
 ///
 /// # Examples
@@ -32,14 +32,14 @@
 ///         let bye_ocaml = &to_ocaml!(gc, "bye OCaml!", bye_ocaml);
 ///         ocaml_call!(print_endline(gc, gc.get(hello_ocaml)));
 ///         ocaml_call!(print_endline(gc, gc.get(bye_ocaml)));
-///         // Values that don't need to be keept across calls can be used directly
+///         // Values that don't need to be kept across calls can be used directly
 ///         let immediate_use = to_ocaml!(gc, "no need to `keep` me");
 ///         ocaml_call!(print_endline(gc, immediate_use));
 ///     });
 /// # }
 /// ```
 ///
-/// The following example does not declare "keep variables". As a result no space is reserved for local roots:
+/// The following example does not declare "root variables". As a result no space is reserved for local roots:
 ///
 /// ```
 /// # use ocaml_interop::*;
@@ -59,12 +59,12 @@ macro_rules! ocaml_frame {
         $body
     }};
 
-    ($gc:ident($($keeper:ident),+ $(,)?), $body:block) => {{
+    ($gc:ident($($rootvar:ident),+ $(,)?), $body:block) => {{
         let mut frame: $crate::internal::GCFrame = Default::default();
-        let local_roots = $crate::repeat_slice!(::std::cell::Cell::new($crate::UNIT), $($keeper)+);
+        let local_roots = $crate::repeat_slice!(::std::cell::Cell::new($crate::UNIT), $($rootvar)+);
         let $gc = frame.initialize(&local_roots);
         $(
-            let mut $keeper = unsafe { $crate::internal::KeepVar::reserve(&$gc) };
+            let mut $rootvar = unsafe { $crate::internal::OCamlRoot::reserve(&$gc) };
         )+
         $body
     }};
@@ -229,14 +229,14 @@ macro_rules! ocaml_export {
 
     // Unboxed float return
     {
-        fn $name:ident( $gc:ident $(($($keeper:ident),+ $(,)?))?, $($args:tt)*) -> f64
+        fn $name:ident( $gc:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) -> f64
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @gc { $gc $(($($keeper),+))? }
+            @gc { $gc $(($($rootvar),+))? }
             @final_args { }
             @proc_args { $($args)*, }
             @return { f64 }
@@ -249,14 +249,14 @@ macro_rules! ocaml_export {
 
     // Other (or empty) return value type
     {
-        fn $name:ident( $gc:ident $(($($keeper:ident),+ $(,)?))?, $($args:tt)*) $(-> $rtyp:ty)?
+        fn $name:ident( $gc:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) $(-> $rtyp:ty)?
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @gc { $gc $(($($keeper),+))? }
+            @gc { $gc $(($($rootvar),+))? }
             @final_args { }
             @proc_args { $($args)*, }
             @return { $($rtyp)? }
@@ -323,9 +323,9 @@ macro_rules! ocaml_alloc {
 /// a Rust value of a type that implements the `ToOCaml` trait. The resulting
 /// value's lifetime is bound to `gc`'s.
 ///
-/// An alternative form accepts a third "keep variable" argument: `to_ocaml!(gc, value, keepvar)`.
-/// `keepvar` is one of the variables declared when opening an `ocaml_frame!`.
-/// This variant consumes `keepvar` returns an `OCamlRef` value instead of an `OCaml` one.
+/// An alternative form accepts a third "root variable" argument: `to_ocaml!(gc, value, rootvar)`.
+/// `rootvar` is one of the variables declared when opening an `ocaml_frame!`.
+/// This variant consumes `rootvar` returns an `OCamlRef` value instead of an `OCaml` one.
 ///
 /// # Examples
 ///
@@ -345,8 +345,8 @@ macro_rules! ocaml_alloc {
 /// ```
 /// # use ocaml_interop::*;
 /// # fn to_ocaml_macro_example() {
-///     ocaml_frame!(gc(keepvar), {
-///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(gc, "hello OCaml!", keepvar);
+///     ocaml_frame!(gc(rootvar), {
+///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(gc, "hello OCaml!", rootvar);
 ///         // ...
 ///         # ()
 ///     });
@@ -354,8 +354,8 @@ macro_rules! ocaml_alloc {
 /// ```
 #[macro_export]
 macro_rules! to_ocaml {
-    ($gc:ident, $obj:expr, $keepvar:ident) => {
-        $keepvar.keep($crate::to_ocaml!($gc, $obj))
+    ($gc:ident, $obj:expr, $rootvar:ident) => {
+        $rootvar.keep($crate::to_ocaml!($gc, $obj))
     };
 
     ($gc:ident, $obj:expr) => {
@@ -363,7 +363,7 @@ macro_rules! to_ocaml {
     };
 
     ($($t:tt)*) => {
-        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(gc, expr[, keepvar])`")
+        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(gc, expr[, rootvar])`")
     };
 }
 
@@ -1255,7 +1255,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @gc { $gc:ident $(($($keeper:ident),+))? }
+        @gc { $gc:ident $(($($rootvar:ident),+))? }
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
@@ -1264,7 +1264,7 @@ macro_rules! expand_exported_function {
     } => {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
-            $crate::ocaml_frame!( $gc $(($($keeper),+))?, {
+            $crate::ocaml_frame!( $gc $(($($rootvar),+))?, {
                 $crate::expand_args_init!($gc, $($original_args)*);
                 $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
             })

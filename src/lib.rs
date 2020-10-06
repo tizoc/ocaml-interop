@@ -393,7 +393,7 @@ pub use crate::value::OCaml;
 pub mod internal {
     pub use crate::mlvalues::raw_ocaml_to_i64;
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep, KeepVar};
+    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep, OCamlRoot};
 }
 
 #[doc(hidden)]

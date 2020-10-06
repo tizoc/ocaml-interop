@@ -124,19 +124,19 @@ impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
 /// Token used by allocation functions. Used internally.
 pub struct OCamlAllocToken {}
 
-pub struct KeepVar<'a> {
+pub struct OCamlRoot<'a> {
     cell: &'a Cell<RawOCaml>,
 }
 
-impl<'a> KeepVar<'a> {
+impl<'a> OCamlRoot<'a> {
     #[doc(hidden)]
-    pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> KeepVar<'gc> {
+    pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> OCamlRoot<'gc> {
         assert_eq!(&_gc.block as *const _, caml_local_roots);
         let block = &mut *caml_local_roots;
         let locals: *const Cell<RawOCaml> = &*(block.local_roots as *const Cell<RawOCaml>);
         let cell = &*locals.offset(block.nitems);
         block.nitems += 1;
-        KeepVar { cell }
+        OCamlRoot { cell }
     }
 
     pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
