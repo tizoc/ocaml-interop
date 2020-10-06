@@ -61,7 +61,7 @@ macro_rules! ocaml_frame {
 
     ($gc:ident($($rootvar:ident),+ $(,)?), $body:block) => {{
         let mut frame: $crate::internal::GCFrame = Default::default();
-        let local_roots = $crate::repeat_slice!(::std::cell::Cell::new($crate::UNIT), $($rootvar)+);
+        let local_roots = $crate::repeat_slice!(::std::cell::Cell::new($crate::internal::UNIT), $($rootvar)+);
         let $gc = frame.initialize(&local_roots);
         $(
             let mut $rootvar = unsafe { $crate::internal::OCamlRoot::reserve(&$gc) };
