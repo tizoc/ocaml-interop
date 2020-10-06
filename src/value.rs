@@ -11,11 +11,11 @@ extern "C" {
     pub fn caml_string_length(s: RawOCaml) -> usize;
 }
 
-/// Representation of OCaml values inside `ocaml_frame` blocks.
+/// Representation of OCaml values inside [`ocaml_frame!`] blocks.
 ///
 /// Should not be instantiated directly, and will usually be the result
-/// of `ocaml_alloc!` and `ocaml_call!` expressions, or the input arguments
-/// of functions defined inside `ocaml_export!` blocks.
+/// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
+/// of functions defined inside [`ocaml_export!`] blocks.
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct OCaml<'a, T: 'a> {

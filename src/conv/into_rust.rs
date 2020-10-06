@@ -4,7 +4,7 @@
 use crate::conv::FromOCaml;
 use crate::value::OCaml;
 
-/// Counterpart to `FromOCaml`, usually more convenient to use.
+/// Counterpart to [`FromOCaml`], usually more convenient to use.
 pub trait IntoRust<T>: Sized {
     /// Convert into a Rust value.
     fn into_rust(self) -> T;

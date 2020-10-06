@@ -156,15 +156,15 @@ impl<'a> OCamlRoot<'a> {
     }
 }
 
-/// `OCamlRef<T>` is a reference to an `OCaml<T>` value that is tracked by the GC.
+/// `OCamlRef<T>` is a reference to an [`OCaml`]`<T>` value that is tracked by the GC.
 ///
-/// Unlike `OCaml<T>` values, it can be re-referenced after OCaml allocations.
+/// Unlike [`OCaml`]`<T>` values, it can be re-referenced after OCaml allocations.
 pub struct OCamlRef<'a, T> {
     cell: &'a Cell<RawOCaml>,
     _marker: marker::PhantomData<Cell<T>>,
 }
 
-/// Like `OCamlRef` but for `OCamlRaw` values.
+/// Like [`OCamlRef`] but for [`RawOCaml`] values.
 pub struct OCamlRawRef<'a> {
     cell: &'a Cell<RawOCaml>,
 }
