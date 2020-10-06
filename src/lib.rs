@@ -334,7 +334,8 @@
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
-//! // binding the GC frame handle to the name provided as the first parameter.
+//! // binding the GC frame handle to the name provided as the first parameter (along with
+//! // an optional list of "root variables", like in `ocaml_frame!`).
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
