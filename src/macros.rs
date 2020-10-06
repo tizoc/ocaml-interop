@@ -9,7 +9,7 @@
 ///
 /// Optionally, this identifier can be followed by a list of names to which "root variables" will be bound.
 /// For each one of these variables, a new location for a tracked pointer will be reserved. Each one of these
-/// "root variables" can be consumed to produce an `OCamlRef` that will be used to re-reference OCaml values
+/// "root variables" can be consumed to produce an [`OCamlRef`].that will be used to re-reference OCaml values
 /// what would otherwise be unavailable after an OCaml allocation of OCaml function call.
 ///
 /// # Notes
@@ -81,7 +81,7 @@ macro_rules! ocaml_frame {
 ///
 /// Visibility and return value type can be omitted. The return type defaults to unit when omitted.
 ///
-/// These functions must be invoked with the `ocaml_call!` macro.
+/// These functions must be invoked with the [`ocaml_call!`] macro.
 ///
 /// # Examples
 ///
@@ -170,11 +170,11 @@ macro_rules! ocaml {
 ///
 /// The first argument in these functions declarations is the same as in the [`ocaml_frame!`] macro.
 ///
-/// Arguments and return values must be of type `OCaml<T>`, or `f64` in the case of unboxed floats.
+/// Arguments and return values must be of type [`OCaml`]`<T>`, or `f64` in the case of unboxed floats.
 ///
 /// The return type defaults to unit when omitted.
 ///
-/// The body of the function has an implicit `ocaml_frame!` wrapper, with the lifetimes of every `OCaml<T>`
+/// The body of the function has an implicit [`ocaml_frame!`] wrapper, with the lifetimes of every [`OCaml`]`<T>`
 /// argument bound to the lifetime of the variable bound to the function's OCaml frame GC handle.
 ///
 /// # Examples
@@ -221,8 +221,6 @@ macro_rules! ocaml {
 ///     }
 /// }
 /// ```
-///
-/// [`ocaml_frame!`]: ./macro.ocaml_frame.html
 #[macro_export]
 macro_rules! ocaml_export {
     {} => ();
@@ -272,7 +270,7 @@ macro_rules! ocaml_export {
 ///
 /// Useful for calling functions that construct new values and never raise an exception.
 ///
-/// It is used internally by the `to_ocaml` macro, and may be used directly only in rare occasions.
+/// It is used internally by the [`to_ocaml!`] macro, and may be used directly only in rare occasions.
 ///
 /// # Examples
 ///
@@ -320,12 +318,12 @@ macro_rules! ocaml_alloc {
 /// Converts Rust values into OCaml values.
 ///
 /// In `to_ocaml!(gc, value)`, `gc` is an OCaml frame GC handle, and `value` is
-/// a Rust value of a type that implements the `ToOCaml` trait. The resulting
+/// a Rust value of a type that implements the [`ToOCaml`] trait. The resulting
 /// value's lifetime is bound to `gc`'s.
 ///
 /// An alternative form accepts a third "root variable" argument: `to_ocaml!(gc, value, rootvar)`.
-/// `rootvar` is one of the variables declared when opening an `ocaml_frame!`.
-/// This variant consumes `rootvar` returns an `OCamlRef` value instead of an `OCaml` one.
+/// `rootvar` is one of the "root variables" declared when opening an [`ocaml_frame!`].
+/// This variant consumes `rootvar` returns an [`OCamlRef`] value instead of an [`OCaml`] one.
 ///
 /// # Examples
 ///
@@ -369,8 +367,8 @@ macro_rules! to_ocaml {
 
 /// Calls an OCaml function
 ///
-/// The called function must be declared with `ocaml!`. This macro can
-/// only be used inside `ocaml_frame!` blocks, and the framce GC
+/// The called function must be declared with [`ocaml!`]. This macro can
+/// only be used inside [`ocaml_frame!`] blocks, and the frame GC
 /// handle must be passed as the first argument to the function.
 ///
 /// The result is either `Ok(result)` or `Err(ocaml_exception)` if
@@ -416,7 +414,7 @@ macro_rules! ocaml_call {
 
 /// Implements conversion between a Rust struct and an OCaml record.
 ///
-/// See the `impl_to_ocaml_record!` and `impl_from_ocaml_record!` macros
+/// See the [`impl_to_ocaml_record!`] and [`impl_from_ocaml_record!`] macros
 /// for more details.
 #[macro_export]
 macro_rules! impl_conv_ocaml_record {
@@ -449,7 +447,7 @@ macro_rules! impl_conv_ocaml_record {
 
 /// Implements conversion between a Rust enum and an OCaml variant.
 ///
-/// See the `impl_to_ocaml_variant!` and `impl_from_ocaml_variant!` macros
+/// See the [`impl_to_ocaml_variant!`] and [`impl_from_ocaml_variant!`] macros
 /// for more details.
 #[macro_export]
 macro_rules! impl_conv_ocaml_variant {
@@ -562,7 +560,7 @@ macro_rules! ocaml_alloc_tagged_block {
 
 /// Allocates an OCaml record built from a Rust record
 ///
-/// Most of the `impl_to_ocaml_record!` macro will be used to define how records
+/// Most of the [`impl_to_ocaml_record!`] macro will be used to define how records
 /// should be converted. This macro is useful when implementing OCaml allocation
 /// functions directly.
 ///
@@ -627,7 +625,7 @@ macro_rules! ocaml_alloc_record {
     };
 }
 
-/// Implements `FromOCaml` for mapping an OCaml record into a Rust record.
+/// Implements [`FromOCaml`] for mapping an OCaml record into a Rust record.
 ///
 /// It is important that the order remains the same as in the OCaml type declaration.
 ///
@@ -686,7 +684,7 @@ macro_rules! impl_from_ocaml_record {
     };
 }
 
-/// Implements `ToOCaml` for mapping a Rust record into an OCaml record.
+/// Implements [`ToOCaml`] for mapping a Rust record into an OCaml record.
 ///
 /// It is important that the order remains the same as in the OCaml type declaration.
 ///
@@ -748,7 +746,7 @@ macro_rules! impl_to_ocaml_record {
     };
 }
 
-/// Implements `FromOCaml` for mapping an OCaml variant into a Rust enum.
+/// Implements [`FromOCaml`] for mapping an OCaml variant into a Rust enum.
 ///
 /// It is important that the order remains the same as in the OCaml type declaration.
 ///
@@ -823,7 +821,7 @@ macro_rules! impl_from_ocaml_variant {
 ///
 /// # Note
 ///
-/// Unlike with `ocaml_unpack_record!`, the result of `ocaml_unpack_variant!` is a `Result` value.
+/// Unlike with [`ocaml_unpack_record!`], the result of [`ocaml_unpack_variant!`] is a `Result` value.
 /// An error will be returned in the case of an expected tag value. This may change in the future.
 ///
 /// # Examples
@@ -939,7 +937,7 @@ macro_rules! ocaml_alloc_variant {
     };
 }
 
-/// Implements `ToOCaml` for mapping a Rust enum into an OCaml variant.
+/// Implements [`ToOCaml`] for mapping a Rust enum into an OCaml variant.
 ///
 /// The conversion is exhaustive, and requires that every enum case is handled.
 ///
