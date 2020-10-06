@@ -35,7 +35,7 @@
 //!
 //! #### Rule 1: OCaml function calls, allocations and the GC Frame
 //!
-//! Calls into the OCaml runtime that perform allocations should only occur inside `ocaml_frame!` blocks, wrapped by either the `ocaml_call!` (for declared OCaml functions) or `ocaml_alloc!` (for allocation or conversion functions) macros.
+//! Calls into the OCaml runtime that perform allocations should only occur inside [`ocaml_frame!`] blocks, wrapped by either the [`ocaml_call!`] (for declared OCaml functions) or [`ocaml_alloc!`] (for allocation or conversion functions) macros.
 //!
 //! Example:
 //!
@@ -90,7 +90,7 @@
 //! })
 //! ```
 //!
-//! If the value is not kept with `gc.keep`, and instead is attempted to be re-used directly, Rust's borrow checker will complain:
+//! If the value is not kept with `root_var.keep` (root variables are declared when opening an [`ocaml_frame!`]), and instead an attempt is made to re-use it directly, Rust's borrow checker will complain:
 //!
 //! ```text,no_run
 //! error[E0502]: cannot borrow `*gc` as mutable because it is also borrowed as immutable
@@ -111,7 +111,7 @@
 //!
 //! #### Rule 3: Liveness and scope of OCaml values
 //!
-//! OCaml values that are the result of an allocation by the OCaml runtime cannot escape the `ocaml_frame!` block inside which they where created. This is enforced by Rust's borrow checker.
+//! OCaml values that are the result of an allocation by the OCaml runtime cannot escape the [`ocaml_frame!`] block inside which they where created. This is enforced by Rust's borrow checker.
 //!
 //! Example:
 //!
@@ -155,17 +155,17 @@
 //!
 //! ### Converting between OCaml and Rust data
 //!
-//! #### `FromOCaml` trait
+//! #### [`FromOCaml`] trait
 //!
-//! The `FromOCaml` trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
+//! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
 //!
-//! #### `IntoRust` trait
+//! #### [`IntoRust`] trait
 //!
-//! `IntoRust` is the counterpart to `FromOCaml` just like `Into` is to `From`. Using `ocaml_val.into_rust()` instead of `Type::from_ocaml(ocaml_val)` is usually more convenient, specially when more complicated types are involved.
+//! [`IntoRust`] is the counterpart to [`FromOCaml`] just like `Into` is to `From`. Using `ocaml_val.into_rust()` instead of `Type::from_ocaml(ocaml_val)` is usually more convenient, specially when more complicated types are involved.
 //!
-//! #### `ToOCaml` trait
+//! #### [`ToOCaml`] trait
 //!
-//! The `ToOCaml` trait implements conversion from Rust values into OCaml values, using the `to_ocaml` function. `to_ocaml` can only be called when wrapped by the `ocaml_alloc!` macro form, and it takes a single parameter that must be a handle to the current GC frame.
+//! The [`ToOCaml`] trait implements conversion from Rust values into OCaml values, using the `to_ocaml` function. `to_ocaml` can only be called when wrapped by the [`ocaml_alloc!`] macro form, and it takes a single parameter that must be a handle to the current GC frame.
 //!
 //! ### Calling into OCaml from Rust
 //!
@@ -190,10 +190,10 @@
 //! To be able to call these from Rust, there are a few things that need to be done:
 //!
 //! - The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by doing `let runtime = OCamlRuntime::init()`, but if the driving program is an OCaml application, this is not required. When `runtime` goes out of scope it will be dropped and the OCaml runtime cleanup functions will be executed.
-//! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the `ocaml!` macro.
-//! - Blocks of code that call OCaml functions, or allocate OCaml values, must be wrapped by the `ocaml_frame!` macro.
-//! - Calls to functions that allocate OCaml values must be wrapped by the `ocaml_alloc!` macro. These always return a value and cannot signal failure.
-//! - Calls to functions exported by OCaml with `Callback.register` must be wrapped by the `ocaml_call!` macro. These return a value of type `Result<OCaml<T>, ocaml_interop::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
+//! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the [`ocaml!`] macro.
+//! - Blocks of code that call OCaml functions, or allocate OCaml values, must be wrapped by the [`ocaml_frame!`] macro.
+//! - Calls to functions that allocate OCaml values must be wrapped by the [`ocaml_alloc!`] macro. These always return a value and cannot signal failure.
+//! - Calls to functions exported by OCaml with `Callback.register` must be wrapped by the [`ocaml_call!`] macro. These return a value of type `Result<OCaml<T>, ocaml_interop::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
 //!
 //! #### Example
 //!
@@ -322,7 +322,7 @@
 //!
 //! ### Calling into Rust from OCaml
 //!
-//! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `ocaml_export!` macro.
+//! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the [`ocaml_export!`] macro.
 //!
 //! #### Example
 //!
