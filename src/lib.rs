@@ -226,7 +226,8 @@
 //!     // Any calls into the OCaml runtime have to happen inside an
 //!     // `ocaml_frame!` block. Inside this block, OCaml allocations and references
 //!     // to OCaml allocated values are tracked and validated by Rust's borrow checker.
-//!     // The first argument to the macro is a name for the GC handle, the second
+//!     // The first argument to the macro is a name for the GC handle, followed by an optional
+//!     // list of "root variables" (more on this later). The second argument
 //!     // is the block of code that will run inside that frame.
 //!     ocaml_frame!(gc(bytes1_ref, bytes2_ref), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
@@ -239,20 +240,22 @@
 //!         // `ocaml_bytes1` is going to be referenced later, but there calls into the
 //!         // OCaml runtime that perform allocations happening before this value is used again.
 //!         // Those calls into the OCaml runtime invalidate this reference, so it has to be
-//!         // kept alive somehow. To do so, `gc.keep(ocaml_bytes1)` is used. It returns
+//!         // kept alive somehow. To do so, `bytes_ref.keep(ocaml_bytes1)` is used.
+//!         // `bytes_ref` is one of the "root variables" that were declared when opening this frame.
+//!         // Each "root variable" reserves space for a reference that will be tracked by the GC.
+//!         // A root variable's `root_var.keep(value)` method returns
 //!         // a reference to an OCaml value that is going to be valid during the scope of
 //!         // the current `ocaml_frame!` block. Later `gc.get(the_reference)` can be used
 //!         // to obtain the kept value.
 //!         let bytes1_ref: &OCamlRef<String> = &bytes1_ref.keep(ocaml_bytes1);
-//!
-//!         // A shorter way to write the above two lines is:
-//!         // let bytes1_ref = &to_ocaml!(gc, bytes1).keep(gc);
 //!
 //!         // Same as above. Note that if we waited to perform this conversion
 //!         // until after `ocaml_bytes1` is used, no references would have to be
 //!         // kept for either of the two OCaml values, because they would be
 //!         // used immediately, with no allocations being performed by the
 //!         // OCaml runtime in-between.
+//!         // Here a third argument is passed to `to_ocaml!`, a root variable.
+//!         // This variation returns an `OCamlRef` value instead of an `OCaml` one.
 //!         let bytes2_ref = &to_ocaml!(gc, bytes2, bytes2_ref);
 //!
 //!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64`.
