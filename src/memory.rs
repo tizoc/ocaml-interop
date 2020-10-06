@@ -129,6 +129,7 @@ pub struct KeepVar<'a> {
 }
 
 impl<'a> KeepVar<'a> {
+    #[doc(hidden)]
     pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> KeepVar<'gc> {
         assert_eq!(&_gc.block as *const _, caml_local_roots);
         let block = &mut *caml_local_roots;
@@ -146,6 +147,7 @@ impl<'a> KeepVar<'a> {
         }
     }
 
+    #[allow(clippy::needless_lifetimes)]
     pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRef<'tmp> {
         self.cell.set(val);
         OCamlRawRef {
