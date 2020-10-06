@@ -3,7 +3,7 @@
 
 extern crate ocaml_interop;
 
-use ocaml_interop::{IntoRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml, ocaml_call, ocaml_frame, to_ocaml};
+use ocaml_interop::{ToRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml, ocaml_call, ocaml_frame, to_ocaml};
 
 mod ocaml {
     use ocaml_interop::{
@@ -62,7 +62,7 @@ pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
         let first_n = to_ocaml!(gc, first_n as i64);
         let result = ocaml_call!(ocaml::increment_bytes(gc, gc.get(bytes), first_n));
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
-        result.into_rust()
+        result.to_rust()
     })
 }
 
@@ -72,7 +72,7 @@ pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
         let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
         let result: OCaml<OCamlList<OCamlInt>> =
             result.expect("Error in 'increment_ints_list' call result");
-        result.into_rust()
+        result.to_rust()
     })
 }
 
@@ -81,7 +81,7 @@ pub fn twice(num: i64) -> i64 {
         let num = unsafe { OCaml::of_i64(num) };
         let result = ocaml_call!(ocaml::twice(gc, num));
         let result: OCaml<OCamlInt> = result.expect("Error in 'twice' call result");
-        result.into_rust()
+        result.to_rust()
     })
 }
 
@@ -91,7 +91,7 @@ pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
         let str = to_ocaml!(gc, fst);
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
         let result: OCaml<(String, OCamlInt)> = result.expect("Error in 'make_tuple' call result");
-        result.into_rust()
+        result.to_rust()
     })
 }
 
@@ -100,7 +100,7 @@ pub fn make_some(value: String) -> Option<String> {
         let str = to_ocaml!(gc, value);
         let result = ocaml_call!(ocaml::make_some(gc, str));
         let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
-        result.into_rust()
+        result.to_rust()
     })
 }
 
@@ -109,7 +109,7 @@ pub fn verify_record_test(record: ocaml::TestRecord) -> String {
         let ocaml_record = to_ocaml!(gc, record);
         let result = ocaml_call!(ocaml::stringify_record(gc, ocaml_record));
         let result: OCaml<String> = result.expect("Error in 'stringify_record' call result");
-        result.into_rust()
+        result.to_rust()
     })
 }
 
@@ -118,7 +118,7 @@ pub fn verify_variant_test(variant: ocaml::Movement) -> String {
         let ocaml_variant = to_ocaml!(gc, variant);
         let result = ocaml_call!(ocaml::stringify_variant(gc, ocaml_variant));
         let result: OCaml<String> = result.expect("Error in 'stringify_variant' call result");
-        result.into_rust()
+        result.to_rust()
     })
 }
 

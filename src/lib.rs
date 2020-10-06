@@ -15,7 +15,7 @@
 //!     + [Rule 3: Liveness and scope of OCaml values](#rule-3-liveness-and-scope-of-ocaml-values)
 //!   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
 //!     + [`FromOCaml` trait](#fromocaml-trait)
-//!     + [`IntoRust` trait](#intorust-trait)
+//!     + [`ToRust` trait](#torust-trait)
 //!     + [`ToOCaml` trait](#toocaml-trait)
 //!   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
 //!   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
@@ -159,9 +159,9 @@
 //!
 //! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
 //!
-//! #### [`IntoRust`] trait
+//! #### [`ToRust`] trait
 //!
-//! [`IntoRust`] is the counterpart to [`FromOCaml`] just like `Into` is to `From`. Using `ocaml_val.into_rust()` instead of `Type::from_ocaml(ocaml_val)` is usually more convenient, specially when more complicated types are involved.
+//! [`ToRust`] is the counterpart to [`FromOCaml`] similar to how `Into` is to `From`. Using `ocaml_val.to_rust()` instead of `Type::from_ocaml(ocaml_val)` is usually more convenient, specially when more complicated types are involved.
 //!
 //! #### [`ToOCaml`] trait
 //!
@@ -199,7 +199,7 @@
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, IntoRust, FromOCaml, OCaml, OCamlRef, ToOCaml,
+//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, ToRust, FromOCaml, OCaml, OCamlRef, ToOCaml,
 //!     OCamlRuntime
 //! };
 //!
@@ -282,7 +282,7 @@
 //!         // `ocaml_call!` that follows will invalidate it.
 //!         // Alternatively, the result of `gc.keep(result1)` could be used
 //!         // to be able to reference the value later through an `OCamlRef` value.
-//!         let new_bytes1: String = result1.into_rust();
+//!         let new_bytes1: String = result1.to_rust();
 //!         let result2 = ocaml_call!(ocaml_funcs::increment_bytes(
 //!             gc,
 //!             gc.get(bytes2_ref),
@@ -293,7 +293,7 @@
 //!         // OCaml values into OCaml values. Unlike the `to_ocaml` method, it doesn't
 //!         // require a GC handle argument, because no allocation is performed by the
 //!         // OCaml runtime when converting into Rust values.
-//!         // A more convenient alternative, is to use the `into_rust` method as
+//!         // A more convenient alternative, is to use the `to_rust` method as
 //!         // above when `result1` was converted.
 //!         (new_bytes1, String::from_ocaml(result2))
 //!     })
@@ -386,7 +386,7 @@ mod runtime;
 mod value;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCamlResult};
-pub use crate::conv::{FromOCaml, IntoRust, ToOCaml};
+pub use crate::conv::{FromOCaml, ToRust, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::{OCamlAllocResult, OCamlAllocToken, OCamlRef};
 pub use crate::mlvalues::{OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};

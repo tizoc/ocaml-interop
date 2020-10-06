@@ -183,12 +183,12 @@ macro_rules! ocaml {
 /// # use ocaml_interop::*;
 /// ocaml_export! {
 ///     fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
-///         let num: i64 = num.into_rust();
+///         let num: i64 = num.to_rust();
 ///         unsafe { OCaml::of_i64(num * 2) }
 ///     }
 ///
 ///     fn rust_twice_boxed_i32(gc, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
-///         let num: i32 = num.into_rust();
+///         let num: i32 = num.to_rust();
 ///         let result = num * 2;
 ///         ocaml_alloc!(result.to_ocaml(gc))
 ///     }
@@ -198,13 +198,13 @@ macro_rules! ocaml {
 ///     }
 ///
 ///     fn rust_twice_boxed_float(gc, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
-///         let num: f64 = num.into_rust();
+///         let num: f64 = num.to_rust();
 ///         let result = num * 2.0;
 ///         ocaml_alloc!(result.to_ocaml(gc))
 ///     }
 ///
 ///     fn rust_increment_ints_list(gc, ints: OCaml<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
-///         let mut vec: Vec<i64> = ints.into_rust();
+///         let mut vec: Vec<i64> = ints.to_rust();
 ///
 ///         for i in 0..vec.len() {
 ///             vec[i] += 1;
@@ -214,8 +214,8 @@ macro_rules! ocaml {
 ///     }
 ///
 ///     fn rust_make_tuple(gc, fst: OCaml<String>, snd: OCaml<OCamlInt>) -> OCaml<(String, OCamlInt)> {
-///         let fst: String = fst.into_rust();
-///         let snd: i64 = snd.into_rust();
+///         let fst: String = fst.to_rust();
+///         let snd: i64 = snd.to_rust();
 ///         let tuple = (fst, snd);
 ///         ocaml_alloc!(tuple.to_ocaml(gc))
 ///     }
@@ -524,7 +524,7 @@ macro_rules! ocaml_unpack_record {
             let mut current = 0;
 
             $(
-                let $field = record.field::<$ocaml_typ>(current).into_rust();
+                let $field = record.field::<$ocaml_typ>(current).to_rust();
                 current += 1;
             )+
 
@@ -1093,7 +1093,7 @@ macro_rules! unpack_variant_tag {
             let mut current_field = 0;
 
             $(
-                let $slot_name = unsafe { $self.field::<$slot_typ>(current_field).into_rust() };
+                let $slot_name = unsafe { $self.field::<$slot_typ>(current_field).to_rust() };
                 current_field += 1;
             )+
 
