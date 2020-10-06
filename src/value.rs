@@ -16,7 +16,6 @@ extern "C" {
 /// Should not be instantiated directly, and will usually be the result
 /// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
 /// of functions defined inside [`ocaml_export!`] blocks.
-#[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct OCaml<'a, T: 'a> {
     _marker: marker::PhantomData<&'a T>,
