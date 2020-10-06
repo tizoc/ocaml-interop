@@ -78,7 +78,7 @@ pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
 
 pub fn twice(num: i64) -> i64 {
     ocaml_frame!(gc, {
-        let num = unsafe { OCaml::of_i64(num) };
+        let num = unsafe { OCaml::of_i64_unchecked(num) };
         let result = ocaml_call!(ocaml::twice(gc, num));
         let result: OCaml<OCamlInt> = result.expect("Error in 'twice' call result");
         result.to_rust()
@@ -87,7 +87,7 @@ pub fn twice(num: i64) -> i64 {
 
 pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
     ocaml_frame!(gc, {
-        let num = unsafe { OCaml::of_i64(snd) };
+        let num = unsafe { OCaml::of_i64_unchecked(snd) };
         let str = to_ocaml!(gc, fst);
         let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
         let result: OCaml<(String, OCamlInt)> = result.expect("Error in 'make_tuple' call result");

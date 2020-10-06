@@ -184,7 +184,7 @@ macro_rules! ocaml {
 /// ocaml_export! {
 ///     fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
 ///         let num: i64 = num.to_rust();
-///         unsafe { OCaml::of_i64(num * 2) }
+///         unsafe { OCaml::of_i64_unchecked(num * 2) }
 ///     }
 ///
 ///     fn rust_twice_boxed_i32(gc, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
@@ -1121,7 +1121,7 @@ macro_rules! ocaml_alloc_variant_match {
         match $self {
             $(
                 $($unit_tag)::+ =>
-                    $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_i64($unit_tag_counter as i64).raw() }),
+                    $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_i64_unchecked($unit_tag_counter as i64).raw() }),
             )*
             $(
                 $($block_tag)::+($($block_slot_name),+) =>

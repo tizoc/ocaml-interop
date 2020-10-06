@@ -1,8 +1,8 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::GCFrameHandle;
 use crate::mlvalues::*;
+use crate::{error::OCamlFixnumConversionError, memory::GCFrameHandle};
 use std::marker;
 use std::slice;
 use std::str;
@@ -145,21 +145,38 @@ impl<'a> OCaml<'a, OCamlBytes> {
 }
 
 impl<'a> OCaml<'a, OCamlInt> {
-    /// Converts an OCaml int to an i64.
+    /// Converts an OCaml int to an `i64`.
     pub fn as_i64(&self) -> i64 {
         unsafe { raw_ocaml_to_i64(self.raw) }
     }
 
-    /// Creates an OCaml int from an i64.
+    /// Creates an OCaml int from an `i64` without checking that it fits in an OCaml fixnum.
     ///
     /// # Safety
     ///
     /// OCaml ints are represented as 63bits + 1bit tag, so when converting
     /// from an i64, a bit of precision is lost.
-    pub unsafe fn of_i64(n: i64) -> OCaml<'static, OCamlInt> {
+    pub unsafe fn of_i64_unchecked(n: i64) -> OCaml<'static, OCamlInt> {
         OCaml {
             _marker: Default::default(),
             raw: raw_ocaml_of_i64(n),
+        }
+    }
+
+    // Creates an OCaml int from an `i64`.
+    //
+    // The conversion fails if the `i64` value doesn't fit in an OCaml fixnum and
+    // an error is returned instead.
+    pub fn of_i64(n: i64) -> Result<OCaml<'static, OCamlInt>, OCamlFixnumConversionError> {
+        if n > MAX_FIXNUM as i64 {
+            Err(OCamlFixnumConversionError::InputTooBig(n))
+        } else if n < MIN_FIXNUM as i64 {
+            Err(OCamlFixnumConversionError::InputTooSmall(n))
+        } else {
+            Ok(OCaml {
+                _marker: Default::default(),
+                raw: unsafe { raw_ocaml_of_i64(n) },
+            })
         }
     }
 
@@ -182,7 +199,7 @@ impl<'a> OCaml<'a, bool> {
     pub fn of_bool(b: bool) -> Self {
         OCaml {
             _marker: Default::default(),
-            raw: if b { TRUE } else { FALSE }
+            raw: if b { TRUE } else { FALSE },
         }
     }
 }

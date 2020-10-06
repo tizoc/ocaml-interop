@@ -9,7 +9,7 @@ use ocaml_interop::{
 ocaml_export! {
     fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         let num: i64 = num.to_rust();
-        unsafe { OCaml::of_i64(num * 2) }
+        unsafe { OCaml::of_i64_unchecked(num * 2) }
     }
 
     fn rust_twice_boxed_i64(gc, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {

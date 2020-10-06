@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use std::marker;
+use std::mem;
 
 pub mod tag;
 
@@ -54,6 +55,12 @@ pub const FALSE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 
 // #define Val_true Val_int(1)
 pub const TRUE: RawOCaml = unsafe { raw_ocaml_of_i64(1) };
+
+// #define Max_long (((intnat)1 << (8 * sizeof(value) - 2)) - 1)
+pub const MAX_FIXNUM: isize = 1 << (8 * mem::size_of::<RawOCaml>() - 2) - 1;
+
+// #define Min_long (-((intnat)1 << (8 * sizeof(value) - 2)))
+pub const MIN_FIXNUM: isize = - (1 << (8 * mem::size_of::<RawOCaml>() - 2));
 
 // #define Is_block(x)  (((x) & 1) == 0)
 #[inline]
