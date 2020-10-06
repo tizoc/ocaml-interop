@@ -7,9 +7,15 @@
 /// to allocate OCaml values and call OCaml functions. Values that result from allocations
 /// or function calls using that handle, will have their lifetime bound to it.
 ///
-/// The variant `ocaml_frame!(gc nokeep, { ... })` (with `nokeep` after the GC handle variable name) avoids
-/// setting up the frame and can be used for blocks that do not keep OCaml pointers alive across OCaml calls
-/// (`gc.keep(value)` cannot be used).
+/// Optionally, this identifier can be followed by a list of names to which "keep variables" will be bound.
+/// For each one of these variables, a new location for tracked pointers will be reserved. Each one of these
+/// "keep variables" can be consumed to produce an `OCamlRef` that will be used to re-reference OCaml values
+/// across OCaml allocations.
+///
+/// # Notes
+///
+/// When no "keep variables" are declared when opening a frame `ocaml-interop` will avoid setting up a new
+/// local roots frame, because it is not necessary in that case.
 ///
 /// # Examples
 ///
@@ -31,15 +37,13 @@
 /// # }
 /// ```
 ///
-/// When `keep` is not needed, a slightly more efficient variant is available
-/// by adding the `nokeep` annotation to the handle variable name. By doing so, no space
-/// is reserved for local roots:
+/// In the following example, no "keep variables" are declared, so no space is reserved for local roots:
 ///
 /// ```
 /// # use ocaml_interop::*;
 /// # ocaml! { fn print_endline(s: String); }
 /// # fn ocaml_frame_macro_example() {
-///     ocaml_frame!(gc, { // `keep` will not be available
+///     ocaml_frame!(gc, {
 ///         let ocaml_string = to_ocaml!(gc, "hello OCaml!");
 ///         ocaml_call!(print_endline(gc, ocaml_string));
 ///     });
@@ -68,7 +72,7 @@ macro_rules! ocaml_frame {
     };
 }
 
-/// Declares OCaml functions and allocators.
+/// Declares OCaml functions.
 ///
 /// `ocaml! { pub fn ocaml_name(arg1: typ1, ...) -> ret_typ; ... }` declares a function that has been
 /// defined in OCaml code and registered with `Callback.register "ocaml_name" the_function`.
@@ -163,8 +167,12 @@ macro_rules! ocaml {
 /// Defines Rust functions callable from OCaml.
 ///
 /// The first argument in these function declarations must be an identifier
-/// to which the OCaml frame GC handle will be bound. Optionally, it can be annotated
-/// with `nokeep` when local roots (registered with the `keep` method) are not needed.
+/// to which the OCaml frame GC handle will be bound.
+///
+/// Optionally, this identifier can be followed by a list of names to which "keep variables" will be bound.
+/// For each one of these variables, a new location for tracked pointers will be reserved. Each one of these
+/// "keep variables" can be consumed to produce an `OCamlRef` that will be used to re-reference OCaml values
+/// across OCaml allocations.
 ///
 /// Arguments and return values must be of type `OCaml<T>`, or `f64` in the case of unboxed floats.
 ///
@@ -317,6 +325,10 @@ macro_rules! ocaml_alloc {
 /// a Rust value of a type that implements the `ToOCaml` trait. The resulting
 /// value's lifetime is bound to `gc`'s.
 ///
+/// An alternative form accepts a third "keep variable" argument: `to_ocaml!(gc, value, keepvar)`.
+/// `keepvar` is one of the variables declared when opening an `ocaml_frame!`.
+/// This variant consumes `keepvar` returns an `OCamlRef` value instead of an `OCaml` one.
+///
 /// # Examples
 ///
 /// ```
@@ -324,6 +336,19 @@ macro_rules! ocaml_alloc {
 /// # fn to_ocaml_macro_example() {
 ///     ocaml_frame!(gc, {
 ///         let ocaml_string: OCaml<String> = to_ocaml!(gc, "hello OCaml!");
+///         // ...
+///         # ()
+///     });
+/// # }
+/// ```
+///
+/// Variant:
+///
+/// ```
+/// # use ocaml_interop::*;
+/// # fn to_ocaml_macro_example() {
+///     ocaml_frame!(gc(keepvar), {
+///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(gc, "hello OCaml!", keepvar);
 ///         // ...
 ///         # ()
 ///     });
