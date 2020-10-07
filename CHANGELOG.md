@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Nothing.
+
+### Changed
+
+- Nothing.
+
+### Deprecated
+
+- Nothing.
+
+### Removed
+
+- Nothing.
+
+### Fixed
+
+- Nothing.
+
+### Security
+
+- Nothing.
+
+## [0.3.0] - 2020-10-06
+
+### Added
+
 - Support for `Box<T>` conversions (boxed values get converted the same as their contents).
 - `OCaml::of_i64_unchecked` as an `unsafe` unchecked version of `OCaml::of_i64`.
 - More documentation.
@@ -24,22 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made possible conversions between Rust `str`/`[u8]`/`String`/`Vec<u8>` values and `OCaml<OCamlBytes>` and `OCaml<String>` more explicit (used to be `AsRef<[u8]>` and `AsRef<str>` before).
 - Add new `OCamlFloat` type for OCaml boxed floats, to more explicitly differentiate from unboxed float arguments in functions and declarations.
 
-### Deprecated
-
-- Nothing.
-
 ### Removed
 
 - `nokeep` annotation when opening an `ocaml_frame!`/`ocaml_export!` function was removed. Opening the frame without any root variable declaration behaves the same as the old `nokeep` annotation.
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-### Fixed
-
-- Nothing.
-
-### Security
-
-- Nothing.
-
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.2.4...v0.3.0
