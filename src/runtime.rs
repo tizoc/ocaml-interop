@@ -1,10 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-extern "C" {
-    fn caml_startup(argv: *const *const i8);
-    fn caml_shutdown();
-}
+use ocaml_sys::{caml_shutdown, caml_startup};
 
 /// OCaml runtime handle.
 pub struct OCamlRuntime {}

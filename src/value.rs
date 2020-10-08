@@ -3,13 +3,10 @@
 
 use crate::mlvalues::*;
 use crate::{error::OCamlFixnumConversionError, memory::GCFrameHandle};
+use ocaml_sys::caml_string_length;
 use std::marker;
 use std::slice;
 use std::str;
-
-extern "C" {
-    pub fn caml_string_length(s: RawOCaml) -> usize;
-}
 
 /// Representation of OCaml values inside [`ocaml_frame!`] blocks.
 ///

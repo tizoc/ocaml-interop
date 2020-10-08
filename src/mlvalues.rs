@@ -1,19 +1,15 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
+pub use ocaml_sys::{
+    extract_exception, field as field_val, is_block, is_exception_result, is_long, string_val,
+    tag_val, wosize_val, Intnat, Size as MlsizeT, Uintnat as UIntnat, Value as RawOCaml,
+    EMPTY_LIST, FALSE, TRUE, UNIT,
+};
 use std::marker;
 use std::mem;
 
 pub mod tag;
-
-pub type UIntnat = usize;
-
-/// `OCaml<Intnat>` is an OCaml integer (tagged and unboxed) value.
-pub type Intnat = isize;
-
-/// Represents OCaml `value` values (fixnums or pointers).
-pub type RawOCaml = isize;
-pub type MlsizeT = UIntnat;
 
 /// `OCaml<OCamlList<T>>` is a reference to an OCaml `list` containing
 /// values of type `T`.
@@ -41,94 +37,14 @@ pub struct OCamlInt64 {}
 /// `OCaml<OCamlFloat>` is a reference to an OCaml `float` (boxed `float`) value.
 pub struct OCamlFloat {}
 
-// #define Val_unit Val_int(0)
-pub const UNIT: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
-
 // #define Val_none Val_int(0)
 pub const NONE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
-
-// #define Val_emptylist Val_int(0)
-pub const EMPTY_LIST: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
-
-// #define Val_false Val_int(0)
-pub const FALSE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
-
-// #define Val_true Val_int(1)
-pub const TRUE: RawOCaml = unsafe { raw_ocaml_of_i64(1) };
 
 // #define Max_long (((intnat)1 << (8 * sizeof(value) - 2)) - 1)
 pub const MAX_FIXNUM: isize = 1 << (8 * mem::size_of::<RawOCaml>() - 2) - 1;
 
 // #define Min_long (-((intnat)1 << (8 * sizeof(value) - 2)))
-pub const MIN_FIXNUM: isize = - (1 << (8 * mem::size_of::<RawOCaml>() - 2));
-
-// #define Is_block(x)  (((x) & 1) == 0)
-#[inline]
-pub fn is_block(x: RawOCaml) -> bool {
-    (x & 1) == 0
-}
-
-// #define Is_long(x)   (((x) & 1) != 0)
-pub fn is_long(x: RawOCaml) -> bool {
-    (x & 1) != 0
-}
-
-// #define Is_exception_result(v) (((v) & 3) == 2)
-pub const fn is_exception_result(val: RawOCaml) -> bool {
-    val & 3 == 2
-}
-
-// #define Extract_exception(v) ((v) & ~3)
-pub const fn extract_exception(val: RawOCaml) -> RawOCaml {
-    val & !3
-}
-
-// #define Hp_val(val) (((header_t *) (val)) - 1)
-#[inline]
-pub unsafe fn hd_val(x: RawOCaml) -> UIntnat {
-    assert!(is_block(x));
-    *(x as *const UIntnat).offset(-1)
-}
-
-#[inline]
-pub unsafe fn wosize_val(x: RawOCaml) -> UIntnat {
-    hd_val(x) >> 10
-}
-
-// #ifdef ARCH_BIG_ENDIAN
-// #define Tag_val(val) (((unsigned char *) (val)) [-1])
-#[cfg(target_endian = "big")]
-#[inline]
-pub unsafe fn tag_val(x: RawOCaml) -> tag::Tag {
-    *(x as *const u8).offset(-1)
-}
-
-// #else
-// #define Tag_val(val) (((unsigned char *) (val)) [-sizeof(value)])
-#[cfg(target_endian = "little")]
-#[inline]
-pub unsafe fn tag_val(x: RawOCaml) -> tag::Tag {
-    *(x as *const u8).offset(-(core::mem::size_of::<RawOCaml>() as isize))
-}
-
-// #define Bp_val(v) ((char *) (v))
-#[inline]
-unsafe fn bp_val(val: RawOCaml) -> *mut u8 {
-    assert!(is_block(val));
-    val as *mut u8
-}
-
-// #define String_val(x) ((const char *) Bp_val(x))
-#[inline]
-pub unsafe fn string_val(val: RawOCaml) -> *mut u8 {
-    bp_val(val)
-}
-
-// #define Field(x, i) (((value *)(x)) [i])
-#[inline]
-pub unsafe fn field_val(val: RawOCaml, i: UIntnat) -> *mut RawOCaml {
-    (val as *mut RawOCaml).add(i)
-}
+pub const MIN_FIXNUM: isize = -(1 << (8 * mem::size_of::<RawOCaml>() - 2));
 
 #[doc(hidden)]
 #[inline]

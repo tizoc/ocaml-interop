@@ -5,6 +5,11 @@ use crate::mlvalues::{
     tag, Intnat, MlsizeT, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
 use crate::value::{make_ocaml, OCaml};
+pub use ocaml_sys::{
+    caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
+    store_field,
+};
+use ocaml_sys::{caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64};
 use std::cell::Cell;
 use std::marker;
 use std::ptr;
@@ -33,29 +38,18 @@ impl Default for CamlRootsBlock {
     }
 }
 
+// This definition is neede for now because ocaml-sys doesn't provide it.
 extern "C" {
-    static mut caml_local_roots: *mut CamlRootsBlock;
-
     fn caml_alloc_initialized_string(len: MlsizeT, contents: *const u8) -> RawOCaml;
-    pub fn caml_alloc(wosize: MlsizeT, tag: tag::Tag) -> RawOCaml;
-    fn caml_alloc_tuple(wosize: MlsizeT) -> RawOCaml;
-    fn caml_copy_int32(i: i32) -> RawOCaml;
-    fn caml_copy_int64(i: i64) -> RawOCaml;
-    fn caml_copy_double(d: f64) -> RawOCaml;
-    fn caml_modify(block: *mut RawOCaml, val: RawOCaml);
 }
 
-// #define Store_field(block, offset, val) do{ \
-//     mlsize_t caml__temp_offset = (offset); \
-//     value caml__temp_val = (val); \
-//     caml_modify (&Field ((block), caml__temp_offset), caml__temp_val); \
-//   }while(0)
-#[doc(hidden)]
-#[inline]
-pub unsafe fn store_field(block: RawOCaml, offset: MlsizeT, val: RawOCaml) {
-    // TODO: see if all this can be made prettier
-    let ptr = block as *mut isize;
-    caml_modify(ptr.add(offset), val);
+// Overrides for ocaml-sys functions of the same name but using ocaml-interop's CamlRootBlocks representation.
+unsafe fn local_roots() -> *mut CamlRootsBlock {
+    ocaml_sys_local_roots() as *mut CamlRootsBlock
+}
+
+unsafe fn set_local_roots(roots: *mut CamlRootsBlock) {
+    ocaml_sys_set_local_roots(roots as *mut ocaml_sys::CamlRootsBlock)
 }
 
 pub trait GCFrameHandle<'gc> {}
@@ -77,12 +71,12 @@ pub struct GCFrameNoKeep<'gc> {
 
 impl<'gc> GCFrame<'gc> {
     #[doc(hidden)]
-    pub fn initialize(&mut self, local_roots: &[Cell<RawOCaml>]) -> &mut Self {
-        self.block.local_roots = local_roots[0].as_ptr();
+    pub fn initialize(&mut self, frame_local_roots: &[Cell<RawOCaml>]) -> &mut Self {
+        self.block.local_roots = frame_local_roots[0].as_ptr();
         self.block.ntables = 1;
         unsafe {
-            self.block.next = caml_local_roots;
-            caml_local_roots = &mut self.block;
+            self.block.next = local_roots();
+            set_local_roots(&mut self.block);
         };
         self
     }
@@ -101,8 +95,8 @@ impl<'gc> GCFrame<'gc> {
 impl<'gc> Drop for GCFrame<'gc> {
     fn drop(&mut self) {
         unsafe {
-            assert!(caml_local_roots == &mut self.block);
-            caml_local_roots = self.block.next;
+            assert!(local_roots() == &mut self.block);
+            set_local_roots(self.block.next);
         }
     }
 }
@@ -131,8 +125,8 @@ pub struct OCamlRoot<'a> {
 impl<'a> OCamlRoot<'a> {
     #[doc(hidden)]
     pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> OCamlRoot<'gc> {
-        assert_eq!(&_gc.block as *const _, caml_local_roots);
-        let block = &mut *caml_local_roots;
+        assert_eq!(&_gc.block as *const _, local_roots());
+        let block = &mut *local_roots();
         let locals: *const Cell<RawOCaml> = &*(block.local_roots as *const Cell<RawOCaml>);
         let cell = &*locals.offset(block.nitems);
         block.nitems += 1;
@@ -150,9 +144,7 @@ impl<'a> OCamlRoot<'a> {
     #[allow(clippy::needless_lifetimes)]
     pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRef<'tmp> {
         self.cell.set(val);
-        OCamlRawRef {
-            cell: self.cell,
-        }
+        OCamlRawRef { cell: self.cell }
     }
 }
 
