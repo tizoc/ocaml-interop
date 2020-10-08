@@ -1,15 +1,15 @@
 (rule
  (targets libcallable_rust.a dllcallable_rust.so)
- (deps (source_tree rust))
+ (deps (source_tree .))
  (action
-  (progn
-   (run cargo build)
-   (run sh -c
-     "cp target/debug/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
-      cp target/debug/libcallable_rust.dylib ./dllcallable_rust.so"
-      )
-   (run cp target/debug/libcallable_rust.a ./libcallable_rust.a)
-   )))
+  (no-infer
+   (progn
+    (run cargo build)
+    (run sh -c
+      "cp target/debug/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
+       cp target/debug/libcallable_rust.dylib ./dllcallable_rust.so")
+    (run cp target/debug/libcallable_rust.a ./libcallable_rust.a)
+   ))))
 
 (library
  (name callable_rust)
