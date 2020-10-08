@@ -1,13 +1,43 @@
-on: [push]
 name: build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        ocaml-version: ["4.10.1", "4.09.1"]
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: OCaml/Opam cache
+        id: ocaml-interop-opam-cache
+        uses: actions/cache@v2
+        with:
+          path: "~/.opam"
+          key: ${{ matrix.os }}-${{ matrix.ocaml-version }}
+      - name: Setup OCaml ${{ matrix.ocaml-version }}
+        uses: avsm/setup-ocaml@v1
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+      - name: Set Opam env
+        run: opam env >> $GITHUB_ENV
+      - name: Add Opam switch to PATH
+        run: opam var bin >> $GITHUB_PATH
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - name: Setttings for cargo in OSX
+        if: runner.os == 'macOS'
+        run: |
+            echo '[build]' >> ~/.cargo/config
+            echo 'rustflags = ["-C", "link-args=-Wl,-undefined,dynamic_lookup"]' >> ~/.cargo/config
       - name: build
         uses: actions-rs/cargo@v1
         with:
@@ -16,12 +46,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-      # - uses: avsm/setup-ocaml@v1
-      #   with:
-      #     ocaml-version: 4.09.1
-      # - name: test examples
-      #   run: make test-examples
-      - name: lint
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: opam install dune alcotest
+      - name: Rust caller test
+        run: cd testing/rust-caller; cargo test
+      - name: DEBUG
+        run: opam exec -- dune build && ls -l _build/default/testing/ocaml-caller/rust/target/debug/
+      - name: OCaml caller test
+        run: cd testing/ocaml-caller; opam exec -- dune build && opam exec -- dune test
