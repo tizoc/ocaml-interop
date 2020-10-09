@@ -1072,7 +1072,7 @@ macro_rules! unpack_variant_tag {
     };
 
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident, $($tag:ident)::+ => $conv:expr) => {
-        if $self.is_long() && unsafe { $crate::internal::raw_ocaml_to_i64($self.raw()) } == $current_long_tag {
+        if $self.is_long() && $crate::internal::int_val(unsafe { $self.raw() }) == $current_long_tag {
             return Ok($conv);
         }
         $current_long_tag += 1;
