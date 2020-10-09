@@ -2,14 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 use crate::mlvalues::{
-    tag, Intnat, MlsizeT, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+    tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
 use crate::value::{make_ocaml, OCaml};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
     store_field,
 };
-use ocaml_sys::{caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64};
+use ocaml_sys::{
+    caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64,
+    string_val,
+};
 use std::cell::Cell;
 use std::marker;
 use std::ptr;
@@ -36,11 +39,6 @@ impl Default for CamlRootsBlock {
             // tables: [ptr::null_mut(); 5],
         }
     }
-}
-
-// This definition is neede for now because ocaml-sys doesn't provide it.
-extern "C" {
-    fn caml_alloc_initialized_string(len: MlsizeT, contents: *const u8) -> RawOCaml;
 }
 
 // Overrides for ocaml-sys functions of the same name but using ocaml-interop's CamlRootBlocks representation.
@@ -227,11 +225,23 @@ impl<T> GCMarkedResult<T> {
 }
 
 pub fn alloc_bytes(_token: OCamlAllocToken, s: &[u8]) -> OCamlAllocResult<OCamlBytes> {
-    OCamlAllocResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
+    unsafe {
+        let len = s.len();
+        let value = caml_alloc_string(len);
+        let ptr = string_val(value);
+        core::ptr::copy_nonoverlapping(s.as_ptr(), ptr, len);
+        OCamlAllocResult::of(value)
+    }
 }
 
 pub fn alloc_string(_token: OCamlAllocToken, s: &str) -> OCamlAllocResult<String> {
-    OCamlAllocResult::of(unsafe { caml_alloc_initialized_string(s.len(), s.as_ptr()) })
+    unsafe {
+        let len = s.len();
+        let value = caml_alloc_string(len);
+        let ptr = string_val(value);
+        core::ptr::copy_nonoverlapping(s.as_ptr(), ptr, len);
+        OCamlAllocResult::of(value)
+    }
 }
 
 pub fn alloc_int32(_token: OCamlAllocToken, i: i32) -> OCamlAllocResult<OCamlInt32> {

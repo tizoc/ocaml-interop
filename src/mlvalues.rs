@@ -3,7 +3,7 @@
 
 pub use ocaml_sys::{
     extract_exception, field as field_val, is_block, is_exception_result, is_long, string_val,
-    tag_val, wosize_val, Intnat, Size as MlsizeT, Uintnat as UIntnat, Value as RawOCaml,
+    tag_val, wosize_val, Intnat, Uintnat as UIntnat, Value as RawOCaml,
     EMPTY_LIST, FALSE, TRUE, UNIT,
 };
 use std::marker;
