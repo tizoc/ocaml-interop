@@ -50,6 +50,6 @@ jobs:
       - name: Rust caller test
         run: cd testing/rust-caller; cargo test
       - name: Build OCaml caller
-        run: cd testing/ocaml-caller; opam exec -- dune build --verbose
+        run: cd testing/ocaml-caller; opam exec -- dune build -j 1
       - name: OCaml caller test
         run: cd testing/ocaml-caller; opam exec -- dune test
