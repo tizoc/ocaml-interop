@@ -6,8 +6,7 @@ pub use ocaml_sys::{
     tag_val, wosize_val, Intnat, Uintnat as UIntnat, Value as RawOCaml,
     EMPTY_LIST, FALSE, TRUE, UNIT,
 };
-use std::marker;
-use std::mem;
+use core::marker;
 
 pub mod tag;
 
@@ -41,10 +40,10 @@ pub struct OCamlFloat {}
 pub const NONE: RawOCaml = unsafe { raw_ocaml_of_i64(0) };
 
 // #define Max_long (((intnat)1 << (8 * sizeof(value) - 2)) - 1)
-pub const MAX_FIXNUM: isize = (1 << (8 * mem::size_of::<RawOCaml>() - 2)) - 1;
+pub const MAX_FIXNUM: isize = (1 << (8 * core::mem::size_of::<RawOCaml>() - 2)) - 1;
 
 // #define Min_long (-((intnat)1 << (8 * sizeof(value) - 2)))
-pub const MIN_FIXNUM: isize = -(1 << (8 * mem::size_of::<RawOCaml>() - 2));
+pub const MIN_FIXNUM: isize = -(1 << (8 * core::mem::size_of::<RawOCaml>() - 2));
 
 #[doc(hidden)]
 #[inline]

@@ -16,7 +16,7 @@ use crate::{
     OCamlFloat,
 };
 use crate::{ocaml_alloc, ocaml_frame, to_ocaml};
-use std::str;
+use core::str;
 
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {

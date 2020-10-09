@@ -17,7 +17,7 @@ impl OCamlRuntime {
     /// Initializes the OCaml runtime.
     pub fn init_persistent() {
         let arg0 = "ocaml".as_ptr() as *const i8;
-        let c_args = vec![arg0, std::ptr::null()];
+        let c_args = vec![arg0, core::ptr::null()];
         unsafe { caml_startup(c_args.as_ptr()) }
     }
 

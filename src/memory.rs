@@ -5,6 +5,7 @@ use crate::mlvalues::{
     tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
 use crate::value::{make_ocaml, OCaml};
+use core::{cell::Cell, marker, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
     store_field,
@@ -13,9 +14,6 @@ use ocaml_sys::{
     caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64,
     string_val,
 };
-use std::cell::Cell;
-use std::marker;
-use std::ptr;
 
 // Structure representing a block in the list of OCaml's GC local roots.
 #[repr(C)]
