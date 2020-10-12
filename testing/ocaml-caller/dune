@@ -1,20 +1,6 @@
-(rule
- (targets libcallable_rust.a dllcallable_rust.so)
- (deps (source_tree rust))
- (action
-  (progn
-   (chdir rust (run cargo build))
-   (run sh -c
-     "cp rust/target/debug/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
-      cp rust/target/debug/libcallable_rust.dylib ./dllcallable_rust.so"
-      )
-   (run cp rust/target/debug/libcallable_rust.a libcallable_rust.a)
-   )))
-
 (executables
  (names ocaml_rust_caller)
- (foreign_archives callable_rust)
- (libraries alcotest))
+ (libraries alcotest callable_rust))
 
 (rule
  (alias  runtest)

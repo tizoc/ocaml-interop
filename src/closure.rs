@@ -6,30 +6,9 @@ use crate::memory::{OCamlAllocResult, OCamlAllocToken};
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
 use crate::value::OCaml;
-
-extern "C" {
-    fn caml_named_value(name: *const i8) -> *const RawOCaml;
-
-    // fn caml_callback(closure: RawOCaml, arg1: RawOCaml) -> RawOCaml;
-    // fn caml_callback2(closure: RawOCaml, arg1: RawOCaml, arg2: RawOCaml) -> RawOCaml;
-    // fn caml_callback3(
-    //     closure: RawOCaml,
-    //     arg1: RawOCaml,
-    //     arg2: RawOCaml,
-    //     arg3: RawOCaml,
-    // ) -> RawOCaml;
-    // fn caml_callbackN(closure: RawOCaml, narg: usize, args: *mut RawOCaml) -> RawOCaml;
-
-    fn caml_callback_exn(closure: RawOCaml, arg1: RawOCaml) -> RawOCaml;
-    fn caml_callback2_exn(closure: RawOCaml, arg1: RawOCaml, arg2: RawOCaml) -> RawOCaml;
-    fn caml_callback3_exn(
-        closure: RawOCaml,
-        arg1: RawOCaml,
-        arg2: RawOCaml,
-        arg3: RawOCaml,
-    ) -> RawOCaml;
-    fn caml_callbackN_exn(closure: RawOCaml, narg: usize, args: *mut RawOCaml) -> RawOCaml;
-}
+use ocaml_sys::{
+    caml_callback2_exn, caml_callback3_exn, caml_callbackN_exn, caml_callback_exn, caml_named_value,
+};
 
 #[derive(Copy, Clone)]
 pub struct OCamlClosure(*const RawOCaml);
@@ -63,11 +42,20 @@ pub type OCamlFn1<A, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>) -> OCamlResult<
 /// OCaml function that accepts two arguments.
 pub type OCamlFn2<A, B, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>) -> OCamlResult<Ret>;
 /// OCaml function that accepts three arguments.
-pub type OCamlFn3<A, B, C, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>) -> OCamlResult<Ret>;
+pub type OCamlFn3<A, B, C, Ret> =
+    unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>) -> OCamlResult<Ret>;
 /// OCaml function that accepts four arguments.
-pub type OCamlFn4<A, B, C, D, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCamlResult<Ret>;
+pub type OCamlFn4<A, B, C, D, Ret> =
+    unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCamlResult<Ret>;
 /// OCaml function that accepts five arguments.
-pub type OCamlFn5<A, B, C, D, E, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>, OCaml<E>) -> OCamlResult<Ret>;
+pub type OCamlFn5<A, B, C, D, E, Ret> = unsafe fn(
+    OCamlAllocToken,
+    OCaml<A>,
+    OCaml<B>,
+    OCaml<C>,
+    OCaml<D>,
+    OCaml<E>,
+) -> OCamlResult<Ret>;
 
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {

@@ -7,6 +7,10 @@ description = "Utilities for Rust and OCaml interoperability"
 homepage = "http://github.com/simplestaking/ocaml-interop"
 repository = "http://github.com/simplestaking/ocaml-interop"
 keywords = ["ocaml", "rust", "ffi", "interop"]
+edition = "2018"
 exclude = [
     ".github/*",
 ]
+
+[dependencies]
+ocaml-sys = "0.16"

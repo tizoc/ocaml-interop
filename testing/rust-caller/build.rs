@@ -1,15 +1,14 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use std::env;
-use std::process::Command;
+use std::{env, process::Command};
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let ocaml_callable_dir = "./ocaml";
     let dune_dir = "../../_build/default/testing/rust-caller/ocaml";
-    Command::new("dune")
-        .args(&["build", &format!("{}/callable.exe.o", ocaml_callable_dir)])
+    Command::new("opam")
+        .args(&["exec", "--", "dune", "build", &format!("{}/callable.exe.o", ocaml_callable_dir)])
         .status()
         .expect("Dune failed");
     Command::new("rm")

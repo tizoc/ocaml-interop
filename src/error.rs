@@ -1,10 +1,10 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::{MAX_FIXNUM, MIN_FIXNUM, tag};
 use crate::mlvalues::{is_block, string_val, tag_val, RawOCaml};
-use crate::value::caml_string_length;
-use std::{fmt, slice};
+use crate::mlvalues::{tag, MAX_FIXNUM, MIN_FIXNUM};
+use ocaml_sys::caml_string_length;
+use core::{fmt, slice};
 
 /// An OCaml exception value.
 #[derive(Debug)]
@@ -26,12 +26,16 @@ pub enum OCamlFixnumConversionError {
 impl fmt::Display for OCamlFixnumConversionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            OCamlFixnumConversionError::InputTooBig(n) => {
-                write!(f, "Input value doesn't fit in OCaml fixnum n={} > MAX_FIXNUM={}", n, MAX_FIXNUM)
-            }
-            OCamlFixnumConversionError::InputTooSmall(n) => {
-                write!(f, "Input value doesn't fit in OCaml fixnum n={} < MIN_FIXNUM={}", n, MIN_FIXNUM)
-            }
+            OCamlFixnumConversionError::InputTooBig(n) => write!(
+                f,
+                "Input value doesn't fit in OCaml fixnum n={} > MAX_FIXNUM={}",
+                n, MAX_FIXNUM
+            ),
+            OCamlFixnumConversionError::InputTooSmall(n) => write!(
+                f,
+                "Input value doesn't fit in OCaml fixnum n={} < MIN_FIXNUM={}",
+                n, MIN_FIXNUM
+            ),
         }
     }
 }
