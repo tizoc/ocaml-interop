@@ -13,4 +13,4 @@ exclude = [
 ]
 
 [dependencies]
-ocaml-sys = "0.16"
+ocaml-sys = "0.18.1"

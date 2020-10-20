@@ -317,7 +317,7 @@ pub fn alloc_cons<A>(
     tail: &OCamlRef<OCamlList<A>>,
 ) -> OCamlAllocResult<OCamlList<A>> {
     unsafe {
-        let ocaml_cons = caml_alloc(2, tag::LIST);
+        let ocaml_cons = caml_alloc(2, tag::CONS);
         store_field(ocaml_cons, 0, head.get_raw());
         store_field(ocaml_cons, 1, tail.get_raw());
         OCamlAllocResult::of(ocaml_cons)

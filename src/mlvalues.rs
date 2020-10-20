@@ -1,13 +1,12 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use ocaml_sys::val_int;
+use core::marker;
 pub use ocaml_sys::{
     extract_exception, field as field_val, is_block, is_exception_result, is_long, string_val,
-    tag_val, wosize_val, Intnat, Uintnat as UIntnat, Value as RawOCaml,
-    EMPTY_LIST, FALSE, TRUE, UNIT,
+    tag_val, wosize_val, Intnat, Uintnat as UIntnat, Value as RawOCaml, EMPTY_LIST, FALSE,
+    MAX_FIXNUM, MIN_FIXNUM, NONE, TRUE, UNIT,
 };
-use core::marker;
 
 pub mod tag;
 
@@ -36,12 +35,3 @@ pub struct OCamlInt64 {}
 
 /// `OCaml<OCamlFloat>` is a reference to an OCaml `float` (boxed `float`) value.
 pub struct OCamlFloat {}
-
-// #define Val_none Val_int(0)
-pub const NONE: RawOCaml = val_int(0);
-
-// #define Max_long (((intnat)1 << (8 * sizeof(value) - 2)) - 1)
-pub const MAX_FIXNUM: isize = (1 << (8 * core::mem::size_of::<RawOCaml>() - 2)) - 1;
-
-// #define Min_long (-((intnat)1 << (8 * sizeof(value) - 2)))
-pub const MIN_FIXNUM: isize = -(1 << (8 * core::mem::size_of::<RawOCaml>() - 2));
