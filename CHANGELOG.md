@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Nothing.
+- This crate now depends on [ocaml-sys](https://crates.io/crates/ocaml-sys).
+- Switched from `std` to `core` on every place it was possible.
 
 ### Deprecated
 
