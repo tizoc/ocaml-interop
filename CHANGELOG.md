@@ -13,8 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- This crate now depends on [ocaml-sys](https://crates.io/crates/ocaml-sys).
-- Switched from `std` to `core` on every place it was possible.
+- Nothing.
 
 ### Deprecated
 
@@ -31,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Nothing.
+
+## [0.4.0] - 2020-10-20
+
+### Changed
+
+- This crate now depends on [ocaml-sys](https://crates.io/crates/ocaml-sys).
+- Switched from `std` to `core` on every place it was possible.
 
 ## [0.3.0] - 2020-10-06
 
@@ -57,5 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.2.4...v0.3.0
