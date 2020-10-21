@@ -12,5 +12,11 @@ exclude = [
     ".github/*",
 ]
 
+[package.metadata.docs.rs]
+features = [ "docs-rs" ]
+
 [dependencies]
 ocaml-sys = "0.18.1"
+
+[features]
+docs-rs = ["ocaml-sys/docs-rs"]
