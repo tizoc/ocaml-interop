@@ -280,8 +280,8 @@ impl<'a, A> OCaml<'a, OCamlList<A>> {
         self.raw == EMPTY_LIST
     }
 
-    /// Returns the tail of an OCaml list.
-    pub fn tl(&self) -> Option<OCaml<'a, A>> {
+    /// Returns the head of an OCaml list.
+    pub fn hd(&self) -> Option<OCaml<'a, A>> {
         if self.is_empty() {
             None
         } else {
@@ -289,8 +289,8 @@ impl<'a, A> OCaml<'a, OCamlList<A>> {
         }
     }
 
-    /// Returns the head of an OCaml list.
-    pub fn hd(&self) -> Option<OCaml<'a, A>> {
+    /// Returns the tail of an OCaml list.
+    pub fn tl(&self) -> Option<OCaml<'a, OCamlList<A>>> {
         if self.is_empty() {
             None
         } else {

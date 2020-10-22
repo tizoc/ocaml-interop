@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Nothing.
+- Bug in `hd` and `tl` functions of `OCaml<OCamlList<A>>`.
 
 ### Security
 
