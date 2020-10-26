@@ -5,7 +5,7 @@ use crate::mlvalues::{
     tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
 use crate::value::{make_ocaml, OCaml};
-use core::{cell::Cell, marker, ptr};
+use core::{cell::Cell, marker::PhantomData, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
     store_field,
@@ -53,14 +53,14 @@ pub trait GCFrameHandle<'gc> {}
 // OCaml GC frame handle
 #[derive(Default)]
 pub struct GCFrame<'gc> {
-    _marker: marker::PhantomData<&'gc i32>,
+    _marker: PhantomData<&'gc i32>,
     block: CamlRootsBlock,
 }
 
 // OCaml GC frame handle
 #[derive(Default)]
 pub struct GCFrameNoKeep<'gc> {
-    _marker: marker::PhantomData<&'gc i32>,
+    _marker: PhantomData<&'gc i32>,
 }
 
 // Impl
@@ -132,7 +132,7 @@ impl<'a> OCamlRoot<'a> {
     pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
         self.cell.set(unsafe { val.raw() });
         OCamlRef {
-            _marker: Default::default(),
+            _marker: PhantomData,
             cell: self.cell,
         }
     }
@@ -149,7 +149,7 @@ impl<'a> OCamlRoot<'a> {
 /// Unlike [`OCaml`]`<T>` values, it can be re-referenced after OCaml allocations.
 pub struct OCamlRef<'a, T> {
     cell: &'a Cell<RawOCaml>,
-    _marker: marker::PhantomData<Cell<T>>,
+    _marker: PhantomData<Cell<T>>,
 }
 
 /// Like [`OCamlRef`] but for [`RawOCaml`] values.
@@ -184,33 +184,33 @@ impl<'a> OCamlRawRef<'a> {
 /// Intermediary allocation result.
 pub struct OCamlAllocResult<T> {
     raw: RawOCaml,
-    _marker: marker::PhantomData<T>,
+    _marker: PhantomData<T>,
 }
 
 /// Allocation result that has been marked by the GC.
 pub struct GCMarkedResult<T> {
     raw: RawOCaml,
-    _marker: marker::PhantomData<T>,
+    _marker: PhantomData<T>,
 }
 
 impl<T> OCamlAllocResult<T> {
     pub fn of(raw: RawOCaml) -> OCamlAllocResult<T> {
         OCamlAllocResult {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw,
         }
     }
 
     pub fn of_ocaml(v: OCaml<T>) -> OCamlAllocResult<T> {
         OCamlAllocResult {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: unsafe { v.raw() },
         }
     }
 
     pub fn mark(self, _gc: &mut dyn GCFrameHandle) -> GCMarkedResult<T> {
         GCMarkedResult {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: self.raw,
         }
     }

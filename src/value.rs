@@ -3,7 +3,7 @@
 
 use crate::mlvalues::*;
 use crate::{error::OCamlFixnumConversionError, memory::GCFrameHandle};
-use core::{marker, slice, str};
+use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
 /// Representation of OCaml values inside [`ocaml_frame!`] blocks.
@@ -13,13 +13,13 @@ use ocaml_sys::{caml_string_length, int_val, val_int};
 /// of functions defined inside [`ocaml_export!`] blocks.
 #[derive(Copy, Clone)]
 pub struct OCaml<'a, T: 'a> {
-    _marker: marker::PhantomData<&'a T>,
+    _marker: PhantomData<&'a T>,
     raw: RawOCaml,
 }
 
 pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
     OCaml {
-        _marker: Default::default(),
+        _marker: PhantomData,
         raw: x,
     }
 }
@@ -28,7 +28,7 @@ impl<'a, T> OCaml<'a, T> {
     #[doc(hidden)]
     pub unsafe fn new<'gc>(_gc: &'a dyn GCFrameHandle<'gc>, x: RawOCaml) -> OCaml<'a, T> {
         OCaml {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: x,
         }
     }
@@ -38,7 +38,7 @@ impl<'a, T> OCaml<'a, T> {
         assert!(tag_val(self.raw) < tag::NO_SCAN);
         assert!(i < wosize_val(self.raw));
         OCaml {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: *(self.raw as *const RawOCaml).add(i),
         }
     }
@@ -75,7 +75,7 @@ impl OCaml<'static, ()> {
     /// Returns a value that represent OCaml's unit value.
     pub fn unit() -> OCaml<'static, ()> {
         OCaml {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: UNIT,
         }
     }
@@ -153,7 +153,7 @@ impl<'a> OCaml<'a, OCamlInt> {
     /// from an i64, a bit of precision is lost.
     pub unsafe fn of_i64_unchecked(n: i64) -> OCaml<'static, OCamlInt> {
         OCaml {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: val_int(n as isize),
         }
     }
@@ -169,7 +169,7 @@ impl<'a> OCaml<'a, OCamlInt> {
             Err(OCamlFixnumConversionError::InputTooSmall(n))
         } else {
             Ok(OCaml {
-                _marker: Default::default(),
+                _marker: PhantomData,
                 raw: val_int(n as isize),
             })
         }
@@ -178,7 +178,7 @@ impl<'a> OCaml<'a, OCamlInt> {
     /// Creates an OCaml int from an i32.
     pub fn of_i32(n: i32) -> OCaml<'static, OCamlInt> {
         OCaml {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: val_int(n as isize),
         }
     }
@@ -193,7 +193,7 @@ impl<'a> OCaml<'a, bool> {
     /// Creates an OCaml boolean from a Rust boolean.
     pub fn of_bool(b: bool) -> Self {
         OCaml {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: if b { TRUE } else { FALSE },
         }
     }
@@ -217,7 +217,7 @@ impl<'a, A> OCaml<'a, Option<A>> {
         } else {
             let value: OCaml<A> = unsafe { self.field(0) };
             Some(OCaml {
-                _marker: Default::default(),
+                _marker: PhantomData,
                 raw: value.raw,
             })
         }
@@ -270,7 +270,7 @@ impl<'a, A> OCaml<'a, OCamlList<A>> {
     /// Returns an OCaml nil (empty list) value.
     pub fn nil() -> Self {
         OCaml {
-            _marker: Default::default(),
+            _marker: PhantomData,
             raw: EMPTY_LIST,
         }
     }

@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use core::marker;
+use core::marker::PhantomData;
 pub use ocaml_sys::{
     extract_exception, field as field_val, is_block, is_exception_result, is_long, string_val,
     tag_val, wosize_val, Intnat, Uintnat as UIntnat, Value as RawOCaml, EMPTY_LIST, FALSE,
@@ -13,7 +13,7 @@ pub mod tag;
 /// `OCaml<OCamlList<T>>` is a reference to an OCaml `list` containing
 /// values of type `T`.
 pub struct OCamlList<A> {
-    _marker: marker::PhantomData<A>,
+    _marker: PhantomData<A>,
 }
 
 /// `OCaml<OCamlBytes>` is a reference to an OCaml `bytes` value.
