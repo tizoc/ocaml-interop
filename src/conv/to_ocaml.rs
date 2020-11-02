@@ -1,7 +1,8 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::value::OCaml;
+use ocaml_sys::{caml_alloc, store_field};
+
 use crate::{
     memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
@@ -9,6 +10,7 @@ use crate::{
     },
     OCamlRef,
 };
+use crate::{mlvalues::tag, value::OCaml};
 use crate::{
     mlvalues::{
         OCamlBytes, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE, TRUE,
@@ -138,6 +140,29 @@ where
             })
         } else {
             OCamlAllocResult::of(NONE)
+        }
+    }
+}
+
+unsafe impl<A, OCamlA, Err, OCamlErr> ToOCaml<Result<OCamlA, OCamlErr>> for Result<A, Err>
+where
+    A: ToOCaml<OCamlA>,
+    Err: ToOCaml<OCamlErr>,
+{
+    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<Result<OCamlA, OCamlErr>> {
+        match self {
+            Ok(value) => ocaml_frame!(gc(ocaml_value), {
+                let ocaml_value = to_ocaml!(gc, value, ocaml_value);
+                let ocaml_ok = unsafe { caml_alloc(1, tag::TAG_OK) };
+                unsafe { store_field(ocaml_ok, 0, ocaml_value.get_raw()) };
+                OCamlAllocResult::of(ocaml_ok)
+            }),
+            Err(error) => ocaml_frame!(gc(ocaml_error), {
+                let ocaml_error = to_ocaml!(gc, error, ocaml_error);
+                let ocaml_err = unsafe { caml_alloc(1, tag::TAG_ERROR) };
+                unsafe { store_field(ocaml_err, 0, ocaml_error.get_raw()) };
+                OCamlAllocResult::of(ocaml_err)
+            }),
         }
     }
 }

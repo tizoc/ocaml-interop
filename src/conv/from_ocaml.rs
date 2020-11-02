@@ -86,6 +86,19 @@ unsafe impl<OCamlT, T: FromOCaml<OCamlT>> FromOCaml<OCamlT> for Box<T> {
     }
 }
 
+unsafe impl<A, OCamlA, Err, OCamlErr> FromOCaml<Result<OCamlA, OCamlErr>> for Result<A, Err>
+where
+    A: FromOCaml<OCamlA>,
+    Err: FromOCaml<OCamlErr>,
+{
+    fn from_ocaml(v: OCaml<Result<OCamlA, OCamlErr>>) -> Self {
+        match v.to_result() {
+            Ok(ocaml_ok) => Ok(A::from_ocaml(ocaml_ok)),
+            Err(ocaml_err) => Err(Err::from_ocaml(ocaml_err)),
+        }
+    }
+}
+
 unsafe impl<A, OCamlA> FromOCaml<Option<OCamlA>> for Option<A>
 where
     A: FromOCaml<OCamlA>,

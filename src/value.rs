@@ -224,6 +224,40 @@ impl<'a, A> OCaml<'a, Option<A>> {
     }
 }
 
+impl<'a, A, Err> OCaml<'a, Result<A, Err>> {
+    /// Returns true if this OCaml result value is an OCaml `Ok`.
+    pub fn is_ok(&self) -> bool {
+        self.tag_value() == tag::TAG_OK
+    }
+
+    /// Returns true if this OCaml result value is an OCaml `Error`.
+    pub fn is_error(&self) -> bool {
+        self.tag_value() == tag::TAG_ERROR
+    }
+
+    /// Converts an OCaml `Result<T, E>` value into a Rust `Result<OCaml<T>, OCaml<E>>`.
+    pub fn to_result(&self) -> Result<OCaml<'a, A>, OCaml<'a, Err>> {
+        if self.is_ok() {
+            let value: OCaml<A> = unsafe { self.field(0) };
+            Ok(OCaml {
+                _marker: PhantomData,
+                raw: value.raw,
+            })
+        } else if self.is_error() {
+            let value: OCaml<Err> = unsafe { self.field(0) };
+            Err(OCaml {
+                _marker: PhantomData,
+                raw: value.raw,
+            })
+        } else {
+            panic!(
+                "Unexpected tag value for OCaml<Result<...>>: {}",
+                self.tag_value()
+            )
+        }
+    }
+}
+
 impl<'a, A, B> OCaml<'a, (A, B)> {
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }
