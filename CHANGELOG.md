@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Nothing.
 
+## [0.4.3] - 2020-11-02
+
+### Added
+
+- Conversion to/from `Result` values.
+
 ## [0.4.2] - 2020-10-22
 
 ### Fixed
@@ -75,7 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.1...v0.4.3
+[0.4.2]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.2.4...v0.3.0

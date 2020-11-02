@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-#![doc(html_root_url = "https://docs.rs/ocaml-interop/0.4.2")]
+#![doc(html_root_url = "https://docs.rs/ocaml-interop/0.4.3")]
 
 //! _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 //!
