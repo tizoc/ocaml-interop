@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_interop::{
-    ocaml_alloc, ocaml_export, ToRust, OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32,
-    OCamlInt64, OCamlList, ToOCaml,
+    ocaml_alloc, ocaml_export, to_ocaml, OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32,
+    OCamlInt64, OCamlList, ToOCaml, ToRust,
 };
 
 ocaml_export! {
@@ -71,5 +71,17 @@ ocaml_export! {
         let value: String = value.to_rust();
         let some_value = Some(value);
         ocaml_alloc!(some_value.to_ocaml(gc))
+    }
+
+    fn rust_make_ok(gc, value: OCaml<OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
+        let value: i64 = value.to_rust();
+        let ok_value: Result<i64, String> = Ok(value);
+        to_ocaml!(gc, ok_value)
+    }
+
+    fn rust_make_error(gc, value: OCaml<String>) -> OCaml<Result<OCamlInt, String>> {
+        let value: String = value.to_rust();
+        let error_value: Result<i64, String> = Err(value);
+        to_ocaml!(gc, error_value)
     }
 }

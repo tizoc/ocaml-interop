@@ -12,6 +12,8 @@ module Rust = struct
   external increment_ints_list: int list -> int list = "rust_increment_ints_list"
   external make_tuple: string -> int -> (string * int) = "rust_make_tuple"
   external make_some: string -> string option = "rust_make_some"
+  external make_ok: int -> (int, string) result = "rust_make_ok"
+  external make_error: string -> (int, string) result = "rust_make_error"
 end
 
 let test_twice () =
@@ -52,6 +54,16 @@ let test_make_some () =
   let result = Rust.make_some "some" in
   Alcotest.(check (option string)) "Make a Some(string)" expected result
 
+let test_make_ok () =
+  let expected = Ok 10 in
+  let result = Rust.make_ok 10 in
+  Alcotest.(check (result int string)) "Make an Ok(int)" expected result
+
+let test_make_error () =
+  let expected = Error "error" in
+  let result = Rust.make_error "error" in
+  Alcotest.(check (result int string)) "Make an Error(string)" expected result
+
 let () =
   let open Alcotest in
   run "Tests" [
@@ -65,5 +77,7 @@ let () =
       test_case "Rust.increment_ints_list" `Quick test_increment_ints_list;
       test_case "Rust.make_tuple"      `Quick test_make_tuple;
       test_case "Rust.make_some"       `Quick test_make_some;
+      test_case "Rust.make_ok"         `Quick test_make_ok;
+      test_case "Rust.make_error"      `Quick test_make_error;
     ]
   ]

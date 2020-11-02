@@ -51,6 +51,8 @@ mod ocaml {
         pub fn twice(num: OCamlInt) -> OCamlInt;
         pub fn make_tuple(fst: String, snd: OCamlInt) -> (String, OCamlInt);
         pub fn make_some(value: String) -> Option<String>;
+        pub fn make_ok(value: OCamlInt) -> Result<OCamlInt, String>;
+        pub fn make_error(value: String) -> Result<OCamlInt, String>;
         pub fn stringify_record(record: TestRecord) -> String;
         pub fn stringify_variant(variant: Movement) -> String;
     }
@@ -100,6 +102,24 @@ pub fn make_some(value: String) -> Option<String> {
         let str = to_ocaml!(gc, value);
         let result = ocaml_call!(ocaml::make_some(gc, str));
         let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
+        result.to_rust()
+    })
+}
+
+pub fn make_ok(value: i64) -> Result<i64, String> {
+    ocaml_frame!(gc, {
+        let result = to_ocaml!(gc, value);
+        let result = ocaml_call!(ocaml::make_ok(gc, result));
+        let result: OCaml<Result<OCamlInt, String>> = result.expect("Error in 'make_ok' call result");
+        result.to_rust()
+    })
+}
+
+pub fn make_error(value: String) -> Result<i64, String> {
+    ocaml_frame!(gc, {
+        let result = to_ocaml!(gc, value);
+        let result = ocaml_call!(ocaml::make_error(gc, result));
+        let result: OCaml<Result<OCamlInt, String>> = result.expect("Error in 'make_error' call result");
         result.to_rust()
     })
 }
@@ -176,6 +196,14 @@ fn test_make_tuple() {
 fn test_make_some() {
     ocaml_interop::OCamlRuntime::init_persistent();
     assert_eq!(make_some("some".to_owned()), Some("some".to_owned()));
+}
+
+#[test]
+#[serial]
+fn test_make_result() {
+    ocaml_interop::OCamlRuntime::init_persistent();
+    assert_eq!(make_ok(10), Ok(10));
+    assert_eq!(make_error("error".to_owned()), Err("error".to_owned()));
 }
 
 #[test]

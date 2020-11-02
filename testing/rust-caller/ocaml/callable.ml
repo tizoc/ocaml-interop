@@ -40,6 +40,10 @@ let make_tuple a b = (a, b)
 
 let make_some x = Some x
 
+let make_ok x = Ok x
+
+let make_error x = Error x
+
 let stringify_record { i; f; i32; i64; s; t = (t1, t2); } =
   Printf.sprintf "{ i=%d; f=%.2f; i32=%ld; i64=%Ld; s=%s; t=(%d, %.2f) }"
     i f i32 i64 s t1 t2
@@ -56,5 +60,7 @@ let () =
   Callback.register "twice" twice;
   Callback.register "make_tuple" make_tuple;
   Callback.register "make_some" make_some;
+  Callback.register "make_ok" make_ok;
+  Callback.register "make_error" make_error;
   Callback.register "stringify_record" stringify_record;
   Callback.register "stringify_variant" stringify_variant
