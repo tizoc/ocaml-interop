@@ -209,13 +209,13 @@ where
 {
     fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<OCamlA>> {
         ocaml_frame!(gc(result_ref, ov_ref), {
-            let result_ref = &mut result_ref.keep(OCaml::nil());
+            let mut result_ref = result_ref.keep(OCaml::nil());
             for elt in self.iter().rev() {
                 let ov = &ov_ref.keep(to_ocaml!(gc, elt));
-                let cons = ocaml_alloc!(alloc_cons(gc, ov, result_ref));
+                let cons = ocaml_alloc!(alloc_cons(gc, ov, &result_ref));
                 result_ref.set(cons);
             }
-            OCamlAllocResult::of_ocaml(gc.get(result_ref))
+            OCamlAllocResult::of_ocaml(gc.get(&result_ref))
         })
     }
 }
