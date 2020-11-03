@@ -1,6 +1,6 @@
 [package]
 name = "ocaml-interop"
-version = "0.4.3" # remember to update html_root_url
+version = "0.4.4" # remember to update html_root_url
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 license = "MIT"
 description = "Utilities for Rust and OCaml interoperability"
