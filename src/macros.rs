@@ -1019,7 +1019,7 @@ macro_rules! repeat_slice {
         $crate::repeat_slice!(
             @expr $value;
             @accum [$value, $value, $value, $value, $value, $($accum),+];
-            @rest $vars)
+            @rest $($vars)*)
     };
 
     (@expr $value:expr;
