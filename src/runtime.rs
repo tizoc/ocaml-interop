@@ -29,12 +29,31 @@ impl OCamlRuntime {
         OCamlRuntime {}
     }
 
+    /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
+    ///
+    /// TODO: document
+    pub fn in_blocking_section<T, F>(&mut self, f: F) -> T
+    where
+        F: UnwindSafe + FnOnce() -> T,
+    {
+        unsafe { ocaml_sys::caml_enter_blocking_section() };
+
+        let result = catch_unwind(|| f());
+
+        unsafe { ocaml_sys::caml_leave_blocking_section() };
+
+        match result {
+            Err(err) => resume_unwind(err),
+            Ok(result) => result,
+        }
+    }
+
     /// Performs the necessary cleanup and shuts down the OCaml runtime.
     pub fn shutdown_persistent() {
         unsafe { caml_shutdown() }
     }
 
-    pub unsafe fn token<'a>(&'a self) -> OCamlAllocToken<'a> {
+    pub unsafe fn token(&self) -> OCamlAllocToken {
         OCamlAllocToken {
             _marker: PhantomData
         }
@@ -49,6 +68,7 @@ impl OCamlRuntime {
         make_ocaml(reference.cell.get())
     }
 }
+
 /// Token used by allocation functions. Used internally.
 pub struct OCamlAllocToken<'a> {
     _marker: PhantomData<&'a i32>,

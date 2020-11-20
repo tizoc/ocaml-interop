@@ -184,7 +184,7 @@ impl<T> OCamlAllocResult<T> {
 }
 
 impl<T> GCMarkedResult<T> {
-    pub fn eval<'a>(self, _cr: &'a OCamlRuntime) -> OCaml<'a, T> {
+    pub fn eval(self, _cr: &OCamlRuntime) -> OCaml<T> {
         make_ocaml(self.raw)
     }
 }
