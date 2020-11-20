@@ -1,8 +1,8 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::*;
-use crate::{error::OCamlFixnumConversionError, memory::GCFrameHandle};
+use crate::error::OCamlFixnumConversionError;
+use crate::{mlvalues::*, OCamlRuntime};
 use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
@@ -26,7 +26,7 @@ pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
 
 impl<'a, T> OCaml<'a, T> {
     #[doc(hidden)]
-    pub unsafe fn new<'gc>(_gc: &'a dyn GCFrameHandle<'gc>, x: RawOCaml) -> OCaml<'a, T> {
+    pub unsafe fn new(_cr: &'a OCamlRuntime, x: RawOCaml) -> OCaml<'a, T> {
         OCaml {
             _marker: PhantomData,
             raw: x,

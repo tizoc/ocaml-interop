@@ -46,13 +46,12 @@
 //! # ocaml! { fn ocaml_function(arg1: String); }
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
-//! ocaml_frame!(gc, {
-//!     let arg1 = ocaml_alloc!(arg1.to_ocaml(gc));
-//!     // ...
-//!     let result = ocaml_call!(ocaml_function(gc, arg1, /* ...,  argN */));
-//!     let ocaml_string: OCaml<String> = ocaml_alloc!(a_string.to_ocaml(gc));
-//!     // ...
-//! })
+//! # let cr = unsafe { &mut OCamlRuntime::acquire() };
+//! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
+//! // ...
+//! let result = ocaml_call!(ocaml_function(cr, arg1, /* ...,  argN */));
+//! let ocaml_string: OCaml<String> = ocaml_alloc!(a_string.to_ocaml(cr));
+//! // ...
 //! ```
 //!
 //! Without the macros, this error is produced, because without the macros an incorrect token is passed as the first argument:
@@ -61,8 +60,8 @@
 //! error[E0308]: mismatched types
 //!   --> example.rs
 //!    |
-//!    |  let result = ocaml_function(gc, arg1, ..., argN);
-//!    |                              ^^ expected struct `ocaml_interop::OCamlAllocToken`, found `&mut ocaml_interop::GCFrame<'_>`
+//!    |  let result = ocaml_function(cr, arg1, ..., argN);
+//!    |                              ^^ expected struct `ocaml_interop::OCamlAllocToken`, found `&mut ocaml_interop::OCamlRuntime<'_>`
 //! ```
 //!
 //! #### Rule 2: OCaml value references
@@ -80,14 +79,15 @@
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
 //! # let arg2 = "arg2";
-//! ocaml_frame!(gc(result_ref), {
-//!     let arg1 = ocaml_alloc!(arg1.to_ocaml(gc));
-//!     let result = ocaml_call!(ocaml_function(gc, arg1, /* ..., argN */)).unwrap();
+//! # let cr = unsafe { &mut OCamlRuntime::acquire() };
+//! ocaml_frame!(cr(result_ref), {
+//!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
+//!     let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
 //!     let result_ref = &result_ref.keep(result);
-//!     let arg2 = ocaml_alloc!(arg2.to_ocaml(gc));
-//!     let another_result = ocaml_call!(ocaml_function(gc, arg2, /* ..., argN */)).unwrap();
+//!     let arg2 = ocaml_alloc!(arg2.to_ocaml(cr));
+//!     let another_result = ocaml_call!(ocaml_function(cr, arg2, /* ..., argN */)).unwrap();
 //!     // ...
-//!     let more_results = ocaml_call!(another_ocaml_function(gc, gc.get(result_ref))).unwrap();
+//!     let more_results = ocaml_call!(another_ocaml_function(cr, cr.get(result_ref))).unwrap();
 //!     // ...
 //! })
 //! ```
@@ -95,16 +95,16 @@
 //! If the value is not kept with `root_var.keep` (root variables are declared when opening an [`ocaml_frame!`]), and instead an attempt is made to re-use it directly, Rust's borrow checker will complain:
 //!
 //! ```text,no_run
-//! error[E0502]: cannot borrow `*gc` as mutable because it is also borrowed as immutable
+//! error[E0502]: cannot borrow `*cr` as mutable because it is also borrowed as immutable
 //!   --> example.rs
 //!    |
-//!    |  let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+//!    |  let result = ocaml_call!(ocaml_function(cr, arg1, ..., argN)).unwrap();
 //!    |               ------------------------------------ immutable borrow occurs here
 //! ...
-//!    |  let another_result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
+//!    |  let another_result = ocaml_call!(ocaml_function(cr, arg1, ..., argN)).unwrap();
 //!    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 //! ...
-//!    |  let more_results = ocaml_call!(another_ocaml_function(gc, result)).unwrap();
+//!    |  let more_results = ocaml_call!(another_ocaml_function(cr, result)).unwrap();
 //!    |                                                            ------ immutable borrow later used here
 //!    |
 //! ```
@@ -112,6 +112,8 @@
 //! There is no need to keep values that are used immediately without any calls into the OCaml runtime in-between their allocation and use.
 //!
 //! #### Rule 3: Liveness and scope of OCaml values
+//!
+//! TODO: update this whole section, it is not correct anymore
 //!
 //! OCaml values that are the result of an allocation by the OCaml runtime cannot escape the [`ocaml_frame!`] block inside which they where created. This is enforced by Rust's borrow checker.
 //!
@@ -125,11 +127,10 @@
 //! # }
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
-//! let s = ocaml_frame!(gc, {
-//!     let arg1 = ocaml_alloc!(arg1.to_ocaml(gc));
-//!     let result = ocaml_call!(ocaml_function(gc, arg1, /* ..., argN */)).unwrap();
-//!     String::from_ocaml(result)
-//! });
+//! # let cr = unsafe { &mut OCamlRuntime::acquire() };
+//! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
+//! let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
+//! let s = String::from_ocaml(result);
 //! // ...
 //! ```
 //!
@@ -219,25 +220,24 @@
 //!     }
 //!
 //!     // The two OCaml functions declared above can now be invoked with the
-//!     // `ocaml_call!` macro: `ocaml_call!(func_name(gc, args...))`.
-//!     // Note the first `gc` parameter, it is an OCaml Garbage Collector handle, and
-//!     // it is obtained by opening a new GC frame block, sung the `ocaml_frame!` macro.
+//!     // `ocaml_call!` macro: `ocaml_call!(func_name(cr, args...))`.
+//!     // Note the first `cr` parameter, it is an OCaml Runtime handle.
 //! }
 //!
-//! fn increment_bytes(bytes1: String, bytes2: String, first_n: usize) -> (String, String) {
+//! fn increment_bytes(cr: &mut OCamlRuntime, bytes1: String, bytes2: String, first_n: usize) -> (String, String) {
 //!     // Any calls into the OCaml runtime have to happen inside an
 //!     // `ocaml_frame!` block. Inside this block, OCaml allocations and references
 //!     // to OCaml allocated values are tracked and validated by Rust's borrow checker.
 //!     // The first argument to the macro is a name for the GC handle, followed by an optional
 //!     // list of "root variables" (more on this later). The second argument
 //!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(gc(bytes1_ref, bytes2_ref), {
+//!     ocaml_frame!(cr(bytes1_ref, bytes2_ref), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values. Because such conversions usually require
 //!         // the OCaml runtime to perform an allocation, calls to `to_ocaml` have
 //!         // to be wrapped by the `ocaml_alloc!` macro. A shorter version uses
 //!         // the `to_ocaml!` macro.
-//!         let ocaml_bytes1: OCaml<String> = to_ocaml!(gc, bytes1);
+//!         let ocaml_bytes1: OCaml<String> = to_ocaml!(cr, bytes1);
 //!
 //!         // `ocaml_bytes1` is going to be referenced later, but there calls into the
 //!         // OCaml runtime that perform allocations happening before this value is used again.
@@ -247,7 +247,7 @@
 //!         // Each "root variable" reserves space for a reference that will be tracked by the GC.
 //!         // A root variable's `root_var.keep(value)` method returns
 //!         // a reference to an OCaml value that is going to be valid during the scope of
-//!         // the current `ocaml_frame!` block. Later `gc.get(the_reference)` can be used
+//!         // the current `ocaml_frame!` block. Later `cr.get(the_reference)` can be used
 //!         // to obtain the kept value.
 //!         let bytes1_ref: &OCamlRef<String> = &bytes1_ref.keep(ocaml_bytes1);
 //!
@@ -258,7 +258,7 @@
 //!         // OCaml runtime in-between.
 //!         // Here a third argument is passed to `to_ocaml!`, a root variable.
 //!         // This variation returns an `OCamlRef` value instead of an `OCaml` one.
-//!         let bytes2_ref = &to_ocaml!(gc, bytes2, bytes2_ref);
+//!         let bytes2_ref = &to_ocaml!(cr, bytes2, bytes2_ref);
 //!
 //!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64` and `OCaml::of_i64_unchecked`.
 //!         // Such conversion doesn't require any allocation on the OCaml side,
@@ -272,22 +272,22 @@
 //!         // The result of this call is a Result<OCamlValue<T>, ocaml_interop::Error>, with `Err(...)`
 //!         // being the result of calls for which the OCaml runtime raises an exception.
 //!         let result1 = ocaml_call!(ocaml_funcs::increment_bytes(
-//!             gc,
+//!             cr,
 //!             // The reference created above is used here to obtain the value
 //!             // of `ocaml_bytes1`
-//!             gc.get(bytes1_ref),
+//!             cr.get(bytes1_ref),
 //!             ocaml_first_n
 //!         )).unwrap();
 //!
 //!         // Perform the conversion of the OCaml result value into a
 //!         // Rust value while the reference is still valid because the
 //!         // `ocaml_call!` that follows will invalidate it.
-//!         // Alternatively, the result of `gc.keep(result1)` could be used
+//!         // Alternatively, the result of `rootvar.keep(result1)` could be used
 //!         // to be able to reference the value later through an `OCamlRef` value.
 //!         let new_bytes1: String = result1.to_rust();
 //!         let result2 = ocaml_call!(ocaml_funcs::increment_bytes(
-//!             gc,
-//!             gc.get(bytes2_ref),
+//!             cr,
+//!             cr.get(bytes2_ref),
 //!             ocaml_first_n
 //!         )).unwrap();
 //!
@@ -301,23 +301,21 @@
 //!     })
 //! }
 //!
-//! fn twice(num: usize) -> usize {
-//!     ocaml_frame!(gc, {
-//!         let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
-//!         let result = ocaml_call!(ocaml_funcs::twice(gc, ocaml_num));
-//!         i64::from_ocaml(result.unwrap()) as usize
-//!     })
+//! fn twice(cr: &mut OCamlRuntime, num: usize) -> usize {
+//!     let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
+//!     let result = ocaml_call!(ocaml_funcs::twice(cr, ocaml_num));
+//!     i64::from_ocaml(result.unwrap()) as usize
 //! }
 //!
 //! fn entry_point() {
 //!     // IMPORTANT: the OCaml runtime has to be initialized first.
-//!     let ocaml_runtime = OCamlRuntime::init();
-//!     let first_n = twice(5);
+//!     let mut ocaml_runtime = OCamlRuntime::init();
+//!     let first_n = twice(&mut ocaml_runtime, 5);
 //!     let bytes1 = "000000000000000".to_owned();
 //!     let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
 //!     println!("Bytes1 before: {}", bytes1);
 //!     println!("Bytes2 before: {}", bytes2);
-//!     let (result1, result2) = increment_bytes(bytes1, bytes2, first_n);
+//!     let (result1, result2) = increment_bytes(&mut ocaml_runtime, bytes1, bytes2, first_n);
 //!     println!("Bytes1 after: {}", result1);
 //!     println!("Bytes2 after: {}", result2);
 //!     // At this point the `ocaml_runtime` handle will be dropped, triggering
@@ -341,12 +339,12 @@
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
-//!     fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+//!     fn rust_twice(_cr, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
 //!         let num = i64::from_ocaml(num);
 //!         unsafe { OCaml::of_i64_unchecked(num * 2) }
 //!     }
 //!
-//!     fn rust_increment_bytes(gc, bytes: OCaml<OCamlBytes>, first_n: OCaml<OCamlInt>) -> OCaml<OCamlBytes> {
+//!     fn rust_increment_bytes(cr, bytes: OCaml<OCamlBytes>, first_n: OCaml<OCamlInt>) -> OCaml<OCamlBytes> {
 //!         let first_n = i64::from_ocaml(first_n) as usize;
 //!         let mut vec = Vec::from_ocaml(bytes);
 //!
@@ -357,7 +355,7 @@
 //!         // Note that unlike in `ocaml_frame!` blocks, where values of type `OCaml<T>`
 //!         // cannot escape, in functions defined inside `ocaml_export!` blocks,
 //!         // only results of type `OCaml<T>` are valid.
-//!         to_ocaml!(gc, vec)
+//!         to_ocaml!(cr, vec)
 //!     }
 //! }
 //! ```
@@ -388,19 +386,21 @@ mod runtime;
 mod value;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCamlResult};
-pub use crate::conv::{FromOCaml, ToRust, ToOCaml};
+pub use crate::conv::{FromOCaml, ToOCaml, ToRust};
 pub use crate::error::{OCamlError, OCamlException};
-pub use crate::memory::{OCamlAllocResult, OCamlAllocToken, OCamlRef};
-pub use crate::mlvalues::{OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml};
-pub use crate::runtime::OCamlRuntime;
+pub use crate::memory::{OCamlAllocResult, OCamlRef};
+pub use crate::mlvalues::{
+    OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+};
+pub use crate::runtime::{OCamlAllocToken, OCamlRuntime};
 pub use crate::value::OCaml;
 
 #[doc(hidden)]
 pub mod internal {
-    pub use ocaml_sys::int_val;
-    pub use crate::mlvalues::UNIT;
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, store_field, GCFrame, GCFrameNoKeep, OCamlRoot};
+    pub use crate::memory::{caml_alloc, store_field, OCamlRoot};
+    pub use crate::mlvalues::UNIT;
+    pub use ocaml_sys::int_val;
 }
 
 #[doc(hidden)]

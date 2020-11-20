@@ -6,9 +6,9 @@ use ocaml_sys::{caml_alloc, store_field};
 use crate::{
     memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
-        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlAllocResult, OCamlAllocToken,
+        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlAllocResult,
     },
-    OCamlRef,
+    OCamlAllocToken, OCamlRef,
 };
 use crate::{mlvalues::tag, value::OCaml};
 use crate::{
@@ -26,7 +26,7 @@ pub unsafe trait ToOCaml<T> {
     ///
     /// Should not be called directly, use [`to_ocaml!`] macro instead.
     /// If called directly, the call should be wrapped by [`ocaml_alloc!`].
-    fn to_ocaml(&self, gc: OCamlAllocToken) -> OCamlAllocResult<T>;
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<T>;
 }
 
 unsafe impl<'a, T> ToOCaml<T> for OCamlRef<'a, T> {
@@ -133,10 +133,11 @@ where
     A: ToOCaml<OCamlA>,
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Option<OCamlA>> {
+        let cr = unsafe { &mut token.acquire_runtime() };
         if let Some(value) = self {
-            ocaml_frame!(gc(ocaml_value), {
-                let ocaml_value = &ocaml_value.keep(to_ocaml!(gc, value));
-                alloc_some(token, ocaml_value)
+            ocaml_frame!(cr(root), {
+                let ocaml_value = to_ocaml!(cr, value, root);
+                alloc_some(unsafe { cr.token() }, &ocaml_value)
             })
         } else {
             OCamlAllocResult::of(NONE)
@@ -149,16 +150,17 @@ where
     A: ToOCaml<OCamlA>,
     Err: ToOCaml<OCamlErr>,
 {
-    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<Result<OCamlA, OCamlErr>> {
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Result<OCamlA, OCamlErr>> {
+        let cr = unsafe { &mut token.acquire_runtime() };
         match self {
-            Ok(value) => ocaml_frame!(gc(ocaml_value), {
-                let ocaml_value = to_ocaml!(gc, value, ocaml_value);
+            Ok(value) => ocaml_frame!(cr(root), {
+                let ocaml_value = to_ocaml!(cr, value, root);
                 let ocaml_ok = unsafe { caml_alloc(1, tag::TAG_OK) };
                 unsafe { store_field(ocaml_ok, 0, ocaml_value.get_raw()) };
                 OCamlAllocResult::of(ocaml_ok)
             }),
-            Err(error) => ocaml_frame!(gc(ocaml_error), {
-                let ocaml_error = to_ocaml!(gc, error, ocaml_error);
+            Err(error) => ocaml_frame!(cr(root), {
+                let ocaml_error = to_ocaml!(cr, error, root);
                 let ocaml_err = unsafe { caml_alloc(1, tag::TAG_ERROR) };
                 unsafe { store_field(ocaml_err, 0, ocaml_error.get_raw()) };
                 OCamlAllocResult::of(ocaml_err)
@@ -173,10 +175,11 @@ where
     B: ToOCaml<OCamlB>,
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(OCamlA, OCamlB)> {
-        ocaml_frame!(gc(fst, snd), {
-            let fst = &fst.keep(to_ocaml!(gc, self.0));
-            let snd = &snd.keep(to_ocaml!(gc, self.1));
-            alloc_tuple(token, fst, snd)
+        let cr = unsafe { &mut token.acquire_runtime() };
+        ocaml_frame!(cr(fst, snd), {
+            let fst = to_ocaml!(cr, self.0, fst);
+            let snd = to_ocaml!(cr, self.1, snd);
+            alloc_tuple(unsafe { cr.token() }, &fst, &snd)
         })
     }
 }
@@ -188,11 +191,12 @@ where
     C: ToOCaml<OCamlC>,
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(OCamlA, OCamlB, OCamlC)> {
-        ocaml_frame!(gc(fst, snd, elt3), {
-            let fst = &fst.keep(to_ocaml!(gc, self.0));
-            let snd = &snd.keep(to_ocaml!(gc, self.1));
-            let elt3 = &elt3.keep(to_ocaml!(gc, self.2));
-            alloc_tuple_3(token, fst, snd, elt3)
+        let cr = unsafe { &mut token.acquire_runtime() };
+        ocaml_frame!(cr(fst, snd, elt3), {
+            let fst = to_ocaml!(cr, self.0, fst);
+            let snd = to_ocaml!(cr, self.1, snd);
+            let elt3 = to_ocaml!(cr, self.2, elt3);
+            alloc_tuple_3(unsafe { cr.token() }, &fst, &snd, &elt3)
         })
     }
 }
@@ -209,12 +213,13 @@ where
         &self,
         token: OCamlAllocToken,
     ) -> OCamlAllocResult<(OCamlA, OCamlB, OCamlC, OCamlD)> {
-        ocaml_frame!(gc(fst, snd, elt3, elt4), {
-            let fst = &fst.keep(to_ocaml!(gc, self.0));
-            let snd = &snd.keep(to_ocaml!(gc, self.1));
-            let elt3 = &elt3.keep(to_ocaml!(gc, self.2));
-            let elt4 = &elt4.keep(to_ocaml!(gc, self.3));
-            alloc_tuple_4(token, fst, snd, elt3, elt4)
+        let cr = unsafe { &mut token.acquire_runtime() };
+        ocaml_frame!(cr(fst, snd, elt3, elt4), {
+            let fst = to_ocaml!(cr, self.0, fst);
+            let snd = to_ocaml!(cr, self.1, snd);
+            let elt3 = to_ocaml!(cr, self.2, elt3);
+            let elt4 = to_ocaml!(cr, self.3, elt4);
+            alloc_tuple_4(unsafe { cr.token() }, &fst, &snd, &elt3, &elt4)
         })
     }
 }
@@ -232,15 +237,16 @@ unsafe impl<A, OCamlA> ToOCaml<OCamlList<OCamlA>> for &Vec<A>
 where
     A: ToOCaml<OCamlA>,
 {
-    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<OCamlA>> {
-        ocaml_frame!(gc(result_ref, ov_ref), {
-            let mut result_ref = result_ref.keep(OCaml::nil());
+    fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<OCamlA>> {
+        let cr = unsafe { &mut token.acquire_runtime() };
+        ocaml_frame!(cr(result_root, ov_root), {
+            let mut result_root = result_root.keep(OCaml::nil());
             for elt in self.iter().rev() {
-                let ov = &ov_ref.keep(to_ocaml!(gc, elt));
-                let cons = ocaml_alloc!(alloc_cons(gc, ov, &result_ref));
-                result_ref.set(cons);
+                let ov = to_ocaml!(cr, elt, ov_root);
+                let cons = ocaml_alloc!(alloc_cons(cr, &ov, &result_root));
+                result_root.set(cons);
             }
-            OCamlAllocResult::of_ocaml(gc.get(&result_ref))
+            OCamlAllocResult::of_ocaml(cr.get(&result_root))
         })
     }
 }

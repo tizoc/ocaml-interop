@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_sys::{caml_shutdown, caml_startup};
+use std::{marker::PhantomData, panic::{catch_unwind, resume_unwind, UnwindSafe}};
+
+use crate::{memory::GCFrame, value::make_ocaml, OCaml, OCamlRef};
 
 /// OCaml runtime handle.
 pub struct OCamlRuntime {}
@@ -21,14 +24,38 @@ impl OCamlRuntime {
         unsafe { caml_startup(c_args.as_ptr()) }
     }
 
+    #[doc(hidden)]
+    pub unsafe fn acquire() -> Self {
+        OCamlRuntime {}
+    }
+
     /// Performs the necessary cleanup and shuts down the OCaml runtime.
     pub fn shutdown_persistent() {
         unsafe { caml_shutdown() }
     }
+
+    pub unsafe fn token<'a>(&'a self) -> OCamlAllocToken<'a> {
+        OCamlAllocToken {
+            _marker: PhantomData
+        }
+    }
+
+    pub fn open_frame<'a, 'gc>(&'a self) -> GCFrame<'gc> {
+        Default::default()
+    }
+
+    /// Returns the OCaml valued to which this GC tracked reference points to.
+    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
+        make_ocaml(reference.cell.get())
+    }
+}
+/// Token used by allocation functions. Used internally.
+pub struct OCamlAllocToken<'a> {
+    _marker: PhantomData<&'a i32>,
 }
 
-impl Drop for OCamlRuntime {
-    fn drop(&mut self) {
-        unsafe { caml_shutdown() }
+impl<'a> OCamlAllocToken<'a> {
+    pub unsafe fn acquire_runtime(self) -> OCamlRuntime {
+        OCamlRuntime::acquire()
     }
 }

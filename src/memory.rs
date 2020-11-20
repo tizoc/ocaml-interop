@@ -1,10 +1,12 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::{
-    tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
-};
 use crate::value::{make_ocaml, OCaml};
+use crate::{
+    mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
+    runtime::OCamlAllocToken,
+    OCamlRuntime,
+};
 use core::{cell::Cell, marker::PhantomData, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
@@ -48,19 +50,11 @@ unsafe fn set_local_roots(roots: *mut CamlRootsBlock) {
     ocaml_sys_set_local_roots(roots as *mut ocaml_sys::CamlRootsBlock)
 }
 
-pub trait GCFrameHandle<'gc> {}
-
 // OCaml GC frame handle
 #[derive(Default)]
 pub struct GCFrame<'gc> {
     _marker: PhantomData<&'gc i32>,
     block: CamlRootsBlock,
-}
-
-// OCaml GC frame handle
-#[derive(Default)]
-pub struct GCFrameNoKeep<'gc> {
-    _marker: PhantomData<&'gc i32>,
 }
 
 // Impl
@@ -76,16 +70,6 @@ impl<'gc> GCFrame<'gc> {
         };
         self
     }
-
-    /// Returns the OCaml valued to which this GC tracked reference points to.
-    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
-        make_ocaml(reference.cell.get())
-    }
-
-    #[doc(hidden)]
-    pub unsafe fn token(&self) -> OCamlAllocToken {
-        OCamlAllocToken {}
-    }
 }
 
 impl<'gc> Drop for GCFrame<'gc> {
@@ -96,23 +80,6 @@ impl<'gc> Drop for GCFrame<'gc> {
         }
     }
 }
-
-impl<'gc> GCFrameNoKeep<'gc> {
-    pub fn initialize(&mut self) -> &mut Self {
-        self
-    }
-
-    #[doc(hidden)]
-    pub unsafe fn token(&self) -> OCamlAllocToken {
-        OCamlAllocToken {}
-    }
-}
-
-impl<'gc> GCFrameHandle<'gc> for GCFrame<'gc> {}
-impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
-
-/// Token used by allocation functions. Used internally.
-pub struct OCamlAllocToken {}
 
 pub struct OCamlRoot<'a> {
     cell: &'a Cell<RawOCaml>,
@@ -148,7 +115,7 @@ impl<'a> OCamlRoot<'a> {
 ///
 /// Unlike [`OCaml`]`<T>` values, it can be re-referenced after OCaml allocations.
 pub struct OCamlRef<'a, T> {
-    cell: &'a Cell<RawOCaml>,
+    pub(crate) cell: &'a Cell<RawOCaml>,
     _marker: PhantomData<Cell<T>>,
 }
 
@@ -208,7 +175,7 @@ impl<T> OCamlAllocResult<T> {
         }
     }
 
-    pub fn mark(self, _gc: &mut dyn GCFrameHandle) -> GCMarkedResult<T> {
+    pub fn mark(self, _cr: &mut OCamlRuntime) -> GCMarkedResult<T> {
         GCMarkedResult {
             _marker: PhantomData,
             raw: self.raw,
@@ -217,7 +184,7 @@ impl<T> OCamlAllocResult<T> {
 }
 
 impl<T> GCMarkedResult<T> {
-    pub fn eval<'a, 'gc: 'a>(self, _gc: &'a dyn GCFrameHandle<'gc>) -> OCaml<'a, T> {
+    pub fn eval<'a>(self, _cr: &'a OCamlRuntime) -> OCaml<'a, T> {
         make_ocaml(self.raw)
     }
 }

@@ -1,11 +1,14 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::error::{OCamlError, OCamlException};
-use crate::memory::{OCamlAllocResult, OCamlAllocToken};
+use crate::memory::OCamlAllocResult;
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
 use crate::value::OCaml;
+use crate::{
+    error::{OCamlError, OCamlException},
+    OCamlAllocToken,
+};
 use ocaml_sys::{
     caml_callback2_exn, caml_callback3_exn, caml_callbackN_exn, caml_callback_exn, caml_named_value,
 };

@@ -26,51 +26,36 @@
 /// # ocaml! {
 /// #    fn print_endline(s: String);
 /// # }
-/// # fn ocaml_frame_macro_example() {
-///     ocaml_frame!(gc(hello_ocaml, bye_ocaml), { // `gc` gets bound to the frame handle
-///         let hello_ocaml = &to_ocaml!(gc, "hello OCaml!", hello_ocaml);
-///         let bye_ocaml = &to_ocaml!(gc, "bye OCaml!", bye_ocaml);
-///         ocaml_call!(print_endline(gc, gc.get(hello_ocaml)));
-///         ocaml_call!(print_endline(gc, gc.get(bye_ocaml)));
+/// # fn ocaml_frame_macro_example(cr: &mut OCamlRuntime) {
+///     ocaml_frame!(cr(hello_ocaml, bye_ocaml), {
+///         let hello_ocaml = &to_ocaml!(cr, "hello OCaml!", hello_ocaml);
+///         let bye_ocaml = &to_ocaml!(cr, "bye OCaml!", bye_ocaml);
+///         ocaml_call!(print_endline(cr, cr.get(hello_ocaml)));
+///         ocaml_call!(print_endline(cr, cr.get(bye_ocaml)));
 ///         // Values that don't need to be kept across calls can be used directly
-///         let immediate_use = to_ocaml!(gc, "no need to `keep` me");
-///         ocaml_call!(print_endline(gc, immediate_use));
-///     });
-/// # }
-/// ```
-///
-/// The following example does not declare "root variables". As a result no space is reserved for local roots:
-///
-/// ```
-/// # use ocaml_interop::*;
-/// # ocaml! { fn print_endline(s: String); }
-/// # fn ocaml_frame_macro_example() {
-///     ocaml_frame!(gc, {
-///         let ocaml_string = to_ocaml!(gc, "hello OCaml!");
-///         ocaml_call!(print_endline(gc, ocaml_string));
+///         let immediate_use = to_ocaml!(cr, "no need to `keep` me");
+///         ocaml_call!(print_endline(cr, immediate_use));
 ///     });
 /// # }
 /// ```
 #[macro_export]
 macro_rules! ocaml_frame {
-    ($gc:ident, $body:block) => {{
-        let mut frame: $crate::internal::GCFrameNoKeep = Default::default();
-        let $gc = frame.initialize();
+    ($cr:ident, $body:block) => {{
         $body
     }};
 
-    ($gc:ident($($rootvar:ident),+ $(,)?), $body:block) => {{
-        let mut frame: $crate::internal::GCFrame = Default::default();
+   ($cr:ident($($rootvar:ident),+ $(,)?), $body:block) => {{
+        let mut frame = $cr.open_frame();
         let local_roots = $crate::repeat_slice!(::core::cell::Cell::new($crate::internal::UNIT), $($rootvar)+);
-        let $gc = frame.initialize(&local_roots);
+        let gc = frame.initialize(&local_roots);
         $(
-            let mut $rootvar = unsafe { $crate::internal::OCamlRoot::reserve(&$gc) };
+            let $rootvar = unsafe { &mut $crate::internal::OCamlRoot::reserve(gc) };
         )+
         $body
     }};
 
     ($($t:tt)*) => {
-        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame! { gc | gc(vars, ...), { body-block } }`.")
+        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame!(cr(vars, ...), { body-block })`.")
     };
 }
 
@@ -182,42 +167,42 @@ macro_rules! ocaml {
 /// ```
 /// # use ocaml_interop::*;
 /// ocaml_export! {
-///     fn rust_twice(_gc, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+///     fn rust_twice(_cr, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
 ///         let num: i64 = num.to_rust();
 ///         unsafe { OCaml::of_i64_unchecked(num * 2) }
 ///     }
 ///
-///     fn rust_twice_boxed_i32(gc, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
+///     fn rust_twice_boxed_i32(cr, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
 ///         let num: i32 = num.to_rust();
 ///         let result = num * 2;
-///         ocaml_alloc!(result.to_ocaml(gc))
+///         ocaml_alloc!(result.to_ocaml(cr))
 ///     }
 ///
-///     fn rust_add_unboxed_floats_noalloc(_gc, num: f64, num2: f64) -> f64 {
+///     fn rust_add_unboxed_floats_noalloc(_cr, num: f64, num2: f64) -> f64 {
 ///         num * num2
 ///     }
 ///
-///     fn rust_twice_boxed_float(gc, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
+///     fn rust_twice_boxed_float(cr, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
 ///         let num: f64 = num.to_rust();
 ///         let result = num * 2.0;
-///         ocaml_alloc!(result.to_ocaml(gc))
+///         ocaml_alloc!(result.to_ocaml(cr))
 ///     }
 ///
-///     fn rust_increment_ints_list(gc, ints: OCaml<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
+///     fn rust_increment_ints_list(cr, ints: OCaml<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
 ///         let mut vec: Vec<i64> = ints.to_rust();
 ///
 ///         for i in 0..vec.len() {
 ///             vec[i] += 1;
 ///         }
 ///
-///         ocaml_alloc!(vec.to_ocaml(gc))
+///         ocaml_alloc!(vec.to_ocaml(cr))
 ///     }
 ///
-///     fn rust_make_tuple(gc, fst: OCaml<String>, snd: OCaml<OCamlInt>) -> OCaml<(String, OCamlInt)> {
+///     fn rust_make_tuple(cr, fst: OCaml<String>, snd: OCaml<OCamlInt>) -> OCaml<(String, OCamlInt)> {
 ///         let fst: String = fst.to_rust();
 ///         let snd: i64 = snd.to_rust();
 ///         let tuple = (fst, snd);
-///         ocaml_alloc!(tuple.to_ocaml(gc))
+///         ocaml_alloc!(tuple.to_ocaml(cr))
 ///     }
 /// }
 /// ```
@@ -227,14 +212,14 @@ macro_rules! ocaml_export {
 
     // Unboxed float return
     {
-        fn $name:ident( $gc:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) -> f64
+        fn $name:ident( $cr:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) -> f64
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @gc { $gc $(($($rootvar),+))? }
+            @cr { $cr $(($($rootvar),+))? }
             @final_args { }
             @proc_args { $($args)*, }
             @return { f64 }
@@ -247,14 +232,14 @@ macro_rules! ocaml_export {
 
     // Other (or empty) return value type
     {
-        fn $name:ident( $gc:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) $(-> $rtyp:ty)?
+        fn $name:ident( $cr:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) $(-> $rtyp:ty)?
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @gc { $gc $(($($rootvar),+))? }
+            @cr { $cr $(($($rootvar),+))? }
             @final_args { }
             @proc_args { $($args)*, }
             @return { $($rtyp)? }
@@ -276,52 +261,37 @@ macro_rules! ocaml_export {
 ///
 /// ```
 /// # use ocaml_interop::*;
-/// # fn to_ocaml_macro_example() {
+/// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
 ///     let hello_string = "hello OCaml!";
-///     ocaml_frame!(gc, {
-///         let ocaml_string: OCaml<String> = ocaml_alloc!(hello_string.to_ocaml(gc));
-///         // ...
-///     });
+///     let ocaml_string: OCaml<String> = ocaml_alloc!(hello_string.to_ocaml(cr));
+///     // ...
+///     # ()
 /// # }
 /// ```
 #[macro_export]
 macro_rules! ocaml_alloc {
-    ( $(($obj:expr).)?$($fn:ident).+($gc:ident $(,)?) ) => {
+    ( $(($obj:expr).)?$($fn:ident).+($cr:ident $(, $($arg:expr),+)? $(,)? ) ) => {
         {
-            let res = $(($obj).)?$($fn).+(unsafe { $gc.token() });
-            res.mark($gc).eval($gc)
+            let res = $(($obj).)?$($fn).+(unsafe { $cr.token() } $(, $($arg),+)? );
+            res.mark($cr).eval($cr)
         }
     };
 
-    ( $(($obj:expr).)?$($fn:ident).+($gc:ident, $($arg:expr),+ $(,)? ) ) => {
+    ( $obj:literal.$($fn:ident).+($cr:ident $(, $($arg:expr),+)? $(,)?) ) => {
         {
-            let res = $(($obj).)?$($fn).+(unsafe { $gc.token() }, $($arg),* );
-            res.mark($gc).eval($gc)
-        }
-    };
-
-    ( $obj:literal.$($fn:ident).+($gc:ident $(,)?) ) => {
-        {
-            let res = $obj.$($fn).+(unsafe { $gc.token() });
-            res.mark($gc).eval($gc)
-        }
-    };
-
-    ( $obj:literal.$($fn:ident).+($gc:ident, $($arg:expr),+ $(,)?) ) => {
-        {
-            let res = $obj.$($fn).+(unsafe { $gc.token() }, $($arg),* );
-            res.mark($gc).eval($gc)
+            let res = $obj.$($fn).+(unsafe { $cr.token() } $(, $($arg),+)? );
+            res.mark($cr).eval($cr)
         }
     };
 }
 
 /// Converts Rust values into OCaml values.
 ///
-/// In `to_ocaml!(gc, value)`, `gc` is an OCaml frame GC handle, and `value` is
+/// In `to_ocaml!(cr, value)`, `cr` is an OCaml Runtime handle, and `value` is
 /// a Rust value of a type that implements the [`ToOCaml`] trait. The resulting
-/// value's lifetime is bound to `gc`'s.
+/// value's lifetime is bound to `cr`'s borrow.
 ///
-/// An alternative form accepts a third "root variable" argument: `to_ocaml!(gc, value, rootvar)`.
+/// An alternative form accepts a third "root variable" argument: `to_ocaml!(cr, value, rootvar)`.
 /// `rootvar` is one of the "root variables" declared when opening an [`ocaml_frame!`].
 /// This variant consumes `rootvar` returns an [`OCamlRef`] value instead of an [`OCaml`] one.
 ///
@@ -329,12 +299,10 @@ macro_rules! ocaml_alloc {
 ///
 /// ```
 /// # use ocaml_interop::*;
-/// # fn to_ocaml_macro_example() {
-///     ocaml_frame!(gc, {
-///         let ocaml_string: OCaml<String> = to_ocaml!(gc, "hello OCaml!");
-///         // ...
-///         # ()
-///     });
+/// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
+///     let ocaml_string: OCaml<String> = to_ocaml!(cr, "hello OCaml!");
+///     // ...
+///     # ()
 /// # }
 /// ```
 ///
@@ -342,9 +310,9 @@ macro_rules! ocaml_alloc {
 ///
 /// ```
 /// # use ocaml_interop::*;
-/// # fn to_ocaml_macro_example() {
-///     ocaml_frame!(gc(rootvar), {
-///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(gc, "hello OCaml!", rootvar);
+/// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
+///     ocaml_frame!(cr(rootvar), {
+///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(cr, "hello OCaml!", rootvar);
 ///         // ...
 ///         # ()
 ///     });
@@ -352,16 +320,16 @@ macro_rules! ocaml_alloc {
 /// ```
 #[macro_export]
 macro_rules! to_ocaml {
-    ($gc:ident, $obj:expr, $rootvar:ident) => {
-        $rootvar.keep($crate::to_ocaml!($gc, $obj))
+    ($cr:ident, $obj:expr, $rootvar:ident) => {
+        $rootvar.keep($crate::to_ocaml!($cr, $obj))
     };
 
-    ($gc:ident, $obj:expr) => {
-        $crate::ocaml_alloc!(($obj).to_ocaml($gc))
+    ($cr:ident, $obj:expr) => {
+        $crate::ocaml_alloc!(($obj).to_ocaml($cr))
     };
 
     ($($t:tt)*) => {
-        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(gc, expr[, rootvar])`")
+        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(cr, expr[, rootvar])`")
     };
 }
 
@@ -380,34 +348,32 @@ macro_rules! to_ocaml {
 /// # use ocaml_interop::*;
 /// ocaml! { fn print_endline(s: String); }
 ///
-/// # fn ocaml_frame_macro_example() {
+/// # fn ocaml_frame_macro_example(cr: &mut OCamlRuntime) {
 /// // ...somewhere else inside a function
-/// ocaml_frame!(gc, {
-///     let ocaml_string = to_ocaml!(gc, "hello OCaml!");
-///     ocaml_call!(print_endline(gc, ocaml_string)).unwrap();
-/// });
+/// let ocaml_string = to_ocaml!(cr, "hello OCaml!");
+/// ocaml_call!(print_endline(cr, ocaml_string)).unwrap();
 /// # }
 /// ```
 #[macro_export]
 macro_rules! ocaml_call {
-    ( $(($obj:expr).)?$($fn:ident).+($gc:ident, $($arg:expr),+ $(,)?)) => {
+    ( $(($obj:expr).)?$($fn:ident).+($cr:ident, $($arg:expr),+ $(,)?)) => {
         {
-            let res = unsafe { $(($obj).)?$($fn).+($gc.token(), $($arg),* ) };
-            $crate::gcmark_result!($gc, res)
+            let res = unsafe { $(($obj).)?$($fn).+($cr.token(), $($arg),* ) };
+            $crate::gcmark_result!($cr, res)
         }
     };
 
-    ( $($path:ident)::+($gc:ident, $($args:expr),+ $(,)?) ) => {
+    ( $($path:ident)::+($cr:ident, $($args:expr),+ $(,)?) ) => {
         {
-            let res = unsafe { $($path)::+($gc.token(), $($args),+) };
-            $crate::gcmark_result!($gc, res)
+            let res = unsafe { $($path)::+($cr.token(), $($args),+) };
+            $crate::gcmark_result!($cr, res)
         }
     };
 
-    ( $($path:ident)::+.$($field:ident).+($gc:ident, $($args:expr),+ $(,)?) ) => {
+    ( $($path:ident)::+.$($field:ident).+($cr:ident, $($args:expr),+ $(,)?) ) => {
         {
-            let res = unsafe { $($path)::+$($field).+($gc.token(), $($args),+) };
-            $crate::gcmark_result!($gc, res)
+            let res = unsafe { $($path)::+$($field).+($cr.token(), $($args),+) };
+            $crate::gcmark_result!($cr, res)
         }
     };
 }
@@ -501,24 +467,24 @@ macro_rules! impl_conv_ocaml_variant {
 /// //
 /// // NOTE: What is important is the order of the fields, not their names.
 ///
-/// # fn unpack_record_example() {
-/// #   ocaml_frame!(gc, {
-/// let ocaml_struct = ocaml_call!(make_mystruct(gc, OCaml::unit())).unwrap();
-/// ocaml_unpack_record! {
+/// # fn unpack_record_example(cr: &mut OCamlRuntime) {
+/// let ocaml_struct = ocaml_call!(make_mystruct(cr, OCaml::unit())).unwrap();
+/// let my_struct = ocaml_unpack_record! {
 ///     //  value    => RustConstructor { field: OCamlType, ... }
 ///     ocaml_struct => MyStruct {
 ///         int_field: OCamlInt,
 ///         string_field: String,
 ///     }
-/// }
-/// #   });
+/// };
+/// // ...
+/// # ()
 /// # }
 /// ```
 #[macro_export]
 macro_rules! ocaml_unpack_record {
     ($var:ident => $cons:ident {
         $($field:ident : $ocaml_typ:ty),+ $(,)?
-    }) => {
+    }) => {{
         let record = $var;
         unsafe {
             let mut current = 0;
@@ -532,7 +498,7 @@ macro_rules! ocaml_unpack_record {
                 $($field),+
             }
         }
-    };
+    }};
 }
 
 /// Allocates an OCaml memory block tagged with the specified value.
@@ -541,14 +507,14 @@ macro_rules! ocaml_unpack_record {
 /// not recommended.
 #[macro_export]
 macro_rules! ocaml_alloc_tagged_block {
-    ($tag:expr, $($field:ident : $ocaml_typ:ty),+ $(,)?) => {
+    ($cr:ident, $tag:expr, $($field:ident : $ocaml_typ:ty),+ $(,)?) => {
         unsafe {
-            $crate::ocaml_frame!(gc(block), {
+            $crate::ocaml_frame!($cr(block), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
                 let block = block.keep_raw($crate::internal::caml_alloc(field_count, $tag));
                 $(
-                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
+                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!($cr, $field);
                     $crate::internal::store_field(block.get_raw(), current, $field.raw());
                     current += 1;
                 )+
@@ -584,12 +550,11 @@ macro_rules! ocaml_alloc_tagged_block {
 /// //
 /// // NOTE: What is important is the order of the fields, not their names.
 ///
-/// # fn alloc_record_example() {
-/// #   ocaml_frame!(gc, {
+/// # fn alloc_record_example(cr: &mut OCamlRuntime) {
 /// let ms = MyStruct { int_field: 132, string_field: "blah".to_owned() };
 /// let ocaml_ms: OCamlAllocResult<MyStruct> = ocaml_alloc_record! {
 ///     //  value { field: OCamlType, ... }
-///     ms {
+///     cr, ms {
 ///         // optionally `=> expr` can be used to preprocess the field value
 ///         // before the conversion into OCaml takes place.
 ///         // Inside the expression, a variable with the same name as the field
@@ -600,22 +565,21 @@ macro_rules! ocaml_alloc_tagged_block {
 /// };
 /// // ...
 /// # ()
-/// #   });
 /// # }
 /// ```
 #[macro_export]
 macro_rules! ocaml_alloc_record {
-    ($self:ident {
+    ($cr:ident, $self:ident {
         $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe {
-            $crate::ocaml_frame!(gc(record), {
+            $crate::ocaml_frame!($cr(record), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
                 let record = record.keep_raw($crate::internal::caml_alloc(field_count, 0));
                 $(
                     let $field = &$crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
-                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!(gc, $field);
+                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!($cr, $field);
                     $crate::internal::store_field(record.get_raw(), current, $field.raw());
                     current += 1;
                 )+
@@ -725,9 +689,10 @@ macro_rules! impl_to_ocaml_record {
         $($field:ident : $ocaml_field_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
-            fn to_ocaml(&self, _token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
+            fn to_ocaml(&self, token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
+                let cr = unsafe { &mut token.acquire_runtime() };
                 $crate::ocaml_alloc_record! {
-                    self {
+                    cr, self {
                         $($field : $ocaml_field_typ $(=> $conv_expr)?),+
                     }
                 }
@@ -844,9 +809,8 @@ macro_rules! impl_from_ocaml_variant {
 /// //
 /// // NOTE: What is important is the order of the tags, not their names.
 ///
-/// # fn unpack_variant_example() {
-/// #   ocaml_frame!(gc, {
-/// let ocaml_variant = ocaml_call!(make_ocaml_movement(gc, OCaml::unit())).unwrap();
+/// # fn unpack_variant_example(cr: &mut OCamlRuntime) {
+/// let ocaml_variant = ocaml_call!(make_ocaml_movement(cr, OCaml::unit())).unwrap();
 /// let result = ocaml_unpack_variant! {
 ///     ocaml_variant => {
 ///         // Alternative: StepLeft  => Movement::StepLeft
@@ -858,7 +822,6 @@ macro_rules! impl_from_ocaml_variant {
 ///     }
 /// }.unwrap();
 /// // ...
-/// #   });
 /// # }
 #[macro_export]
 macro_rules! ocaml_unpack_variant {
@@ -906,11 +869,10 @@ macro_rules! ocaml_unpack_variant {
 /// //
 /// // NOTE: What is important is the order of the tags, not their names.
 ///
-/// # fn alloc_variant_example() {
-/// #   ocaml_frame!(gc, {
+/// # fn alloc_variant_example(cr: &mut OCamlRuntime) {
 /// let movement = Movement::Rotate(180.0);
 /// let ocaml_movement: OCamlAllocResult<Movement> = ocaml_alloc_variant! {
-///     movement => {
+///     cr, movement => {
 ///         Movement::StepLeft,
 ///         Movement::StepRight,
 ///         // Tag field names are mandatory
@@ -918,16 +880,15 @@ macro_rules! ocaml_unpack_variant {
 ///     }
 /// };
 /// // ...
-/// #   });
 /// # }
 /// ```
 #[macro_export]
 macro_rules! ocaml_alloc_variant {
-    ($self:ident => {
+    ($cr:ident, $self:ident => {
         $($($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? $(,)?),+
     }) => {
         $crate::ocaml_alloc_variant_match!{
-            $self, 0u8, 0u8,
+            $cr, $self, 0u8, 0u8,
 
             @units {}
             @blocks {}
@@ -981,9 +942,10 @@ macro_rules! impl_to_ocaml_variant {
         $($t:tt)*
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
-            fn to_ocaml(&self, _token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
+            fn to_ocaml(&self, token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
+                let cr = unsafe { &mut token.acquire_runtime() };
                 $crate::ocaml_alloc_variant! {
-                    self => {
+                    cr, self => {
                         $($t)*
                     }
                 }
@@ -1039,7 +1001,6 @@ macro_rules! repeat_slice {
             @rest $($vars)*)
     };
 }
-
 
 #[doc(hidden)]
 #[macro_export]
@@ -1107,7 +1068,7 @@ macro_rules! unpack_variant_tag {
 #[macro_export]
 macro_rules! ocaml_alloc_variant_match {
     // Base case, generate `match` expression
-    ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
+    ($cr:ident, $self:ident, $current_block_tag:expr, $current_long_tag:expr,
 
         @units {
             $({ $($unit_tag:ident)::+ @ $unit_tag_counter:expr })*
@@ -1125,13 +1086,13 @@ macro_rules! ocaml_alloc_variant_match {
             )*
             $(
                 $($block_tag)::+($($block_slot_name),+) =>
-                    $crate::ocaml_alloc_tagged_block!($block_tag_counter, $($block_slot_name: $block_slot_typ),+),
+                    $crate::ocaml_alloc_tagged_block!($cr, $block_tag_counter, $($block_slot_name: $block_slot_typ),+),
             )*
         }
     };
 
     // Found unit tag, add to accumulator and increment unit variant tag number
-    ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
+    ($cr:ident, $self:ident, $current_block_tag:expr, $current_long_tag:expr,
 
         @units { $($unit_tags_accum:tt)* }
         @blocks { $($block_tags_accum:tt)* }
@@ -1141,7 +1102,7 @@ macro_rules! ocaml_alloc_variant_match {
             $($tail:tt)*
     ) => {
         $crate::ocaml_alloc_variant_match!{
-            $self, $current_block_tag, {1u8 + $current_long_tag},
+            $cr, $self, $current_block_tag, {1u8 + $current_long_tag},
 
             @units {
                 $($unit_tags_accum)*
@@ -1154,7 +1115,7 @@ macro_rules! ocaml_alloc_variant_match {
     };
 
     // Found block tag, add to accumulator and increment block variant tag number
-    ($self:ident, $current_block_tag:expr, $current_long_tag:expr,
+    ($cr:ident, $self:ident, $current_block_tag:expr, $current_long_tag:expr,
 
         @units { $($unit_tags_accum:tt)* }
         @blocks { $($block_tags_accum:tt)* }
@@ -1164,7 +1125,7 @@ macro_rules! ocaml_alloc_variant_match {
             $($tail:tt)*
     ) => {
         $crate::ocaml_alloc_variant_match!{
-            $self, {1u8 + $current_block_tag}, $current_long_tag,
+            $cr, $self, {1u8 + $current_block_tag}, $current_long_tag,
 
             @units { $($unit_tags_accum)* }
             @blocks {
@@ -1194,9 +1155,9 @@ macro_rules! ocaml_closure_reference {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! gcmark_result {
-    ($gc:ident, $obj:expr) => {
+    ($cr:ident, $obj:expr) => {
         match $obj {
-            Ok(t) => Ok(t.mark($gc).eval($gc)),
+            Ok(t) => Ok(t.mark($cr).eval($cr)),
             Err(e) => Err(e),
         }
     };
@@ -1229,20 +1190,20 @@ macro_rules! default_to_unit {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! expand_args_init {
-    ($gc:ident) => ();
-    ($gc:ident ,) => ();
+    ($cr:ident) => ();
+    ($cr:ident ,) => ();
 
     // Nothing is done for unboxed floats
-    ($gc:ident, $arg:ident : f64) => ();
+    ($cr:ident, $arg:ident : f64) => ();
 
-    ($gc:ident, $arg:ident : f64, $($args:tt)*) => ($crate::expand_args_init!($gc, $($args)*));
+    ($cr:ident, $arg:ident : f64, $($args:tt)*) => ($crate::expand_args_init!($cr, $($args)*));
 
-    // Other values are wrapped in `OCaml<T>` as given the same lifetime as the gc handle
-    ($gc:ident, $arg:ident : $typ:ty) => (let $arg : $typ = unsafe { $crate::OCaml::new($gc, $arg) };);
+    // Other values are wrapped in `OCaml<T>` as given the same lifetime as the OCaml runtime handle borrow.
+    ($cr:ident, $arg:ident : $typ:ty) => (let $arg : $typ = unsafe { $crate::OCaml::new($cr, $arg) };);
 
-    ($gc:ident, $arg:ident : $typ:ty, $($args:tt)*) => {
-        let $arg : $typ = unsafe { $crate::OCaml::new($gc, $arg) };
-        $crate::expand_args_init!($gc, $($args)*)
+    ($cr:ident, $arg:ident : $typ:ty, $($args:tt)*) => {
+        let $arg : $typ = unsafe { $crate::OCaml::new($cr, $arg) };
+        $crate::expand_args_init!($cr, $($args)*)
     };
 }
 
@@ -1253,7 +1214,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @gc { $gc:ident $(($($rootvar:ident),+))? }
+        @cr { $cr:ident $(($($rootvar:ident),+))? }
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
@@ -1262,8 +1223,9 @@ macro_rules! expand_exported_function {
     } => {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
-            $crate::ocaml_frame!( $gc $(($($rootvar),+))?, {
-                $crate::expand_args_init!($gc, $($original_args)*);
+            let $cr = unsafe { &mut $crate::OCamlRuntime::acquire() };
+            $crate::ocaml_frame!($cr $(($($rootvar),+))?, {
+                $crate::expand_args_init!($cr, $($original_args)*);
                 $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
             })
         }
@@ -1275,7 +1237,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @gc { $($gc_decl:tt)+ }
+        @cr { $($rt_decl:tt)+ }
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : f64, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1284,7 +1246,7 @@ macro_rules! expand_exported_function {
     } => {
         $crate::expand_exported_function!{
             @name $name
-            @gc { $($gc_decl)+ }
+            @cr { $($rt_decl)+ }
             @final_args { $($final_args)* $next_arg : f64, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }
@@ -1297,7 +1259,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @gc { $($gc_decl:tt)+ }
+        @cr { $($rt_decl:tt)+ }
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : $typ:ty, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1306,7 +1268,7 @@ macro_rules! expand_exported_function {
     } => {
         $crate::expand_exported_function!{
             @name $name
-            @gc { $($gc_decl)+ }
+            @cr { $($rt_decl)+ }
             @final_args { $($final_args)* $next_arg : $crate::RawOCaml, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }
@@ -1340,9 +1302,15 @@ macro_rules! expand_exported_function_body {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! expand_exported_function_return {
-    () => { $crate::RawOCaml };
+    () => {
+        $crate::RawOCaml
+    };
 
-    (f64) => { f64 };
+    (f64) => {
+        f64
+    };
 
-    ($rtyp:ty) => { $crate::RawOCaml };
+    ($rtyp:ty) => {
+        $crate::RawOCaml
+    };
 }
