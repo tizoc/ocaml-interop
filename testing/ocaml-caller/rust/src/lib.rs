@@ -1,6 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
+use std::{thread, time};
 use ocaml_interop::{
     ocaml_alloc, ocaml_export, to_ocaml, OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32,
     OCamlInt64, OCamlList, ToOCaml, ToRust,
@@ -83,5 +84,17 @@ ocaml_export! {
         let value: String = value.to_rust();
         let error_value: Result<i64, String> = Err(value);
         to_ocaml!(cr, error_value)
+    }
+
+    fn rust_sleep_releasing(cr, millis: OCaml<OCamlInt>) {
+        let millis: i64 = millis.to_rust();
+        cr.in_blocking_section(|| thread::sleep(time::Duration::from_millis(millis as u64)));
+        OCaml::unit()
+    }
+
+    fn rust_sleep(cr, millis: OCaml<OCamlInt>) {
+        let millis: i64 = millis.to_rust();
+        thread::sleep(time::Duration::from_millis(millis as u64));
+        OCaml::unit()
     }
 }
