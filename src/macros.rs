@@ -40,10 +40,6 @@
 /// ```
 #[macro_export]
 macro_rules! ocaml_frame {
-    ($cr:ident, $body:block) => {{
-        $body
-    }};
-
    ($cr:ident($($rootvar:ident),+ $(,)?), $body:block) => {{
         let mut frame = $cr.open_frame();
         let local_roots = $crate::repeat_slice!(::core::cell::Cell::new($crate::internal::UNIT), $($rootvar)+);
@@ -1214,7 +1210,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @cr { $cr:ident $(($($rootvar:ident),+))? }
+        @cr { $cr:ident }
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
@@ -1224,10 +1220,8 @@ macro_rules! expand_exported_function {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
             let $cr = unsafe { &mut $crate::OCamlRuntime::acquire() };
-            $crate::ocaml_frame!($cr $(($($rootvar),+))?, {
-                $crate::expand_args_init!($cr, $($original_args)*);
-                $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
-            })
+            $crate::expand_args_init!($cr, $($original_args)*);
+            $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
         }
     };
 
