@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_sys::{caml_shutdown, caml_startup};
-use std::{marker::PhantomData, panic::{catch_unwind, resume_unwind, UnwindSafe}};
+use std::marker::PhantomData;
 
 use crate::{memory::GCFrame, value::make_ocaml, OCaml, OCamlRef};
 
@@ -34,18 +34,9 @@ impl OCamlRuntime {
     /// TODO: document
     pub fn in_blocking_section<T, F>(&mut self, f: F) -> T
     where
-        F: UnwindSafe + FnOnce() -> T,
+        F: FnOnce() -> T,
     {
-        unsafe { ocaml_sys::caml_enter_blocking_section() };
-
-        let result = catch_unwind(|| f());
-
-        unsafe { ocaml_sys::caml_leave_blocking_section() };
-
-        match result {
-            Err(err) => resume_unwind(err),
-            Ok(result) => result,
-        }
+        OCamlBlockingSection::new().perform(f)
     }
 
     /// Performs the necessary cleanup and shuts down the OCaml runtime.
@@ -55,7 +46,7 @@ impl OCamlRuntime {
 
     pub unsafe fn token(&self) -> OCamlAllocToken {
         OCamlAllocToken {
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -66,6 +57,29 @@ impl OCamlRuntime {
     /// Returns the OCaml valued to which this GC tracked reference points to.
     pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
         make_ocaml(reference.cell.get())
+    }
+}
+
+struct OCamlBlockingSection {}
+
+impl OCamlBlockingSection {
+    fn new() -> Self {
+        unsafe { ocaml_sys::caml_enter_blocking_section() };
+
+        Self {}
+    }
+
+    fn perform<T, F>(&mut self, f: F) -> T
+    where
+        F: FnOnce() -> T,
+    {
+        f()
+    }
+}
+
+impl Drop for OCamlBlockingSection {
+    fn drop(&mut self) {
+        unsafe { ocaml_sys::caml_leave_blocking_section() };
     }
 }
 
