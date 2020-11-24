@@ -46,7 +46,7 @@
 //! # ocaml! { fn ocaml_function(arg1: String); }
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
-//! # let cr = unsafe { &mut OCamlRuntime::acquire() };
+//! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
 //! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //! // ...
 //! let result = ocaml_call!(ocaml_function(cr, arg1, /* ...,  argN */));
@@ -79,7 +79,7 @@
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
 //! # let arg2 = "arg2";
-//! # let cr = unsafe { &mut OCamlRuntime::acquire() };
+//! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
 //! ocaml_frame!(cr(result_ref), {
 //!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //!     let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
@@ -127,7 +127,7 @@
 //! # }
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
-//! # let cr = unsafe { &mut OCamlRuntime::acquire() };
+//! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
 //! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //! let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
 //! let s = String::from_ocaml(result);

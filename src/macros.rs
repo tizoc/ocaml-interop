@@ -686,7 +686,7 @@ macro_rules! impl_to_ocaml_record {
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
             fn to_ocaml(&self, token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
-                let cr = unsafe { &mut token.acquire_runtime() };
+                let cr = unsafe { &mut token.recover_runtime_handle() };
                 $crate::ocaml_alloc_record! {
                     cr, self {
                         $($field : $ocaml_field_typ $(=> $conv_expr)?),+
@@ -939,7 +939,7 @@ macro_rules! impl_to_ocaml_variant {
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
             fn to_ocaml(&self, token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
-                let cr = unsafe { &mut token.acquire_runtime() };
+                let cr = unsafe { &mut token.recover_runtime_handle() };
                 $crate::ocaml_alloc_variant! {
                     cr, self => {
                         $($t)*
@@ -1219,7 +1219,7 @@ macro_rules! expand_exported_function {
     } => {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
-            let $cr = unsafe { &mut $crate::OCamlRuntime::acquire() };
+            let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle() };
             $crate::expand_args_init!($cr, $($original_args)*);
             $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
         }

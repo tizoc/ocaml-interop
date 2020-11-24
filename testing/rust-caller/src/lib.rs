@@ -150,16 +150,16 @@ use serial_test::serial;
 #[test]
 #[serial]
 fn test_twice() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(twice(&mut cr, 10), 20);
 }
 
 #[test]
 #[serial]
 fn test_increment_bytes() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         increment_bytes(&mut cr, "0000000000000000", 10),
         "1111111111000000"
@@ -169,8 +169,8 @@ fn test_increment_bytes() {
 #[test]
 #[serial]
 fn test_increment_ints_list() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(increment_ints_list(&mut cr, &ints), expected);
@@ -179,8 +179,8 @@ fn test_increment_ints_list() {
 #[test]
 #[serial]
 fn test_make_tuple() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         make_tuple(&mut cr, "fst".to_owned(), 9),
         ("fst".to_owned(), 9)
@@ -190,8 +190,8 @@ fn test_make_tuple() {
 #[test]
 #[serial]
 fn test_make_some() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         make_some(&mut cr, "some".to_owned()),
         Some("some".to_owned())
@@ -201,8 +201,8 @@ fn test_make_some() {
 #[test]
 #[serial]
 fn test_make_result() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(make_ok(&mut cr, 10), Ok(10));
     assert_eq!(
         make_error(&mut cr, "error".to_owned()),
@@ -213,16 +213,16 @@ fn test_make_result() {
 #[test]
 #[serial]
 fn test_frame_management() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(allocate_alot(&mut cr), true);
 }
 
 #[test]
 #[serial]
 fn test_record_conversion() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     let record = ocaml::TestRecord {
         i: 10,
         f: 5.0,
@@ -238,8 +238,8 @@ fn test_record_conversion() {
 #[test]
 #[serial]
 fn test_variant_conversion() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::acquire() };
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         verify_variant_test(&mut cr, ocaml::Movement::RotateLeft),
         "RotateLeft".to_owned()

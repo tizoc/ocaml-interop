@@ -7,14 +7,15 @@ use std::marker::PhantomData;
 use crate::{memory::GCFrame, value::make_ocaml, OCaml, OCamlRef};
 
 /// OCaml runtime handle.
-pub struct OCamlRuntime {}
+pub struct OCamlRuntime {
+    _private: (),
+}
 
 impl OCamlRuntime {
-    /// Initializes the OCaml runtime and returns a handle, that once dropped
-    /// will perform the necessary cleanup.
+    /// Initializes the OCaml runtime and returns an OCaml runtime handle.
     pub fn init() -> Self {
         OCamlRuntime::init_persistent();
-        OCamlRuntime {}
+        unsafe { Self::recover_handle() }
     }
 
     /// Initializes the OCaml runtime.
@@ -24,15 +25,23 @@ impl OCamlRuntime {
         unsafe { caml_startup(c_args.as_ptr()) }
     }
 
-    #[doc(hidden)]
-    pub unsafe fn acquire() -> Self {
-        OCamlRuntime {}
+    /// Recover the runtime handle.
+    ///
+    /// This method is used internally, do not use directly in code, only when writing tests.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because the OCaml runtime handle should be obtained once
+    /// upon initialization of the OCaml runtime and then passed around. This method exists
+    /// only to ease the authoring of tests.
+    pub unsafe fn recover_handle() -> Self {
+        OCamlRuntime { _private: () }
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
     ///
     /// TODO: document
-    pub fn in_blocking_section<T, F>(&mut self, f: F) -> T
+    pub fn releasing_runtime<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce() -> T,
     {
@@ -44,6 +53,12 @@ impl OCamlRuntime {
         unsafe { caml_shutdown() }
     }
 
+    /// Produces a token that can be used to recover the OCaml runtime handle.
+    ///
+    /// # Safety
+    ///
+    /// Meant to be used internally when calling allocation functions, do not use
+    /// directly.
     pub unsafe fn token(&self) -> OCamlAllocToken {
         OCamlAllocToken {
             _marker: PhantomData,
@@ -89,7 +104,12 @@ pub struct OCamlAllocToken<'a> {
 }
 
 impl<'a> OCamlAllocToken<'a> {
-    pub unsafe fn acquire_runtime(self) -> OCamlRuntime {
-        OCamlRuntime::acquire()
+    /// Recover the runtime handle from this token.
+    ///
+    /// # Safety
+    ///
+    /// TODO: document
+    pub unsafe fn recover_runtime_handle(self) -> OCamlRuntime {
+        OCamlRuntime::recover_handle()
     }
 }

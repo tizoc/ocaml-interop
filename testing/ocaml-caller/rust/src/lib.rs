@@ -88,7 +88,7 @@ ocaml_export! {
 
     fn rust_sleep_releasing(cr, millis: OCaml<OCamlInt>) {
         let millis: i64 = millis.to_rust();
-        cr.in_blocking_section(|| thread::sleep(time::Duration::from_millis(millis as u64)));
+        cr.releasing_runtime(|| thread::sleep(time::Duration::from_millis(millis as u64)));
         OCaml::unit()
     }
 
