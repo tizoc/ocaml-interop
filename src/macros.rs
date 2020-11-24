@@ -1249,7 +1249,7 @@ macro_rules! expand_exported_function {
         }
     };
 
-    // Next arg is not an uboxed float, replace with RawOCaml in output
+    // Next arg is not an unboxed float, replace with RawOCaml in output
 
     {
         @name $name:ident
