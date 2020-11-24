@@ -623,7 +623,7 @@ macro_rules! impl_from_ocaml_record {
         $($field:ident : $ocaml_field_typ:ty),+ $(,)?
     }) => {
         unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
-            fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
+            fn from_ocaml(v: &$crate::OCaml<$ocaml_typ>) -> Self {
                 $crate::ocaml_unpack_record! { v =>
                     $rust_typ {
                         $($field : $ocaml_field_typ),+
@@ -749,7 +749,7 @@ macro_rules! impl_from_ocaml_variant {
         $($t:tt)*
     }) => {
         unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
-            fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
+            fn from_ocaml(v: &$crate::OCaml<$ocaml_typ>) -> Self {
                 let result = $crate::ocaml_unpack_variant! {
                     v => {
                         $($t)*

@@ -130,7 +130,7 @@
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
 //! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //! let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
-//! let s = String::from_ocaml(result);
+//! let s = String::from_ocaml(&result);
 //! // ...
 //! ```
 //!
@@ -297,14 +297,14 @@
 //!         // OCaml runtime when converting into Rust values.
 //!         // A more convenient alternative, is to use the `to_rust` method as
 //!         // above when `result1` was converted.
-//!         (new_bytes1, String::from_ocaml(result2))
+//!         (new_bytes1, String::from_ocaml(&result2))
 //!     })
 //! }
 //!
 //! fn twice(cr: &mut OCamlRuntime, num: usize) -> usize {
 //!     let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
 //!     let result = ocaml_call!(ocaml_funcs::twice(cr, ocaml_num));
-//!     i64::from_ocaml(result.unwrap()) as usize
+//!     i64::from_ocaml(&result.unwrap()) as usize
 //! }
 //!
 //! fn entry_point() {
@@ -340,13 +340,13 @@
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
 //!     fn rust_twice(_cr, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
-//!         let num = i64::from_ocaml(num);
+//!         let num = i64::from_ocaml(&num);
 //!         unsafe { OCaml::of_i64_unchecked(num * 2) }
 //!     }
 //!
 //!     fn rust_increment_bytes(cr, bytes: OCaml<OCamlBytes>, first_n: OCaml<OCamlInt>) -> OCaml<OCamlBytes> {
-//!         let first_n = i64::from_ocaml(first_n) as usize;
-//!         let mut vec = Vec::from_ocaml(bytes);
+//!         let first_n = i64::from_ocaml(&first_n) as usize;
+//!         let mut vec = Vec::from_ocaml(&bytes);
 //!
 //!         for i in 0..first_n {
 //!             vec[i] += 1;
