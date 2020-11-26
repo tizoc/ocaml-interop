@@ -12,9 +12,9 @@
 //! - [How does it work](#how-does-it-work)
 //! - [Usage](#usage)
 //!   * [Rules](#rules)
-//!     + [Rule 1: OCaml function calls, allocations and the GC Frame](#rule-1-ocaml-function-calls-allocations-and-the-gc-frame)
-//!     + [Rule 2: OCaml value references](#rule-2-ocaml-value-references)
-//!     + [Rule 3: Liveness and scope of OCaml values](#rule-3-liveness-and-scope-of-ocaml-values)
+//!     + [Rule 1: The OCaml runtime handle and call macros](#rule-1-the-ocaml-runtime-handle-and-call-macros)
+//!     + [Rule 2: Liveness of OCaml values and rooting](#rule-2-liveness-of-ocaml-values-and-rooting)
+//!     + [Rule 3: Liveness and scope of rooted OCaml values](#rule-3-liveness-and-scope-of-rooted-ocaml-values)
 //!   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
 //!     + [`FromOCaml` trait](#fromocaml-trait)
 //!     + [`ToRust` trait](#torust-trait)
@@ -335,8 +335,7 @@
 //!     let (result1, result2) = increment_bytes(&mut cr, bytes1, bytes2, first_n);
 //!     println!("Bytes1 after: {}", result1);
 //!     println!("Bytes2 after: {}", result2);
-//!     // At this point the `ocaml_runtime` handle will be dropped, triggering
-//!     // the execution of the necessary cleanup by the OCaml runtime
+//!     OCamlRuntime::shutdown_persistent();
 //! }
 //! ```
 //!
