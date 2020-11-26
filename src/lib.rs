@@ -246,7 +246,7 @@
 //!     // The first argument to the macro is a reference to an OCamlRuntime, followed by an optional
 //!     // list of "root variables" (more on this later). The last argument
 //!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(cr, (bytes1_root, bytes2_ref), {
+//!     ocaml_frame!(cr, (bytes1_root, bytes2_root), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values. Because such conversions usually require
 //!         // the OCaml runtime to perform an allocation, calls to `to_ocaml` have
@@ -332,7 +332,7 @@
 //!     let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
 //!     println!("Bytes1 before: {}", bytes1);
 //!     println!("Bytes2 before: {}", bytes2);
-//!     let (result1, result2) = increment_bytes(&mut ocaml_runtime, bytes1, bytes2, first_n);
+//!     let (result1, result2) = increment_bytes(&mut cr, bytes1, bytes2, first_n);
 //!     println!("Bytes1 after: {}", result1);
 //!     println!("Bytes2 after: {}", result2);
 //!     // At this point the `ocaml_runtime` handle will be dropped, triggering
