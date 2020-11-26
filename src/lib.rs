@@ -120,7 +120,7 @@
 //!
 //! #### Rule 3: Liveness and scope of rooted OCaml values
 //!
-//! Rooted OCaml values are only valid inside the `ocaml_frame!` that instantiated the root variable that was used to root them, and cannot escape this scope.
+//! Rooted OCaml values are only valid inside the [`ocaml_frame!`] that instantiated the root variable that was used to root them, and cannot escape this scope.
 //!
 //! Example (fails to compile):
 //!
@@ -143,7 +143,7 @@
 //! });
 //! ```
 //!
-//! In the above example `arg1_rooted` cannot escape the `ocaml_frame!` scope, Rust's borrow checker will complain:
+//! In the above example `arg1_rooted` cannot escape the [`ocaml_frame!`] scope, Rust's borrow checker will complain:
 //!
 //! ```text,no_run
 //! error[E0716]: temporary value dropped while borrowed
@@ -179,7 +179,9 @@
 //!
 //! #### [`ToOCaml`] trait
 //!
-//! The [`ToOCaml`] trait implements conversion from Rust values into OCaml values, using the `to_ocaml` function. `to_ocaml` can only be called when wrapped by the [`ocaml_alloc!`] macro form, and it takes a single parameter that must be a handle to the current GC frame.
+//! The [`ToOCaml`] trait implements conversion from Rust values into OCaml values, using the `to_ocaml` method. `to_ocaml` can only be called when wrapped by the [`ocaml_alloc!`] macro form, and it takes a single parameter that must be a handle to the current GC frame.
+//!
+//! A more convenient way to convert Rust values into OCaml values is provided by the [`to_ocaml!`] macro.
 //!
 //! ### Calling into OCaml from Rust
 //!
@@ -203,11 +205,12 @@
 //!
 //! To be able to call these from Rust, there are a few things that need to be done:
 //!
-//! - The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by doing `let runtime = OCamlRuntime::init()`, but if the driving program is an OCaml application, this is not required. When `runtime` goes out of scope it will be dropped and the OCaml runtime cleanup functions will be executed.
+//! - The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by doing `let runtime = OCamlRuntime::init()`, but if the driving program is an OCaml application, this is not required.
 //! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the [`ocaml!`] macro.
 //! - Blocks of code that call OCaml functions, or allocate OCaml values, must be wrapped by the [`ocaml_frame!`] macro.
 //! - Calls to functions that allocate OCaml values must be wrapped by the [`ocaml_alloc!`] macro. These always return a value and cannot signal failure.
 //! - Calls to functions exported by OCaml with `Callback.register` must be wrapped by the [`ocaml_call!`] macro. These return a value of type `Result<OCaml<T>, ocaml_interop::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
+//! - Before the program exist, or once the OCaml runtime is not required anymore, it has to be deinitialized with `OCamlRuntime::shutdown_persistent()`.
 //!
 //! #### Example
 //!
@@ -236,13 +239,14 @@
 //! }
 //!
 //! fn increment_bytes(cr: &mut OCamlRuntime, bytes1: String, bytes2: String, first_n: usize) -> (String, String) {
-//!     // Any calls into the OCaml runtime have to happen inside an
-//!     // `ocaml_frame!` block. Inside this block, OCaml allocations and references
-//!     // to OCaml allocated values are tracked and validated by Rust's borrow checker.
-//!     // The first argument to the macro is a name for the GC handle, followed by an optional
-//!     // list of "root variables" (more on this later). The second argument
+//!     // Any calls into the OCaml runtime takes as input a `&mut` reference to an `OCamlRuntime`
+//!     // value that is obtained as the result of initializing the OCaml runtime.
+//!     // If rooting of OCaml values is needed, a new frame has to be opened by using the
+//!     // `ocaml_frame!` macro.
+//!     // The first argument to the macro is a reference to an OCamlRuntime, followed by an optional
+//!     // list of "root variables" (more on this later). The last argument
 //!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(cr, (bytes1_ref, bytes2_ref), {
+//!     ocaml_frame!(cr, (bytes1_root, bytes2_ref), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values. Because such conversions usually require
 //!         // the OCaml runtime to perform an allocation, calls to `to_ocaml` have
@@ -253,14 +257,14 @@
 //!         // `ocaml_bytes1` is going to be referenced later, but there calls into the
 //!         // OCaml runtime that perform allocations happening before this value is used again.
 //!         // Those calls into the OCaml runtime invalidate this reference, so it has to be
-//!         // kept alive somehow. To do so, `bytes_ref.keep(ocaml_bytes1)` is used.
-//!         // `bytes_ref` is one of the "root variables" that were declared when opening this frame.
+//!         // kept alive somehow. To do so, `bytes1_root.keep(ocaml_bytes1)` is used.
+//!         // `bytes1_root` is one of the "root variables" that were declared when opening this frame.
 //!         // Each "root variable" reserves space for a reference that will be tracked by the GC.
 //!         // A root variable's `root_var.keep(value)` method returns
-//!         // a reference to an OCaml value that is going to be valid during the scope of
-//!         // the current `ocaml_frame!` block. Later `cr.get(the_reference)` can be used
-//!         // to obtain the kept value.
-//!         let bytes1_ref: &OCamlRooted<String> = &bytes1_ref.keep(ocaml_bytes1);
+//!         // a rooted OCaml value that is going to be valid during the scope of
+//!         // the current `ocaml_frame!` block. Later `cr.get(rooted_value)` can be used
+//!         // to obtain the original OCaml value.
+//!         let bytes1_rooted: &OCamlRooted<String> = &bytes1_root.keep(ocaml_bytes1);
 //!
 //!         // Same as above. Note that if we waited to perform this conversion
 //!         // until after `ocaml_bytes1` is used, no references would have to be
@@ -269,7 +273,7 @@
 //!         // OCaml runtime in-between.
 //!         // Here a third argument is passed to `to_ocaml!`, a root variable.
 //!         // This variation returns an `OCamlRooted` value instead of an `OCaml` one.
-//!         let bytes2_ref = &to_ocaml!(cr, bytes2, bytes2_ref);
+//!         let bytes2_rooted = &to_ocaml!(cr, bytes2, bytes2_root);
 //!
 //!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64` and `OCaml::of_i64_unchecked`.
 //!         // Such conversion doesn't require any allocation on the OCaml side,
@@ -280,13 +284,13 @@
 //!         // To call an OCaml function (declared above in a `ocaml!` block) the
 //!         // `ocaml_call!` macro is used. The GC handle has to be passed as the first argument,
 //!         // before all the other declared arguments.
-//!         // The result of this call is a Result<OCamlValue<T>, ocaml_interop::Error>, with `Err(...)`
+//!         // The result of this call is a Result<OCaml<T>, ocaml_interop::Error>, with `Err(...)`
 //!         // being the result of calls for which the OCaml runtime raises an exception.
 //!         let result1 = ocaml_call!(ocaml_funcs::increment_bytes(
 //!             cr,
 //!             // The reference created above is used here to obtain the value
 //!             // of `ocaml_bytes1`
-//!             cr.get(bytes1_ref),
+//!             cr.get(bytes1_rooted),
 //!             ocaml_first_n
 //!         )).unwrap();
 //!
@@ -298,7 +302,7 @@
 //!         let new_bytes1: String = result1.to_rust();
 //!         let result2 = ocaml_call!(ocaml_funcs::increment_bytes(
 //!             cr,
-//!             cr.get(bytes2_ref),
+//!             cr.get(bytes2_rooted),
 //!             ocaml_first_n
 //!         )).unwrap();
 //!
@@ -320,8 +324,10 @@
 //!
 //! fn entry_point() {
 //!     // IMPORTANT: the OCaml runtime has to be initialized first.
-//!     let mut ocaml_runtime = OCamlRuntime::init();
-//!     let first_n = twice(&mut ocaml_runtime, 5);
+//!     let mut cr = OCamlRuntime::init();
+//!     // `cr` is the OCaml runtime handle, must be passed to any function
+//!     // that interacts with the OCaml runtime.
+//!     let first_n = twice(&mut cr, 5);
 //!     let bytes1 = "000000000000000".to_owned();
 //!     let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
 //!     println!("Bytes1 before: {}", bytes1);
@@ -345,8 +351,8 @@
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
-//! // binding the GC frame handle to the name provided as the first parameter (along with
-//! // an optional list of "root variables", like in `ocaml_frame!`).
+//! // binding acquiring the OCaml runtime handle and binding it to the name provided as
+//! // the first parameter of the function.
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
@@ -363,9 +369,6 @@
 //!             vec[i] += 1;
 //!         }
 //!
-//!         // Note that unlike in `ocaml_frame!` blocks, where values of type `OCaml<T>`
-//!         // cannot escape, in functions defined inside `ocaml_export!` blocks,
-//!         // only results of type `OCaml<T>` are valid.
 //!         to_ocaml!(cr, vec)
 //!     }
 //! }
