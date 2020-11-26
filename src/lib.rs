@@ -27,17 +27,19 @@
 //!
 //! ocaml-interop, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
 //!
-//! This requires that the user is explicit about delimiting blocks that interact with the OCaml runtime, and that calls into the OCaml runtime are done only inside these blocks, and wrapped by a few special macros.
-//!
 //! ## Usage
 //!
 //! ### Rules
 //!
 //! There are a few rules that have to be followed when calling into the OCaml runtime:
 //!
-//! #### Rule 1: OCaml function calls, allocations and the GC Frame
+//! #### Rule 1: The OCaml runtime handle and call macros
 //!
-//! Calls into the OCaml runtime that perform allocations should only occur inside [`ocaml_frame!`] blocks, wrapped by either the [`ocaml_call!`] (for declared OCaml functions) or [`ocaml_alloc!`] (for allocation or conversion functions) macros.
+//! To interact with the OCaml runtime handle (be it reading, mutating or allocating values, or to call functions) a reference to the OCaml runtime handle must be available.
+//! When calling OCaml functions the handle must be passed as the first argument, and the call must be wrapped with one of the special call macros:
+//!
+//! - `ocaml_call!` when calling an OCaml function.
+//! - `ocaml_alloc!` when calling an OCaml value allocator function.
 //!
 //! Example:
 //!
@@ -47,6 +49,7 @@
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
+//! // cr: &mut OCamlRuntime
 //! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //! // ...
 //! let result = ocaml_call!(ocaml_function(cr, arg1, /* ...,  argN */));
@@ -61,12 +64,16 @@
 //!   --> example.rs
 //!    |
 //!    |  let result = ocaml_function(cr, arg1, ..., argN);
-//!    |                              ^^ expected struct `ocaml_interop::OCamlAllocToken`, found `&mut ocaml_interop::OCamlRuntime<'_>`
+//!    |                              ^^ expected struct `OCamlAllocToken`, found `&mut OCamlRuntime<'_>`
 //! ```
 //!
-//! #### Rule 2: OCaml value references
+//! #### Rule 2: Liveness of OCaml values and rooting
 //!
-//! OCaml values that are obtained as a result of calling an OCaml function can only be referenced directly until another call to an OCaml function happens. This is enforced by Rust's borrow checker. If a value has to be referenced after other OCaml function calls, a special reference has to be kept.
+//! OCaml values become stale after calls into the OCaml runtime and cannot be used again. This is enforced by Rust's borrow checker.
+//!
+//! To have OCaml values survive across calls into the OCaml runtime, they have to be rooted.
+//!
+//! Rooting is only possible inside `ocaml_frame!` blocks, which initialize a list of root variables that can be used to root OCaml values.
 //!
 //! Example:
 //!
@@ -80,19 +87,19 @@
 //! # let arg1 = "arg1";
 //! # let arg2 = "arg2";
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
-//! ocaml_frame!(cr, (result_ref), {
+//! ocaml_frame!(cr, (result_root), {
 //!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //!     let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
-//!     let result_ref = &result_ref.keep(result);
+//!     let rooted_result = &result_root.keep(result);
 //!     let arg2 = ocaml_alloc!(arg2.to_ocaml(cr));
 //!     let another_result = ocaml_call!(ocaml_function(cr, arg2, /* ..., argN */)).unwrap();
 //!     // ...
-//!     let more_results = ocaml_call!(another_ocaml_function(cr, cr.get(result_ref))).unwrap();
+//!     let more_results = ocaml_call!(another_ocaml_function(cr, cr.get(rooted_result))).unwrap();
 //!     // ...
 //! })
 //! ```
 //!
-//! If the value is not kept with `root_var.keep` (root variables are declared when opening an [`ocaml_frame!`]), and instead an attempt is made to re-use it directly, Rust's borrow checker will complain:
+//! If the value is not kept with `root_var.keep`, and instead an attempt is made to re-use it directly, Rust's borrow checker will complain:
 //!
 //! ```text,no_run
 //! error[E0502]: cannot borrow `*cr` as mutable because it is also borrowed as immutable
@@ -111,15 +118,13 @@
 //!
 //! There is no need to keep values that are used immediately without any calls into the OCaml runtime in-between their allocation and use.
 //!
-//! #### Rule 3: Liveness and scope of OCaml values
+//! #### Rule 3: Liveness and scope of rooted OCaml values
 //!
-//! TODO: update this whole section, it is not correct anymore
+//! Rooted OCaml values are only valid inside the `ocaml_frame!` that instantiated the root variable that was used to root them, and cannot escape this scope.
 //!
-//! OCaml values that are the result of an allocation by the OCaml runtime cannot escape the [`ocaml_frame!`] block inside which they where created. This is enforced by Rust's borrow checker.
+//! Example (fails to compile):
 //!
-//! Example:
-//!
-//! ```rust,no_run
+//! ```rust,compile_fail
 //! # use ocaml_interop::*;
 //! # ocaml! {
 //! #     fn ocaml_function(arg1: String) -> String;
@@ -128,33 +133,39 @@
 //! # let a_string = "string";
 //! # let arg1 = "arg1";
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
-//! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
-//! let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
-//! let s = String::from_ocaml(&result);
-//! // ...
+//! let escape = ocaml_frame!(cr, (arg1_root), {
+//!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
+//!     let arg1_rooted = arg1_root.keep(arg1);
+//!     let result = ocaml_call!(ocaml_function(cr, cr.get(&arg1_rooted), /* ..., argN */)).unwrap();
+//!     let s = String::from_ocaml(&result);
+//!     // ...
+//!     arg1_rooted
+//! });
 //! ```
 //!
-//! If the result escapes the block, Rust's borrow checker will complain:
+//! In the above example `arg1_rooted` cannot escape the `ocaml_frame!` scope, Rust's borrow checker will complain:
 //!
 //! ```text,no_run
-//! error[E0597]: `frame` does not live long enough
+//! error[E0716]: temporary value dropped while borrowed
 //!   --> example.rs
 //!    |
-//!    |       let s = ocaml_frame!(gc, {
-//!    |  _________-___^
-//!    | |         |
-//!    | |         borrow later stored here
-//!    | |         let result = let result = ocaml_call!(ocaml_function(gc, arg1, ..., argN)).unwrap();
-//!    | |         result
-//!    | |     });
-//!    | |      ^
-//!    | |      |
-//!    | |______borrowed value does not live long enough
-//!    |        `frame` dropped here while still borrowed
-//!    |
+//!    |   let escape = ocaml_frame!(cr, (arg1_root), {
+//!    |  _____------___^
+//!    | |     |
+//!    | |     borrow later stored here
+//!    | |     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
+//!    | |     let arg1_rooted = arg1_root.keep(arg1);
+//!    | |     let result = ocaml_call!(ocaml_function(cr, cr.get(&arg1_rooted), /* ..., argN */)).unwrap();
+//! ...  |
+//!    | |     arg1_rooted
+//!    | | });
+//!    | |  ^
+//!    | |  |
+//!    | |__creates a temporary which is freed while still in use
+//!    |    temporary value is freed at the end of this statement
 //! ```
 //!
-//! **TODO**: show escape hatch for values that need to escape the frame scope using raw OCaml values.
+//! A similar error would happen if a root-variable escaped the frame scope.
 //!
 //! ### Converting between OCaml and Rust data
 //!
