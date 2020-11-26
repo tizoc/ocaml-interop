@@ -80,7 +80,7 @@
 //! # let arg1 = "arg1";
 //! # let arg2 = "arg2";
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
-//! ocaml_frame!(cr(result_ref), {
+//! ocaml_frame!(cr, (result_ref), {
 //!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //!     let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
 //!     let result_ref = &result_ref.keep(result);
@@ -231,7 +231,7 @@
 //!     // The first argument to the macro is a name for the GC handle, followed by an optional
 //!     // list of "root variables" (more on this later). The second argument
 //!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(cr(bytes1_ref, bytes2_ref), {
+//!     ocaml_frame!(cr, (bytes1_ref, bytes2_ref), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values. Because such conversions usually require
 //!         // the OCaml runtime to perform an allocation, calls to `to_ocaml` have

@@ -62,7 +62,7 @@ mod ocaml {
 }
 
 pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> String {
-    ocaml_frame!(cr(bytes_root), {
+    ocaml_frame!(cr, (bytes_root), {
         let bytes = to_ocaml!(cr, bytes, bytes_root);
         let first_n = to_ocaml!(cr, first_n as i64);
         let result = ocaml_call!(ocaml::increment_bytes(cr, cr.get(&bytes), first_n));

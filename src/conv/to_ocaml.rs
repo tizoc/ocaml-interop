@@ -135,7 +135,7 @@ where
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Option<OCamlA>> {
         let cr = unsafe { &mut token.recover_runtime_handle() };
         if let Some(value) = self {
-            ocaml_frame!(cr(root), {
+            ocaml_frame!(cr, (root), {
                 let ocaml_value = to_ocaml!(cr, value, root);
                 alloc_some(unsafe { cr.token() }, &ocaml_value)
             })
@@ -153,13 +153,13 @@ where
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<Result<OCamlA, OCamlErr>> {
         let cr = unsafe { &mut token.recover_runtime_handle() };
         match self {
-            Ok(value) => ocaml_frame!(cr(root), {
+            Ok(value) => ocaml_frame!(cr, (root), {
                 let ocaml_value = to_ocaml!(cr, value, root);
                 let ocaml_ok = unsafe { caml_alloc(1, tag::TAG_OK) };
                 unsafe { store_field(ocaml_ok, 0, ocaml_value.get_raw()) };
                 OCamlAllocResult::of(ocaml_ok)
             }),
-            Err(error) => ocaml_frame!(cr(root), {
+            Err(error) => ocaml_frame!(cr, (root), {
                 let ocaml_error = to_ocaml!(cr, error, root);
                 let ocaml_err = unsafe { caml_alloc(1, tag::TAG_ERROR) };
                 unsafe { store_field(ocaml_err, 0, ocaml_error.get_raw()) };
@@ -176,7 +176,7 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(OCamlA, OCamlB)> {
         let cr = unsafe { &mut token.recover_runtime_handle() };
-        ocaml_frame!(cr(fst, snd), {
+        ocaml_frame!(cr, (fst, snd), {
             let fst = to_ocaml!(cr, self.0, fst);
             let snd = to_ocaml!(cr, self.1, snd);
             alloc_tuple(unsafe { cr.token() }, &fst, &snd)
@@ -192,7 +192,7 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<(OCamlA, OCamlB, OCamlC)> {
         let cr = unsafe { &mut token.recover_runtime_handle() };
-        ocaml_frame!(cr(fst, snd, elt3), {
+        ocaml_frame!(cr, (fst, snd, elt3), {
             let fst = to_ocaml!(cr, self.0, fst);
             let snd = to_ocaml!(cr, self.1, snd);
             let elt3 = to_ocaml!(cr, self.2, elt3);
@@ -214,7 +214,7 @@ where
         token: OCamlAllocToken,
     ) -> OCamlAllocResult<(OCamlA, OCamlB, OCamlC, OCamlD)> {
         let cr = unsafe { &mut token.recover_runtime_handle() };
-        ocaml_frame!(cr(fst, snd, elt3, elt4), {
+        ocaml_frame!(cr, (fst, snd, elt3, elt4), {
             let fst = to_ocaml!(cr, self.0, fst);
             let snd = to_ocaml!(cr, self.1, snd);
             let elt3 = to_ocaml!(cr, self.2, elt3);
@@ -239,7 +239,7 @@ where
 {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<OCamlList<OCamlA>> {
         let cr = unsafe { &mut token.recover_runtime_handle() };
-        ocaml_frame!(cr(result_root, ov_root), {
+        ocaml_frame!(cr, (result_root, ov_root), {
             let mut result_root = result_root.keep(OCaml::nil());
             for elt in self.iter().rev() {
                 let ov = to_ocaml!(cr, elt, ov_root);

@@ -1,25 +1,20 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-/// Opens a new frame inside of which new OCaml values can be allocated and OCaml functions called.
+#[cfg(doc)]
+use crate::*;
+
+/// Opens a new frame inside of which OCaml values can be rooted to have them tracked by the GC.
 ///
-/// The first argument to this macro must be an identifier to which the OCaml frame GC handle will be bound.
-/// It will be used to allocate OCaml values and call OCaml functions. Value references that result from allocations
-/// or function calls, will have their lifetime bound to this handle.
+/// The first argument to this macro must a reference to an OCaml runtime handle.
 ///
-/// Optionally, this identifier can be followed by a list of names to which "root variables" will be bound.
-/// For each one of these variables, a new location for a tracked pointer will be reserved. Each one of these
-/// "root variables" can be consumed to produce an [`OCamlRef`].that will be used to re-reference OCaml values
-/// what would otherwise be unavailable after an OCaml allocation of OCaml function call.
-///
-/// # Notes
-///
-/// When no "root variables" are declared when opening a frame `ocaml-interop` will avoid setting up a new
-/// local roots frame, because it is not necessary in that case.
+/// The second argument is a list of "root variables" to reserve. These variables can
+/// be used to "root" OCaml values so that they can be re-referenced after calls to the OCaml runtime.
 ///
 /// # Examples
 ///
-/// The following example reserves space for two tracked pointers:
+/// The following example reserves two root variables which are consumed to create two [`OCamlRef`]s
+/// later used to retrieve two OCaml values after performing allocations through the OCaml runtime:
 ///
 /// ```
 /// # use ocaml_interop::*;
@@ -27,7 +22,7 @@
 /// #    fn print_endline(s: String);
 /// # }
 /// # fn ocaml_frame_macro_example(cr: &mut OCamlRuntime) {
-///     ocaml_frame!(cr(hello_ocaml, bye_ocaml), {
+///     ocaml_frame!(cr, (hello_ocaml, bye_ocaml), {
 ///         let hello_ocaml = &to_ocaml!(cr, "hello OCaml!", hello_ocaml);
 ///         let bye_ocaml = &to_ocaml!(cr, "bye OCaml!", bye_ocaml);
 ///         ocaml_call!(print_endline(cr, cr.get(hello_ocaml)));
@@ -40,7 +35,7 @@
 /// ```
 #[macro_export]
 macro_rules! ocaml_frame {
-   ($cr:ident($($rootvar:ident),+ $(,)?), $body:block) => {{
+   ($cr:ident, ($($rootvar:ident),+ $(,)?), $body:block) => {{
         let mut frame = $cr.open_frame();
         let local_roots = $crate::repeat_slice!(::core::cell::Cell::new($crate::internal::UNIT), $($rootvar)+);
         let gc = frame.initialize(&local_roots);
@@ -51,7 +46,7 @@ macro_rules! ocaml_frame {
     }};
 
     ($($t:tt)*) => {
-        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame!(cr(vars, ...), { body-block })`.")
+        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame!(cr, (vars, ...), { body-block })`.")
     };
 }
 
@@ -307,7 +302,7 @@ macro_rules! ocaml_alloc {
 /// ```
 /// # use ocaml_interop::*;
 /// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
-///     ocaml_frame!(cr(rootvar), {
+///     ocaml_frame!(cr, (rootvar), {
 ///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(cr, "hello OCaml!", rootvar);
 ///         // ...
 ///         # ()
@@ -505,7 +500,7 @@ macro_rules! ocaml_unpack_record {
 macro_rules! ocaml_alloc_tagged_block {
     ($cr:ident, $tag:expr, $($field:ident : $ocaml_typ:ty),+ $(,)?) => {
         unsafe {
-            $crate::ocaml_frame!($cr(block), {
+            $crate::ocaml_frame!($cr, (block), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
                 let block = block.keep_raw($crate::internal::caml_alloc(field_count, $tag));
@@ -569,7 +564,7 @@ macro_rules! ocaml_alloc_record {
         $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe {
-            $crate::ocaml_frame!($cr(record), {
+            $crate::ocaml_frame!($cr, (record), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
                 let record = record.keep_raw($crate::internal::caml_alloc(field_count, 0));
