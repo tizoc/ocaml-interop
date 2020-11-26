@@ -39,8 +39,6 @@ impl OCamlRuntime {
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
-    ///
-    /// TODO: document
     pub fn releasing_runtime<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce() -> T,
@@ -65,6 +63,7 @@ impl OCamlRuntime {
         }
     }
 
+    #[doc(hidden)]
     pub fn open_frame<'a, 'gc>(&'a self) -> GCFrame<'gc> {
         Default::default()
     }
@@ -79,15 +78,14 @@ struct OCamlBlockingSection {}
 
 impl OCamlBlockingSection {
     fn new() -> Self {
-        unsafe { ocaml_sys::caml_enter_blocking_section() };
-
         Self {}
     }
 
-    fn perform<T, F>(&mut self, f: F) -> T
+    fn perform<T, F>(self, f: F) -> T
     where
         F: FnOnce() -> T,
     {
+        unsafe { ocaml_sys::caml_enter_blocking_section() };
         f()
     }
 }
@@ -108,7 +106,10 @@ impl<'a> OCamlAllocToken<'a> {
     ///
     /// # Safety
     ///
-    /// TODO: document
+    /// It is important that functions that make use of this method of
+    /// recovering the function handle are only called with the [`ocaml_alloc!`]
+    /// and [`ocaml_call!`] macros to perform the necessary bookkeeping operations
+    /// to enforce the correctness of OCaml value lifetimes.
     pub unsafe fn recover_runtime_handle(self) -> OCamlRuntime {
         OCamlRuntime::recover_handle()
     }
