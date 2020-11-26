@@ -9,12 +9,13 @@ use crate::*;
 /// The first argument to this macro must a reference to an OCaml runtime handle.
 ///
 /// The second argument is a list of "root variables" to reserve. These variables can
-/// be used to "root" OCaml values so that they can be re-referenced after calls to the OCaml runtime.
+/// be used to "root" [`OCaml`] values to obtain [`OCamlRooted`] values that can be used
+/// to recover stale references to [`OCaml`] values after calls to the OCaml runtime.
 ///
 /// # Examples
 ///
-/// The following example reserves two root variables which are consumed to create two [`OCamlRef`]s
-/// later used to retrieve two OCaml values after performing allocations through the OCaml runtime:
+/// The following example reserves two root variables which are consumed to create two [`OCamlRooted`]
+/// values later used to retrieve two OCaml values after performing allocations through the OCaml runtime:
 ///
 /// ```
 /// # use ocaml_interop::*;
@@ -284,7 +285,7 @@ macro_rules! ocaml_alloc {
 ///
 /// An alternative form accepts a third "root variable" argument: `to_ocaml!(cr, value, rootvar)`.
 /// `rootvar` is one of the "root variables" declared when opening an [`ocaml_frame!`].
-/// This variant consumes `rootvar` returns an [`OCamlRef`] value instead of an [`OCaml`] one.
+/// This variant consumes `rootvar` returns an [`OCamlRooted`] value instead of an [`OCaml`] one.
 ///
 /// # Examples
 ///
@@ -303,7 +304,7 @@ macro_rules! ocaml_alloc {
 /// # use ocaml_interop::*;
 /// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
 ///     ocaml_frame!(cr, (rootvar), {
-///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(cr, "hello OCaml!", rootvar);
+///         let ocaml_string_ref: &OCamlRooted<String> = &to_ocaml!(cr, "hello OCaml!", rootvar);
 ///         // ...
 ///         # ()
 ///     });

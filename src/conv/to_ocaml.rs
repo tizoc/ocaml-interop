@@ -8,7 +8,7 @@ use crate::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
         alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlAllocResult,
     },
-    OCamlAllocToken, OCamlRef,
+    OCamlAllocToken, OCamlRooted,
 };
 use crate::{mlvalues::tag, value::OCaml};
 use crate::{
@@ -29,7 +29,7 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml(&self, token: OCamlAllocToken) -> OCamlAllocResult<T>;
 }
 
-unsafe impl<'a, T> ToOCaml<T> for OCamlRef<'a, T> {
+unsafe impl<'a, T> ToOCaml<T> for OCamlRooted<'a, T> {
     fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<T> {
         OCamlAllocResult::of(self.get_raw())
     }

@@ -202,7 +202,7 @@
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, ToRust, FromOCaml, OCaml, OCamlRef, ToOCaml,
+//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, ToRust, FromOCaml, OCaml, OCamlRooted, ToOCaml,
 //!     OCamlRuntime
 //! };
 //!
@@ -249,7 +249,7 @@
 //!         // a reference to an OCaml value that is going to be valid during the scope of
 //!         // the current `ocaml_frame!` block. Later `cr.get(the_reference)` can be used
 //!         // to obtain the kept value.
-//!         let bytes1_ref: &OCamlRef<String> = &bytes1_ref.keep(ocaml_bytes1);
+//!         let bytes1_ref: &OCamlRooted<String> = &bytes1_ref.keep(ocaml_bytes1);
 //!
 //!         // Same as above. Note that if we waited to perform this conversion
 //!         // until after `ocaml_bytes1` is used, no references would have to be
@@ -257,7 +257,7 @@
 //!         // used immediately, with no allocations being performed by the
 //!         // OCaml runtime in-between.
 //!         // Here a third argument is passed to `to_ocaml!`, a root variable.
-//!         // This variation returns an `OCamlRef` value instead of an `OCaml` one.
+//!         // This variation returns an `OCamlRooted` value instead of an `OCaml` one.
 //!         let bytes2_ref = &to_ocaml!(cr, bytes2, bytes2_ref);
 //!
 //!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64` and `OCaml::of_i64_unchecked`.
@@ -283,7 +283,7 @@
 //!         // Rust value while the reference is still valid because the
 //!         // `ocaml_call!` that follows will invalidate it.
 //!         // Alternatively, the result of `rootvar.keep(result1)` could be used
-//!         // to be able to reference the value later through an `OCamlRef` value.
+//!         // to be able to reference the value later through an `OCamlRooted` value.
 //!         let new_bytes1: String = result1.to_rust();
 //!         let result2 = ocaml_call!(ocaml_funcs::increment_bytes(
 //!             cr,
@@ -388,7 +388,7 @@ mod value;
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCamlResult};
 pub use crate::conv::{FromOCaml, ToOCaml, ToRust};
 pub use crate::error::{OCamlError, OCamlException};
-pub use crate::memory::{OCamlAllocResult, OCamlRef};
+pub use crate::memory::{OCamlAllocResult, OCamlRooted};
 pub use crate::mlvalues::{
     OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
