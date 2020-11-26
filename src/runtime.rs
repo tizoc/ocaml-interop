@@ -47,7 +47,7 @@ impl OCamlRuntime {
     }
 
     /// Performs the necessary cleanup and shuts down the OCaml runtime.
-    pub fn shutdown_persistent() {
+    pub fn shutdown(self) {
         unsafe { caml_shutdown() }
     }
 

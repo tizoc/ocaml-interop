@@ -210,7 +210,7 @@
 //! - Blocks of code that call OCaml functions, or allocate OCaml values, must be wrapped by the [`ocaml_frame!`] macro.
 //! - Calls to functions that allocate OCaml values must be wrapped by the [`ocaml_alloc!`] macro. These always return a value and cannot signal failure.
 //! - Calls to functions exported by OCaml with `Callback.register` must be wrapped by the [`ocaml_call!`] macro. These return a value of type `Result<OCaml<T>, ocaml_interop::Error>`, with the error being returned to signal that an exception was raised by the called OCaml code.
-//! - Before the program exist, or once the OCaml runtime is not required anymore, it has to be deinitialized with `OCamlRuntime::shutdown_persistent()`.
+//! - Before the program exist, or once the OCaml runtime is not required anymore, it has to be de-initialized by calling the `shutdown()` method on the OCaml runtime handle.
 //!
 //! #### Example
 //!
@@ -335,7 +335,9 @@
 //!     let (result1, result2) = increment_bytes(&mut cr, bytes1, bytes2, first_n);
 //!     println!("Bytes1 after: {}", result1);
 //!     println!("Bytes2 after: {}", result2);
-//!     OCamlRuntime::shutdown_persistent();
+//!     // Once the OCaml runtime is not required anymore, the `shutdown()` method has
+//!     // to be called to perform the necessary cleanup.
+//!     cr.shutdown();
 //! }
 //! ```
 //!
