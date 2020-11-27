@@ -204,14 +204,14 @@ macro_rules! ocaml_export {
 
     // Unboxed float return
     {
-        fn $name:ident( $cr:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) -> f64
+        fn $name:ident( $cr:ident, $($args:tt)*) -> f64
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @cr { $cr $(($($rootvar),+))? }
+            @cr $cr
             @final_args { }
             @proc_args { $($args)*, }
             @return { f64 }
@@ -224,14 +224,14 @@ macro_rules! ocaml_export {
 
     // Other (or empty) return value type
     {
-        fn $name:ident( $cr:ident $(($($rootvar:ident),+ $(,)?))?, $($args:tt)*) $(-> $rtyp:ty)?
+        fn $name:ident( $cr:ident, $($args:tt)*) $(-> $rtyp:ty)?
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
-            @cr { $cr $(($($rootvar),+))? }
+            @cr $cr
             @final_args { }
             @proc_args { $($args)*, }
             @return { $($rtyp)? }
@@ -1206,7 +1206,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @cr { $cr:ident }
+        @cr $cr:ident
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
@@ -1227,7 +1227,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @cr { $($rt_decl:tt)+ }
+        @cr $cr:ident
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : f64, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1236,7 +1236,7 @@ macro_rules! expand_exported_function {
     } => {
         $crate::expand_exported_function!{
             @name $name
-            @cr { $($rt_decl)+ }
+            @cr $cr
             @final_args { $($final_args)* $next_arg : f64, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }
@@ -1249,7 +1249,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
-        @cr { $($rt_decl:tt)+ }
+        @cr $cr:ident
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : $typ:ty, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1258,7 +1258,7 @@ macro_rules! expand_exported_function {
     } => {
         $crate::expand_exported_function!{
             @name $name
-            @cr { $($rt_decl)+ }
+            @cr $cr
             @final_args { $($final_args)* $next_arg : $crate::RawOCaml, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }
