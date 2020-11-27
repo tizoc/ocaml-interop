@@ -241,6 +241,17 @@ macro_rules! ocaml_export {
 
         $crate::ocaml_export!{$($t)*}
     };
+
+    // Invalid arguments
+
+    {
+        fn $name:ident( $($invalid_args:tt)* ) $(-> $rtyp:ty)?
+           $body:block
+
+        $($t:tt)*
+    } => {
+        compile_error!("Rust->OCaml exported functions must include an identifier for the OCaml runtime handle followed by at least one argument");
+    }
 }
 
 /// Calls an OCaml allocator function.
