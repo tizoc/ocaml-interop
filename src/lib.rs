@@ -352,7 +352,7 @@
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
-//! // binding acquiring the OCaml runtime handle and binding it to the name provided as
+//! // acquiring the OCaml runtime handle and binding it to the name provided as
 //! // the first parameter of the function.
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.

@@ -327,9 +327,9 @@ macro_rules! to_ocaml {
 
 /// Calls an OCaml function
 ///
-/// The called function must be declared with [`ocaml!`]. This macro can
-/// only be used inside [`ocaml_frame!`] blocks, and the frame GC
-/// handle must be passed as the first argument to the function.
+/// The called function must be declared with [`ocaml!`]. The first
+/// argument to the function in this invocation must be a `&mut` reference
+/// to the OCaml runtime handle.
 ///
 /// The result is either `Ok(result)` or `Err(ocaml_exception)` if
 /// an exception is raised by the OCaml function.
@@ -438,7 +438,7 @@ macro_rules! impl_conv_ocaml_variant {
 
 /// Unpacks an OCaml record into a Rust record
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Examples
 ///
@@ -518,11 +518,11 @@ macro_rules! ocaml_alloc_tagged_block {
 
 /// Allocates an OCaml record built from a Rust record
 ///
-/// Most of the [`impl_to_ocaml_record!`] macro will be used to define how records
+/// Most of the time the [`impl_to_ocaml_record!`] macro will be used to define how records
 /// should be converted. This macro is useful when implementing OCaml allocation
 /// functions directly.
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Examples
 ///
@@ -546,8 +546,8 @@ macro_rules! ocaml_alloc_tagged_block {
 /// let ms = MyStruct { int_field: 132, string_field: "blah".to_owned() };
 /// let ocaml_ms: OCamlAllocResult<MyStruct> = ocaml_alloc_record! {
 ///     //  value { field: OCamlType, ... }
-///     cr, ms {
-///         // optionally `=> expr` can be used to preprocess the field value
+///     cr, ms {  // cr: &mut OCamlRuntime
+///         // optionally `=> expr` can be used to pre-process the field value
 ///         // before the conversion into OCaml takes place.
 ///         // Inside the expression, a variable with the same name as the field
 ///         // is bound to a reference to the field value.
@@ -583,7 +583,7 @@ macro_rules! ocaml_alloc_record {
 
 /// Implements [`FromOCaml`] for mapping an OCaml record into a Rust record.
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Examples
 ///
@@ -642,7 +642,7 @@ macro_rules! impl_from_ocaml_record {
 
 /// Implements [`ToOCaml`] for mapping a Rust record into an OCaml record.
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Examples
 ///
@@ -705,7 +705,7 @@ macro_rules! impl_to_ocaml_record {
 
 /// Implements [`FromOCaml`] for mapping an OCaml variant into a Rust enum.
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Examples
 ///
@@ -774,7 +774,7 @@ macro_rules! impl_from_ocaml_variant {
 
 /// Unpacks an OCaml variant and maps it into a Rust enum.
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Note
 ///
@@ -837,9 +837,9 @@ macro_rules! ocaml_unpack_variant {
 
 /// Allocates an OCaml variant, mapped from a Rust enum.
 ///
-/// The conversion is exhaustive, and requires that every enum case is handled.
+/// The match in this conversion is exhaustive, and requires that every enum case is covered.
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Examples
 ///
@@ -892,9 +892,9 @@ macro_rules! ocaml_alloc_variant {
 
 /// Implements [`ToOCaml`] for mapping a Rust enum into an OCaml variant.
 ///
-/// The conversion is exhaustive, and requires that every enum case is handled.
+/// The match in this conversion is exhaustive, and requires that every enum case is covered.
 ///
-/// It is important that the order remains the same as in the OCaml type declaration.
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Examples
 ///
