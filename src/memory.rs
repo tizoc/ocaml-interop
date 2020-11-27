@@ -75,7 +75,10 @@ impl<'gc> GCFrame<'gc> {
 impl<'gc> Drop for GCFrame<'gc> {
     fn drop(&mut self) {
         unsafe {
-            assert!(local_roots() == &mut self.block);
+            assert!(
+                local_roots() == &mut self.block,
+                "OCaml local roots corrupted"
+            );
             set_local_roots(self.block.next);
         }
     }
@@ -226,7 +229,10 @@ pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<OCamlFl
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<A>(_token: OCamlAllocToken, value: &OCamlRooted<A>) -> OCamlAllocResult<Option<A>> {
+pub fn alloc_some<A>(
+    _token: OCamlAllocToken,
+    value: &OCamlRooted<A>,
+) -> OCamlAllocResult<Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
         store_field(ocaml_some, 0, value.get_raw());

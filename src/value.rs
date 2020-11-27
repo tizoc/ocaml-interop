@@ -40,8 +40,14 @@ impl<'a, T> OCaml<'a, T> {
 
     #[doc(hidden)]
     pub unsafe fn field<F>(&self, i: UIntnat) -> OCaml<'a, F> {
-        assert!(tag_val(self.raw) < tag::NO_SCAN);
-        assert!(i < wosize_val(self.raw));
+        assert!(
+            tag_val(self.raw) < tag::NO_SCAN,
+            "unexpected OCaml value tag >= NO_SCAN"
+        );
+        assert!(
+            i < wosize_val(self.raw),
+            "trying to access a field bigger than the OCaml block value"
+        );
         OCaml {
             _marker: PhantomData,
             raw: *(self.raw as *const RawOCaml).add(i),
@@ -60,7 +66,10 @@ impl<'a, T> OCaml<'a, T> {
 
     #[doc(hidden)]
     pub fn tag_value(&self) -> u8 {
-        assert!(self.is_block());
+        assert!(
+            self.is_block(),
+            "attempted to access the tag on an OCaml value that isn't a block"
+        );
         unsafe { tag_val(self.raw) }
     }
 
@@ -91,7 +100,10 @@ impl<'a> OCaml<'a, String> {
     pub fn as_bytes(&self) -> &'a [u8] {
         let s = self.raw;
         unsafe {
-            assert!(tag_val(s) == tag::STRING);
+            assert!(
+                tag_val(s) == tag::STRING,
+                "attempt to perform a string operation on an OCaml value that is not a string"
+            );
             slice::from_raw_parts(string_val(s), caml_string_length(s))
         }
     }
@@ -120,7 +132,10 @@ impl<'a> OCaml<'a, OCamlBytes> {
     pub fn as_bytes(&self) -> &'a [u8] {
         let s = self.raw;
         unsafe {
-            assert!(tag_val(s) == tag::STRING);
+            assert!(
+                tag_val(s) == tag::STRING,
+                "attempt to perform a string operation on an OCaml value that is not a string"
+            );
             slice::from_raw_parts(string_val(s), caml_string_length(s))
         }
     }
