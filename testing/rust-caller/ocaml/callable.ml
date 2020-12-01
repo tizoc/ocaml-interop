@@ -15,6 +15,12 @@ type movement =
   | RotateLeft
   | RotateRight
 
+type movement_polymorphic = [
+  | `Step of int
+  | `RotateLeft
+  | `RotateRight
+]
+
 let increment_bytes bytes first_n =
   let limit = (min (Bytes.length bytes) first_n) - 1 in
   for i = 0 to limit do
@@ -53,6 +59,11 @@ let stringify_variant = function
   | RotateRight -> "RotateRight"
   | Step n -> Printf.sprintf "Step(%d)" n
 
+let stringify_polymorphic_variant = function
+  | `RotateLeft -> "`RotateLeft"
+  | `RotateRight -> "`RotateRight"
+  | `Step n -> Printf.sprintf "`Step(%d)" n
+
 let () =
   Callback.register "increment_bytes" increment_bytes;
   Callback.register "decrement_bytes" decrement_bytes;
@@ -63,4 +74,5 @@ let () =
   Callback.register "make_ok" make_ok;
   Callback.register "make_error" make_error;
   Callback.register "stringify_record" stringify_record;
-  Callback.register "stringify_variant" stringify_variant
+  Callback.register "stringify_variant" stringify_variant;
+  Callback.register "stringify_polymorphic_variant" stringify_polymorphic_variant

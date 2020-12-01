@@ -1,11 +1,23 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use std::{thread, time};
 use ocaml_interop::{
-    ocaml_alloc, ocaml_export, to_ocaml, OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32,
-    OCamlInt64, OCamlList, ToOCaml, ToRust,
+    ocaml_alloc, ocaml_export, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant, to_ocaml,
+    OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, ToOCaml, ToRust,
 };
+use std::{thread, time};
+
+enum Movement {
+    Step { count: i32 },
+    RotateLeft,
+    RotateRight,
+}
+
+enum PolymorphicMovement {
+    Step { count: i32 },
+    RotateLeft,
+    RotateRight,
+}
 
 ocaml_export! {
     fn rust_twice(_cr, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
@@ -96,5 +108,39 @@ ocaml_export! {
         let millis: i64 = millis.to_rust();
         thread::sleep(time::Duration::from_millis(millis as u64));
         OCaml::unit()
+    }
+
+    fn rust_string_of_movement(cr, movement: OCaml<PolymorphicMovement>) -> OCaml<String> {
+        let pm = ocaml_unpack_variant! {
+            movement => {
+                Step(count: OCamlInt) => { Movement::Step {count} },
+                RotateLeft => Movement::RotateLeft,
+                RotateRight => Movement::RotateRight,
+            }
+        };
+        let s = match pm {
+            Err(_) => "Error unpacking".to_owned(),
+            Ok(Movement::Step {count}) => format!("Step({})", count),
+            Ok(Movement::RotateLeft) => "RotateLeft".to_owned(),
+            Ok(Movement::RotateRight) => "RotateRight".to_owned(),
+        };
+        to_ocaml!(cr, s)
+    }
+
+    fn rust_string_of_polymorphic_movement(cr, polymorphic_movement: OCaml<PolymorphicMovement>) -> OCaml<String> {
+        let pm = ocaml_unpack_polymorphic_variant! {
+            polymorphic_movement => {
+                Step(count: OCamlInt) => { PolymorphicMovement::Step {count} },
+                RotateLeft => PolymorphicMovement::RotateLeft,
+                RotateRight => PolymorphicMovement::RotateRight,
+            }
+        };
+        let s = match pm {
+            Err(_) => "Error unpacking".to_owned(),
+            Ok(PolymorphicMovement::Step {count}) => format!("`Step({})", count),
+            Ok(PolymorphicMovement::RotateLeft) => "`RotateLeft".to_owned(),
+            Ok(PolymorphicMovement::RotateRight) => "`RotateRight".to_owned(),
+        };
+        to_ocaml!(cr, s)
     }
 }
