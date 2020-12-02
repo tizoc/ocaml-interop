@@ -1,8 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::error::OCamlFixnumConversionError;
-use crate::{mlvalues::*, OCamlRuntime};
+use crate::{error::OCamlFixnumConversionError, mlvalues::*, OCamlRuntime};
 use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 

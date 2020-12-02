@@ -1,10 +1,10 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::value::{make_ocaml, OCaml};
 use crate::{
     mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
     runtime::OCamlAllocToken,
+    value::{make_ocaml, OCaml},
     OCamlRuntime,
 };
 use core::{cell::Cell, marker::PhantomData, ptr};
