@@ -5,7 +5,7 @@ use crate::{error::OCamlFixnumConversionError, mlvalues::*, OCamlRuntime};
 use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
-/// Representation of OCaml values inside [`ocaml_frame!`] blocks.
+/// Representation of OCaml values.
 ///
 /// Should not be instantiated directly, and will usually be the result
 /// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
