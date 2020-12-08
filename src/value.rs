@@ -10,16 +10,11 @@ use ocaml_sys::{caml_string_length, int_val, val_int};
 /// Should not be instantiated directly, and will usually be the result
 /// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
 /// of functions defined inside [`ocaml_export!`] blocks.
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct OCaml<'a, T: 'a> {
     _marker: PhantomData<&'a T>,
     raw: RawOCaml,
 }
-
-// These immediate values can be copied
-impl<'a> Copy for OCaml<'a, OCamlInt> {}
-impl<'a> Copy for OCaml<'a, bool> {}
-impl<'a> Copy for OCaml<'a, ()> {}
 
 pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
     OCaml {
