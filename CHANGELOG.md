@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Nothing.
+- `OCamlRuntime::releasing_runtime(&mut self, f: FnOnce() -> T)` releases the OCaml runtime, calls `f`, and then re-acquires the OCaml runtime. Maybe more complicated patterns should be supported, but for now I haven't given this much thought.
 
 ### Changed
 
-- Nothing.
+- The GC-handle has been replaced by an OCaml-Runtime-handle that must be passed around as a `&mut` reference. `OCaml<'a, T>` values have their lifetime associated to this handle through an immutable borrow, just like it used to be with the now-gone GC-handle.
+- Exported functions don't implicitly open an `ocaml_frame!` anymore, but instead receive an OCaml-runtime-handle as their first argument.
+- `ocaml_frame!` doesn't create a GC-handle anymore, but instead takes as input an OCaml-Runtime-handle, and uses it to instantiate a new frame and list of Root-variables through an immutable borrow.
+- `ocaml_frame!` is now only required to instantiate Root-variables, any interaction with the OCaml runtime will make use of an OCaml-Runtime-handle, which should be around already. The syntax also changed slightly, requiring a comma after the OCaml-Runtime-handle parameter.
+- `OCamlRef` has been renamed to `OCamlRooted`.
+- Rust functions that are exported to OCaml must now declare at least one argument.
 
 ### Deprecated
 

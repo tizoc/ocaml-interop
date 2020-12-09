@@ -31,7 +31,8 @@ This requires that the user is explicit about delimiting blocks that interact wi
 
 ```rust
 let rust_string = ocaml_string.to_rust();
-let new_ocaml_string = to_ocaml!(gc, rust_string);
+// `cr` = OCaml runtime handle
+let new_ocaml_string = to_ocaml!(cr, rust_string);
 ```
 
 ### Convert between Rust and OCaml structs/records
@@ -61,7 +62,7 @@ impl_conv_ocaml_record! {
 // ...
 
 let rust_struct = ocaml_record.to_rust();
-let new_ocaml_record = to_ocaml!(gc, rust_struct);
+let new_ocaml_record = to_ocaml!(cr, rust_struct);
 ```
 
 ### Convert between OCaml and Rust variants/enums
@@ -90,7 +91,7 @@ impl_conv_ocaml_variant! {
 // ...
 
 let rust_enum = ocaml_variant.to_rust();
-let new_ocaml_variant = to_ocaml!(gc, rust_enum);
+let new_ocaml_variant = to_ocaml!(cr, rust_enum);
 ```
 
 ### Call OCaml functions from Rust
@@ -107,8 +108,8 @@ ocaml! {
 
 // ...
 
-let ocaml_string = to_ocaml!(gc, "hello OCaml!");
-ocaml_call!(ocaml_print_endline(gc, ocaml_string)).unwrap();
+let ocaml_string = to_ocaml!(cr, "hello OCaml!");
+ocaml_call!(ocaml_print_endline(cr, ocaml_string)).unwrap();
 ```
 
 ### Call Rust functions from OCaml
@@ -116,10 +117,10 @@ ocaml_call!(ocaml_print_endline(gc, ocaml_string)).unwrap();
 ```rust
 // Rust
 ocaml_export! {
-    pub fn twice_boxed_int(gc, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {
+    pub fn twice_boxed_int(cr, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {
         let num = num.to_rust();
         let result = num * 2;
-        ocaml_alloc!(result.to_ocaml(gc))
+        to_ocaml!(cf, result)
     }
 }
 ```

@@ -1,10 +1,12 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::{
-    tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+use crate::{
+    mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
+    runtime::OCamlAllocToken,
+    value::{make_ocaml, OCaml},
+    OCamlRuntime,
 };
-use crate::value::{make_ocaml, OCaml};
 use core::{cell::Cell, marker::PhantomData, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
@@ -48,19 +50,11 @@ unsafe fn set_local_roots(roots: *mut CamlRootsBlock) {
     ocaml_sys_set_local_roots(roots as *mut ocaml_sys::CamlRootsBlock)
 }
 
-pub trait GCFrameHandle<'gc> {}
-
 // OCaml GC frame handle
 #[derive(Default)]
 pub struct GCFrame<'gc> {
     _marker: PhantomData<&'gc i32>,
     block: CamlRootsBlock,
-}
-
-// OCaml GC frame handle
-#[derive(Default)]
-pub struct GCFrameNoKeep<'gc> {
-    _marker: PhantomData<&'gc i32>,
 }
 
 // Impl
@@ -76,43 +70,19 @@ impl<'gc> GCFrame<'gc> {
         };
         self
     }
-
-    /// Returns the OCaml valued to which this GC tracked reference points to.
-    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
-        make_ocaml(reference.cell.get())
-    }
-
-    #[doc(hidden)]
-    pub unsafe fn token(&self) -> OCamlAllocToken {
-        OCamlAllocToken {}
-    }
 }
 
 impl<'gc> Drop for GCFrame<'gc> {
     fn drop(&mut self) {
         unsafe {
-            assert!(local_roots() == &mut self.block);
+            assert!(
+                local_roots() == &mut self.block,
+                "OCaml local roots corrupted"
+            );
             set_local_roots(self.block.next);
         }
     }
 }
-
-impl<'gc> GCFrameNoKeep<'gc> {
-    pub fn initialize(&mut self) -> &mut Self {
-        self
-    }
-
-    #[doc(hidden)]
-    pub unsafe fn token(&self) -> OCamlAllocToken {
-        OCamlAllocToken {}
-    }
-}
-
-impl<'gc> GCFrameHandle<'gc> for GCFrame<'gc> {}
-impl<'gc> GCFrameHandle<'gc> for GCFrameNoKeep<'gc> {}
-
-/// Token used by allocation functions. Used internally.
-pub struct OCamlAllocToken {}
 
 pub struct OCamlRoot<'a> {
     cell: &'a Cell<RawOCaml>,
@@ -129,35 +99,36 @@ impl<'a> OCamlRoot<'a> {
         OCamlRoot { cell }
     }
 
-    pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
+    pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRooted<'tmp, T> {
         self.cell.set(unsafe { val.raw() });
-        OCamlRef {
+        OCamlRooted {
             _marker: PhantomData,
             cell: self.cell,
         }
     }
 
     #[allow(clippy::needless_lifetimes)]
-    pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRef<'tmp> {
+    pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRooted<'tmp> {
         self.cell.set(val);
-        OCamlRawRef { cell: self.cell }
+        OCamlRawRooted { cell: self.cell }
     }
 }
 
-/// `OCamlRef<T>` is a reference to an [`OCaml`]`<T>` value that is tracked by the GC.
+/// An `OCamlRooted<T>` value is the result of rooting [`OCaml`]`<T>` value using a root variable.
 ///
-/// Unlike [`OCaml`]`<T>` values, it can be re-referenced after OCaml allocations.
-pub struct OCamlRef<'a, T> {
-    cell: &'a Cell<RawOCaml>,
+/// Rooted values can be used to recover a fresh reference to an [`OCaml`]`<T>` value what would
+/// otherwise become stale after a call to the OCaml runtime.
+pub struct OCamlRooted<'a, T> {
+    pub(crate) cell: &'a Cell<RawOCaml>,
     _marker: PhantomData<Cell<T>>,
 }
 
-/// Like [`OCamlRef`] but for [`RawOCaml`] values.
-pub struct OCamlRawRef<'a> {
+/// Like [`OCamlRooted`] but for [`RawOCaml`] values.
+pub struct OCamlRawRooted<'a> {
     cell: &'a Cell<RawOCaml>,
 }
 
-impl<'a, T> OCamlRef<'a, T> {
+impl<'a, T> OCamlRooted<'a, T> {
     /// Updates the value of this GC tracked reference.
     pub fn set(&mut self, x: OCaml<T>) {
         self.cell.set(unsafe { x.raw() });
@@ -169,7 +140,7 @@ impl<'a, T> OCamlRef<'a, T> {
     }
 }
 
-impl<'a> OCamlRawRef<'a> {
+impl<'a> OCamlRawRooted<'a> {
     /// Updates the raw value of this GC tracked reference.
     pub fn set_raw(&mut self, x: RawOCaml) {
         self.cell.set(x);
@@ -208,7 +179,7 @@ impl<T> OCamlAllocResult<T> {
         }
     }
 
-    pub fn mark(self, _gc: &mut dyn GCFrameHandle) -> GCMarkedResult<T> {
+    pub fn mark(self, _cr: &mut OCamlRuntime) -> GCMarkedResult<T> {
         GCMarkedResult {
             _marker: PhantomData,
             raw: self.raw,
@@ -217,7 +188,7 @@ impl<T> OCamlAllocResult<T> {
 }
 
 impl<T> GCMarkedResult<T> {
-    pub fn eval<'a, 'gc: 'a>(self, _gc: &'a dyn GCFrameHandle<'gc>) -> OCaml<'a, T> {
+    pub fn eval(self, _cr: &OCamlRuntime) -> OCaml<T> {
         make_ocaml(self.raw)
     }
 }
@@ -258,7 +229,10 @@ pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<OCamlFl
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<A>(_token: OCamlAllocToken, value: &OCamlRef<A>) -> OCamlAllocResult<Option<A>> {
+pub fn alloc_some<A>(
+    _token: OCamlAllocToken,
+    value: &OCamlRooted<A>,
+) -> OCamlAllocResult<Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
         store_field(ocaml_some, 0, value.get_raw());
@@ -268,8 +242,8 @@ pub fn alloc_some<A>(_token: OCamlAllocToken, value: &OCamlRef<A>) -> OCamlAlloc
 
 pub fn alloc_tuple<F, S>(
     _token: OCamlAllocToken,
-    fst: &OCamlRef<F>,
-    snd: &OCamlRef<S>,
+    fst: &OCamlRooted<F>,
+    snd: &OCamlRooted<S>,
 ) -> OCamlAllocResult<(F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
@@ -281,9 +255,9 @@ pub fn alloc_tuple<F, S>(
 
 pub fn alloc_tuple_3<F, S, T3>(
     _token: OCamlAllocToken,
-    fst: &OCamlRef<F>,
-    snd: &OCamlRef<S>,
-    elt3: &OCamlRef<T3>,
+    fst: &OCamlRooted<F>,
+    snd: &OCamlRooted<S>,
+    elt3: &OCamlRooted<T3>,
 ) -> OCamlAllocResult<(F, S, T3)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(3);
@@ -296,10 +270,10 @@ pub fn alloc_tuple_3<F, S, T3>(
 
 pub fn alloc_tuple_4<F, S, T3, T4>(
     _token: OCamlAllocToken,
-    fst: &OCamlRef<F>,
-    snd: &OCamlRef<S>,
-    elt3: &OCamlRef<T3>,
-    elt4: &OCamlRef<T4>,
+    fst: &OCamlRooted<F>,
+    snd: &OCamlRooted<S>,
+    elt3: &OCamlRooted<T3>,
+    elt4: &OCamlRooted<T4>,
 ) -> OCamlAllocResult<(F, S, T3, T4)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(4);
@@ -313,8 +287,8 @@ pub fn alloc_tuple_4<F, S, T3, T4>(
 
 pub fn alloc_cons<A>(
     _token: OCamlAllocToken,
-    head: &OCamlRef<A>,
-    tail: &OCamlRef<OCamlList<A>>,
+    head: &OCamlRooted<A>,
+    tail: &OCamlRooted<OCamlList<A>>,
 ) -> OCamlAllocResult<OCamlList<A>> {
     unsafe {
         let ocaml_cons = caml_alloc(2, tag::CONS);

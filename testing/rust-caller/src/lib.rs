@@ -3,7 +3,10 @@
 
 extern crate ocaml_interop;
 
-use ocaml_interop::{ToRust, OCaml, OCamlBytes, OCamlInt, OCamlList, ToOCaml, ocaml_call, ocaml_frame, to_ocaml};
+use ocaml_interop::{
+    ocaml_call, ocaml_frame, to_ocaml, OCaml, OCamlBytes, OCamlInt, OCamlList, OCamlRuntime,
+    ToOCaml, ToRust,
+};
 
 mod ocaml {
     use ocaml_interop::{
@@ -58,99 +61,82 @@ mod ocaml {
     }
 }
 
-pub fn increment_bytes(bytes: &str, first_n: usize) -> String {
-    ocaml_frame!(gc(bytesvar), {
-        let bytes = &bytesvar.keep(to_ocaml!(gc, bytes));
-        let first_n = to_ocaml!(gc, first_n as i64);
-        let result = ocaml_call!(ocaml::increment_bytes(gc, gc.get(bytes), first_n));
+pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> String {
+    ocaml_frame!(cr, (bytes_root), {
+        let bytes = to_ocaml!(cr, bytes, bytes_root);
+        let first_n = to_ocaml!(cr, first_n as i64);
+        let result = ocaml_call!(ocaml::increment_bytes(cr, cr.get(&bytes), first_n));
         let result: OCaml<String> = result.expect("Error in 'increment_bytes' call result");
         result.to_rust()
     })
 }
 
-pub fn increment_ints_list(ints: &Vec<i64>) -> Vec<i64> {
-    ocaml_frame!(gc, {
-        let ints = to_ocaml!(gc, ints);
-        let result = ocaml_call!(ocaml::increment_ints_list(gc, ints));
-        let result: OCaml<OCamlList<OCamlInt>> =
-            result.expect("Error in 'increment_ints_list' call result");
-        result.to_rust()
-    })
+pub fn increment_ints_list(cr: &mut OCamlRuntime, ints: &Vec<i64>) -> Vec<i64> {
+    let ints = to_ocaml!(cr, ints);
+    let result = ocaml_call!(ocaml::increment_ints_list(cr, ints));
+    let result: OCaml<OCamlList<OCamlInt>> =
+        result.expect("Error in 'increment_ints_list' call result");
+    result.to_rust()
 }
 
-pub fn twice(num: i64) -> i64 {
-    ocaml_frame!(gc, {
-        let num = unsafe { OCaml::of_i64_unchecked(num) };
-        let result = ocaml_call!(ocaml::twice(gc, num));
-        let result: OCaml<OCamlInt> = result.expect("Error in 'twice' call result");
-        result.to_rust()
-    })
+pub fn twice(cr: &mut OCamlRuntime, num: i64) -> i64 {
+    let num = unsafe { OCaml::of_i64_unchecked(num) };
+    let result = ocaml_call!(ocaml::twice(cr, num));
+    let result: OCaml<OCamlInt> = result.expect("Error in 'twice' call result");
+    result.to_rust()
 }
 
-pub fn make_tuple(fst: String, snd: i64) -> (String, i64) {
-    ocaml_frame!(gc, {
-        let num = unsafe { OCaml::of_i64_unchecked(snd) };
-        let str = to_ocaml!(gc, fst);
-        let result = ocaml_call!(ocaml::make_tuple(gc, str, num));
-        let result: OCaml<(String, OCamlInt)> = result.expect("Error in 'make_tuple' call result");
-        result.to_rust()
-    })
+pub fn make_tuple(cr: &mut OCamlRuntime, fst: String, snd: i64) -> (String, i64) {
+    let num = unsafe { OCaml::of_i64_unchecked(snd) };
+    let str = to_ocaml!(cr, fst);
+    let result = ocaml_call!(ocaml::make_tuple(cr, str, num));
+    let result: OCaml<(String, OCamlInt)> = result.expect("Error in 'make_tuple' call result");
+    result.to_rust()
 }
 
-pub fn make_some(value: String) -> Option<String> {
-    ocaml_frame!(gc, {
-        let str = to_ocaml!(gc, value);
-        let result = ocaml_call!(ocaml::make_some(gc, str));
-        let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
-        result.to_rust()
-    })
+pub fn make_some(cr: &mut OCamlRuntime, value: String) -> Option<String> {
+    let str = to_ocaml!(cr, value);
+    let result = ocaml_call!(ocaml::make_some(cr, str));
+    let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
+    result.to_rust()
 }
 
-pub fn make_ok(value: i64) -> Result<i64, String> {
-    ocaml_frame!(gc, {
-        let result = to_ocaml!(gc, value);
-        let result = ocaml_call!(ocaml::make_ok(gc, result));
-        let result: OCaml<Result<OCamlInt, String>> = result.expect("Error in 'make_ok' call result");
-        result.to_rust()
-    })
+pub fn make_ok(cr: &mut OCamlRuntime, value: i64) -> Result<i64, String> {
+    let result = to_ocaml!(cr, value);
+    let result = ocaml_call!(ocaml::make_ok(cr, result));
+    let result: OCaml<Result<OCamlInt, String>> = result.expect("Error in 'make_ok' call result");
+    result.to_rust()
 }
 
-pub fn make_error(value: String) -> Result<i64, String> {
-    ocaml_frame!(gc, {
-        let result = to_ocaml!(gc, value);
-        let result = ocaml_call!(ocaml::make_error(gc, result));
-        let result: OCaml<Result<OCamlInt, String>> = result.expect("Error in 'make_error' call result");
-        result.to_rust()
-    })
+pub fn make_error(cr: &mut OCamlRuntime, value: String) -> Result<i64, String> {
+    let result = to_ocaml!(cr, value);
+    let result = ocaml_call!(ocaml::make_error(cr, result));
+    let result: OCaml<Result<OCamlInt, String>> =
+        result.expect("Error in 'make_error' call result");
+    result.to_rust()
 }
 
-pub fn verify_record_test(record: ocaml::TestRecord) -> String {
-    ocaml_frame!(gc, {
-        let ocaml_record = to_ocaml!(gc, record);
-        let result = ocaml_call!(ocaml::stringify_record(gc, ocaml_record));
-        let result: OCaml<String> = result.expect("Error in 'stringify_record' call result");
-        result.to_rust()
-    })
+pub fn verify_record_test(cr: &mut OCamlRuntime, record: ocaml::TestRecord) -> String {
+    let ocaml_record = to_ocaml!(cr, record);
+    let result = ocaml_call!(ocaml::stringify_record(cr, ocaml_record));
+    let result: OCaml<String> = result.expect("Error in 'stringify_record' call result");
+    result.to_rust()
 }
 
-pub fn verify_variant_test(variant: ocaml::Movement) -> String {
-    ocaml_frame!(gc, {
-        let ocaml_variant = to_ocaml!(gc, variant);
-        let result = ocaml_call!(ocaml::stringify_variant(gc, ocaml_variant));
-        let result: OCaml<String> = result.expect("Error in 'stringify_variant' call result");
-        result.to_rust()
-    })
+pub fn verify_variant_test(cr: &mut OCamlRuntime, variant: ocaml::Movement) -> String {
+    let ocaml_variant = to_ocaml!(cr, variant);
+    let result = ocaml_call!(ocaml::stringify_variant(cr, ocaml_variant));
+    let result: OCaml<String> = result.expect("Error in 'stringify_variant' call result");
+    result.to_rust()
 }
 
-pub fn allocate_alot() -> bool {
+pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
     let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     for _n in 1..50000 {
-        ocaml_frame!(gc, {
-            let _x: OCaml<OCamlBytes> = to_ocaml!(gc, vec);
-            let _y: OCaml<OCamlBytes> = to_ocaml!(gc, vec);
-            let _z: OCaml<OCamlBytes> = to_ocaml!(gc, vec);
-            ()
-        });
+        let _x: OCaml<OCamlBytes> = to_ocaml!(cr, vec);
+        let _y: OCaml<OCamlBytes> = to_ocaml!(cr, vec);
+        let _z: OCaml<OCamlBytes> = to_ocaml!(cr, vec);
+        ()
     }
     true
 }
@@ -164,59 +150,79 @@ use serial_test::serial;
 #[test]
 #[serial]
 fn test_twice() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    assert_eq!(twice(10), 20);
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    assert_eq!(twice(&mut cr, 10), 20);
 }
 
 #[test]
 #[serial]
 fn test_increment_bytes() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    assert_eq!(increment_bytes("0000000000000000", 10), "1111111111000000");
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    assert_eq!(
+        increment_bytes(&mut cr, "0000000000000000", 10),
+        "1111111111000000"
+    );
 }
 
 #[test]
 #[serial]
 fn test_increment_ints_list() {
-    ocaml_interop::OCamlRuntime::init_persistent();
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(increment_ints_list(&ints), expected);
+    assert_eq!(increment_ints_list(&mut cr, &ints), expected);
 }
 
 #[test]
 #[serial]
 fn test_make_tuple() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    assert_eq!(make_tuple("fst".to_owned(), 9), ("fst".to_owned(), 9));
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    assert_eq!(
+        make_tuple(&mut cr, "fst".to_owned(), 9),
+        ("fst".to_owned(), 9)
+    );
 }
 
 #[test]
 #[serial]
 fn test_make_some() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    assert_eq!(make_some("some".to_owned()), Some("some".to_owned()));
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    assert_eq!(
+        make_some(&mut cr, "some".to_owned()),
+        Some("some".to_owned())
+    );
 }
 
 #[test]
 #[serial]
 fn test_make_result() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    assert_eq!(make_ok(10), Ok(10));
-    assert_eq!(make_error("error".to_owned()), Err("error".to_owned()));
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    assert_eq!(make_ok(&mut cr, 10), Ok(10));
+    assert_eq!(
+        make_error(&mut cr, "error".to_owned()),
+        Err("error".to_owned())
+    );
 }
 
 #[test]
 #[serial]
 fn test_frame_management() {
-    ocaml_interop::OCamlRuntime::init_persistent();
-    assert_eq!(allocate_alot(), true);
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    assert_eq!(allocate_alot(&mut cr), true);
 }
 
 #[test]
 #[serial]
 fn test_record_conversion() {
-    ocaml_interop::OCamlRuntime::init_persistent();
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     let record = ocaml::TestRecord {
         i: 10,
         f: 5.0,
@@ -226,23 +232,24 @@ fn test_record_conversion() {
         t: (10, 5.0),
     };
     let expected = "{ i=10; f=5.00; i32=10; i64=10; s=string; t=(10, 5.00) }".to_owned();
-    assert_eq!(verify_record_test(record), expected);
+    assert_eq!(verify_record_test(&mut cr, record), expected);
 }
 
 #[test]
 #[serial]
 fn test_variant_conversion() {
-    ocaml_interop::OCamlRuntime::init_persistent();
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
-        verify_variant_test(ocaml::Movement::RotateLeft),
+        verify_variant_test(&mut cr, ocaml::Movement::RotateLeft),
         "RotateLeft".to_owned()
     );
     assert_eq!(
-        verify_variant_test(ocaml::Movement::RotateRight),
+        verify_variant_test(&mut cr, ocaml::Movement::RotateRight),
         "RotateRight".to_owned()
     );
     assert_eq!(
-        verify_variant_test(ocaml::Movement::Step(10)),
+        verify_variant_test(&mut cr, ocaml::Movement::Step(10)),
         "Step(10)".to_owned()
     );
 }

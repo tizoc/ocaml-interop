@@ -14,6 +14,8 @@ module Rust = struct
   external make_some: string -> string option = "rust_make_some"
   external make_ok: int -> (int, string) result = "rust_make_ok"
   external make_error: string -> (int, string) result = "rust_make_error"
+  external sleep_releasing: int -> unit = "rust_sleep_releasing"
+  external sleep: int -> unit = "rust_sleep"
 end
 
 let test_twice () =
@@ -64,6 +66,30 @@ let test_make_error () =
   let result = Rust.make_error "error" in
   Alcotest.(check (result int string)) "Make an Error(string)" expected result
 
+(* Sleeps on the Rust thread releasing the OCaml runtime lock *)
+let test_blocking_section () =
+  let before = Unix.gettimeofday () in
+  let p = Thread.create (fun () -> Rust.sleep_releasing 500 ) () in
+  Thread.delay 0.01;
+  let after = Unix.gettimeofday () in
+  Thread.join p;
+  let testable = if after -. before > 0.2
+  then Alcotest.fail "Blocking section releases the runtime lock"
+  else Alcotest.pass in
+  Alcotest.check testable "Blocking section releases the runtime lock" () ()
+
+(* Sleeps on the Rust thread without releasing the OCaml runtime lock *)
+let test_regular_section () =
+  let before = Unix.gettimeofday () in
+  let p = Thread.create (fun () -> Rust.sleep 500 ) () in
+  Thread.delay 0.01;
+  let after = Unix.gettimeofday () in
+  Thread.join p;
+  let testable = if after -. before < 0.5
+  then Alcotest.fail "Acquires the runtime lock"
+  else Alcotest.pass in
+  Alcotest.check testable "Acquires the runtime lock" () ()
+
 let () =
   let open Alcotest in
   run "Tests" [
@@ -79,5 +105,7 @@ let () =
       test_case "Rust.make_some"       `Quick test_make_some;
       test_case "Rust.make_ok"         `Quick test_make_ok;
       test_case "Rust.make_error"      `Quick test_make_error;
+      test_case "Rust.sleep_releasing" `Quick test_blocking_section;
+      test_case "Rust.sleep"           `Quick test_regular_section;
     ]
   ]

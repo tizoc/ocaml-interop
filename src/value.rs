@@ -1,12 +1,11 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::mlvalues::*;
-use crate::{error::OCamlFixnumConversionError, memory::GCFrameHandle};
+use crate::{error::OCamlFixnumConversionError, mlvalues::*, OCamlRuntime};
 use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
-/// Representation of OCaml values inside [`ocaml_frame!`] blocks.
+/// Representation of OCaml values.
 ///
 /// Should not be instantiated directly, and will usually be the result
 /// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
@@ -26,7 +25,7 @@ pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
 
 impl<'a, T> OCaml<'a, T> {
     #[doc(hidden)]
-    pub unsafe fn new<'gc>(_gc: &'a dyn GCFrameHandle<'gc>, x: RawOCaml) -> OCaml<'a, T> {
+    pub unsafe fn new(_cr: &'a OCamlRuntime, x: RawOCaml) -> OCaml<'a, T> {
         OCaml {
             _marker: PhantomData,
             raw: x,
@@ -35,8 +34,14 @@ impl<'a, T> OCaml<'a, T> {
 
     #[doc(hidden)]
     pub unsafe fn field<F>(&self, i: UIntnat) -> OCaml<'a, F> {
-        assert!(tag_val(self.raw) < tag::NO_SCAN);
-        assert!(i < wosize_val(self.raw));
+        assert!(
+            tag_val(self.raw) < tag::NO_SCAN,
+            "unexpected OCaml value tag >= NO_SCAN"
+        );
+        assert!(
+            i < wosize_val(self.raw),
+            "trying to access a field bigger than the OCaml block value"
+        );
         OCaml {
             _marker: PhantomData,
             raw: *(self.raw as *const RawOCaml).add(i),
@@ -55,7 +60,10 @@ impl<'a, T> OCaml<'a, T> {
 
     #[doc(hidden)]
     pub fn tag_value(&self) -> u8 {
-        assert!(self.is_block());
+        assert!(
+            self.is_block(),
+            "attempted to access the tag on an OCaml value that isn't a block"
+        );
         unsafe { tag_val(self.raw) }
     }
 
@@ -86,7 +94,10 @@ impl<'a> OCaml<'a, String> {
     pub fn as_bytes(&self) -> &'a [u8] {
         let s = self.raw;
         unsafe {
-            assert!(tag_val(s) == tag::STRING);
+            assert!(
+                tag_val(s) == tag::STRING,
+                "attempt to perform a string operation on an OCaml value that is not a string"
+            );
             slice::from_raw_parts(string_val(s), caml_string_length(s))
         }
     }
@@ -115,7 +126,10 @@ impl<'a> OCaml<'a, OCamlBytes> {
     pub fn as_bytes(&self) -> &'a [u8] {
         let s = self.raw;
         unsafe {
-            assert!(tag_val(s) == tag::STRING);
+            assert!(
+                tag_val(s) == tag::STRING,
+                "attempt to perform a string operation on an OCaml value that is not a string"
+            );
             slice::from_raw_parts(string_val(s), caml_string_length(s))
         }
     }
