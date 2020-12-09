@@ -54,6 +54,11 @@ impl<'a, T> OCaml<'a, T> {
     }
 
     #[doc(hidden)]
+    pub fn is_block_sized(&self, size: usize) -> bool {
+        self.is_block() && unsafe { wosize_val(self.raw) == size }
+    }
+
+    #[doc(hidden)]
     pub fn is_long(&self) -> bool {
         is_long(self.raw)
     }

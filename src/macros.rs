@@ -790,7 +790,7 @@ macro_rules! impl_from_ocaml_variant {
 /// # Note
 ///
 /// Unlike with [`ocaml_unpack_record!`], the result of [`ocaml_unpack_variant!`] is a `Result` value.
-/// An error will be returned in the case of an expected tag value. This may change in the future.
+/// An error will be returned in the case of an unexpected tag value. This may change in the future.
 ///
 /// # Examples
 ///
@@ -805,7 +805,7 @@ macro_rules! impl_from_ocaml_variant {
 ///
 /// // Assuming an OCaml type declaration like:
 /// //
-/// //      type my_struct =
+/// //      type movement =
 /// //        | StepLeft
 /// //        | StepRight
 /// //        | Rotate of float
@@ -909,8 +909,6 @@ macro_rules! ocaml_alloc_variant {
 ///
 /// # Examples
 ///
-/// # Examples
-///
 /// ```
 /// # use ocaml_interop::*;
 /// enum Movement {
@@ -964,6 +962,128 @@ macro_rules! impl_to_ocaml_variant {
                 $($t)*
             }
         }
+    };
+}
+
+/// Implements [`FromOCaml`] for mapping an OCaml variant into a Rust enum.
+///
+/// It is important that the order of the fields remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement = [
+/// //        | `StepLeft
+/// //        | `StepRight
+/// //        | `Rotate of float
+/// //      ]
+///
+/// impl_from_ocaml_polymorphic_variant! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // OCamlType => RustType { ... }
+///     Movement {
+///         StepLeft  => Movement::StepLeft,
+///         StepRight => Movement::StepRight,
+///         // Tag field names are mandatory
+///         Rotate(rotation: OCamlFloat)
+///                   => Movement::Rotate(rotation),
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! impl_from_ocaml_polymorphic_variant {
+    ($ocaml_typ:ty => $rust_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
+            fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                let result = $crate::ocaml_unpack_polymorphic_variant! {
+                    v => {
+                        $($t)*
+                    }
+                };
+
+                let msg = concat!(
+                    "Failure when unpacking an OCaml<", stringify!($ocaml_typ), "> polymorphic variant into ",
+                    stringify!($rust_typ), " (unexpected tag value)");
+
+                result.expect(msg)
+            }
+        }
+    };
+
+    ($both_typ:ty {
+        $($t:tt)*
+    }) => {
+        $crate::impl_from_ocaml_polymorphic_variant!{
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+}
+
+/// Unpacks an OCaml polymorphic variant and maps it into a Rust enum.
+///
+/// # Note
+///
+/// Unlike with [`ocaml_unpack_record!`], the result of [`ocaml_unpack_polymorphic_variant!`] is a `Result` value.
+/// An error will be returned in the case of an unexpected tag value. This may change in the future.
+///
+/// # Examples
+///
+/// ```
+/// # use ocaml_interop::*;
+/// # ocaml! { fn make_ocaml_polymorphic_movement(unit: ()) -> Movement; }
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement = [
+/// //        | `StepLeft
+/// //        | `StepRight
+/// //        | `Rotate of float
+/// //      ]
+///
+/// # fn unpack_polymorphic_variant_example(cr: &mut OCamlRuntime) {
+/// let ocaml_polymorphic_variant = ocaml_call!(make_ocaml_polymorphic_movement(cr, OCaml::unit())).unwrap();
+/// let result = ocaml_unpack_polymorphic_variant! {
+///     ocaml_polymorphic_variant => {
+///         StepLeft  => Movement::StepLeft,
+///         StepRight => Movement::StepRight,
+///         // Tag field names are mandatory
+///         Rotate(rotation: OCamlFloat)
+///                   => Movement::Rotate(rotation),
+///     }
+/// }.unwrap();
+/// // ...
+/// # }
+#[macro_export]
+macro_rules! ocaml_unpack_polymorphic_variant {
+    ($self:ident => {
+        $($tag:ident $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? => $conv:expr),+ $(,)?
+    }) => {
+        (|| {
+            $(
+                $crate::unpack_polymorphic_variant_tag!(
+                    $self, $tag $(($($slot_name: $slot_typ),+))? => $conv);
+            )+
+
+            Err("Invalid tag value found when converting from an OCaml polymorphic variant")
+        })()
     };
 }
 
@@ -1028,6 +1148,7 @@ macro_rules! prepare_field_for_mapping {
     }};
 }
 
+// TODO: check generated machine code and see if it is worth it to generate a switch
 #[doc(hidden)]
 #[macro_export]
 macro_rules! unpack_variant_tag {
@@ -1137,6 +1258,47 @@ macro_rules! ocaml_alloc_variant_match {
             }
 
             @pending $($tail)*
+        }
+    };
+}
+
+// TODO: check generated machine code and see if it is worth it to generate a switch
+#[doc(hidden)]
+#[macro_export]
+macro_rules! unpack_polymorphic_variant_tag {
+    ($self:ident, $tag:ident => $conv:expr) => {
+        #[allow(non_snake_case)]
+        let $tag = $crate::polymorphic_variant_tag_hash!($tag);
+        if $self.is_long() && unsafe { $self.raw() } == $tag {
+            return Ok($conv);
+        }
+    };
+
+    ($self:ident, $tag:ident($slot_name:ident: $slot_typ:ty) => $conv:expr) => {
+        #[allow(non_snake_case)]
+        let $tag = $crate::polymorphic_variant_tag_hash!($tag);
+
+        if $self.is_block_sized(2) &&
+            $self.tag_value() == $crate::internal::tag::TAG_POLYMORPHIC_VARIANT &&
+            unsafe { $self.field::<$crate::OCamlInt>(0).raw() } == $tag {
+
+            let $slot_name = unsafe { $self.field::<$slot_typ>(1).to_rust() };
+
+            return Ok($conv);
+        }
+    };
+
+    ($self:ident, $tag:ident($($slot_name:ident: $slot_typ:ty),+) => $conv:expr) => {
+        #[allow(non_snake_case)]
+        let $tag = $crate::polymorphic_variant_tag_hash!($tag);
+
+        if $self.is_block_sized(2) &&
+            $self.tag_value() == $crate::internal::tag::TAG_POLYMORPHIC_VARIANT &&
+            unsafe { $self.field::<$crate::OCamlInt>(0).raw() } == $tag {
+
+            let ($($slot_name),+) = unsafe { $self.field::<($($slot_typ),+)>(1).to_rust() };
+
+            return Ok($conv);
         }
     };
 }
@@ -1314,4 +1476,19 @@ macro_rules! expand_exported_function_return {
     ($rtyp:ty) => {
         $crate::RawOCaml
     };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! polymorphic_variant_tag_hash {
+    ($tag:ident) => {{
+        static mut TAG_HASH: $crate::RawOCaml = 0;
+        static INIT_TAG_HASH: std::sync::Once = std::sync::Once::new();
+        unsafe {
+            INIT_TAG_HASH.call_once(|| {
+                TAG_HASH = $crate::internal::caml_hash_variant(concat!(stringify!($tag), "\0").as_ptr())
+            });
+            TAG_HASH
+        }
+    }}
 }

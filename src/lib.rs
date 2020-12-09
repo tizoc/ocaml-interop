@@ -415,7 +415,8 @@ pub mod internal {
     pub use crate::closure::OCamlClosure;
     pub use crate::memory::{caml_alloc, store_field, OCamlRoot};
     pub use crate::mlvalues::UNIT;
-    pub use ocaml_sys::int_val;
+    pub use crate::mlvalues::tag;
+    pub use ocaml_sys::{caml_hash_variant, int_val};
 }
 
 #[doc(hidden)]
