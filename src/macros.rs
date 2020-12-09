@@ -987,7 +987,7 @@ macro_rules! impl_to_ocaml_variant {
 /// //        | `Rotate of float
 /// //      ]
 ///
-/// impl_from_ocaml_variant! {
+/// impl_from_ocaml_polymorphic_variant! {
 ///     // Optionally, if Rust and OCaml types don't match:
 ///     // OCamlType => RustType { ... }
 ///     Movement {
@@ -1005,7 +1005,7 @@ macro_rules! impl_from_ocaml_polymorphic_variant {
         $($t:tt)*
     }) => {
         unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
-            fn from_ocaml(v: &$crate::OCaml<$ocaml_typ>) -> Self {
+            fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
                 let result = $crate::ocaml_unpack_polymorphic_variant! {
                     v => {
                         $($t)*
