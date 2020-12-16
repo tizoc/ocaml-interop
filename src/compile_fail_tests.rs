@@ -57,7 +57,7 @@ pub struct OCamlRootEscapeFailureCheck;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// # let cr = &mut OCamlRuntime::init();
 /// let escaped = ocaml_frame!(cr, (rootvar), {
-///     let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(cr));
+///     let arg1: OCaml<String> = ocaml_alloc!(("test".to_owned()).to_ocaml(cr));
 ///     let arg1_ref = rootvar.keep(arg1);
 ///     arg1_ref
 /// });
