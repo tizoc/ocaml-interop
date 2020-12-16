@@ -72,6 +72,11 @@ exception WithInt of int
 
 let raises_nonmessage_exception () = raise (WithInt 10)
 
+let reverse_list_and_compact l =
+ let r = List.rev l in
+ Gc.compact ();
+ r
+
 let () =
   Callback.register "increment_bytes" increment_bytes;
   Callback.register "decrement_bytes" decrement_bytes;
@@ -88,3 +93,4 @@ let () =
   Callback.register "raises_nonmessage_exception" raises_nonmessage_exception;
   Callback.register "raises_nonblock_exception" raises_nonblock_exception;
   Callback.register "gc_compact" Gc.compact;
+  Callback.register "reverse_list_and_compact" reverse_list_and_compact;
