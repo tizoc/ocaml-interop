@@ -2,11 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    boxroot::BoxRoot, error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml,
-    OCamlRef, OCamlRuntime,
+    boxroot::BoxRoot,
+    error::OCamlFixnumConversionError,
+    memory::{alloc_box, OCamlCell},
+    mlvalues::*,
+    FromOCaml, OCamlRef, OCamlRuntime,
 };
+use core::any::Any;
+use core::borrow::Borrow;
 use core::{marker::PhantomData, ops::Deref, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
+use std::pin::Pin;
 
 /// Representation of OCaml values.
 pub struct OCaml<'a, T: 'a> {
@@ -129,6 +135,18 @@ impl<'a, T> OCaml<'a, T> {
     }
 }
 
+impl<'a, T: 'static> OCaml<'a, DynBox<T>> {
+    /// Build an OCaml value wrapping a Rust value
+    ///
+    /// The returned value will be opaque to the OCaml side, though you
+    /// can provide functions using it and expose them to OCaml.
+    ///
+    /// It will be dropped if it stops being referenced by the GC.
+    pub fn box_value(cr: &'a mut OCamlRuntime, v: T) -> Self {
+        alloc_box(cr, v)
+    }
+}
+
 impl OCaml<'static, ()> {
     /// Returns a value that represent OCaml's unit value.
     pub fn unit() -> Self {
@@ -136,6 +154,19 @@ impl OCaml<'static, ()> {
             _marker: PhantomData,
             raw: UNIT,
         }
+    }
+}
+
+// Be careful about not deriving anything on OCaml to
+// uphold the Borrow contract on Eq/Ord/Hash
+impl<'a, A: 'static> Borrow<A> for OCaml<'a, DynBox<A>> {
+    fn borrow(&self) -> &A {
+        Pin::get_ref(Pin::as_ref(
+            unsafe { self.custom_ptr_val::<Pin<Box<dyn Any>>>().as_ref() }
+                .expect("Custom block contains null pointer"),
+        ))
+        .downcast_ref::<A>()
+        .expect("DynBox of wrong type, cannot downcast")
     }
 }
 
