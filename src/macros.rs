@@ -160,12 +160,12 @@ macro_rules! ocaml {
 /// # use ocaml_interop::*;
 /// ocaml_export! {
 ///     fn rust_twice(cr, num: OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
-///         let num: i64 = cr.get(&num).to_rust();
+///         let num: i64 = num.to_rust(cr);
 ///         unsafe { OCaml::of_i64_unchecked(num * 2) }
 ///     }
 ///
 ///     fn rust_twice_boxed_i32(cr, num: OCamlRooted<OCamlInt32>) -> OCaml<OCamlInt32> {
-///         let num: i32 = cr.get(&num).to_rust();
+///         let num: i32 = num.to_rust(cr);
 ///         let result = num * 2;
 ///         ocaml_alloc!(result.to_ocaml(cr))
 ///     }
@@ -175,13 +175,13 @@ macro_rules! ocaml {
 ///     }
 ///
 ///     fn rust_twice_boxed_float(cr, num: OCamlRooted<OCamlFloat>) -> OCaml<OCamlFloat> {
-///         let num: f64 = cr.get(&num).to_rust();
+///         let num: f64 = num.to_rust(cr);
 ///         let result = num * 2.0;
 ///         ocaml_alloc!(result.to_ocaml(cr))
 ///     }
 ///
 ///     fn rust_increment_ints_list(cr, ints: OCamlRooted<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
-///         let mut vec: Vec<i64> = cr.get(&ints).to_rust();
+///         let mut vec: Vec<i64> = ints.to_rust(cr);
 ///
 ///         for i in 0..vec.len() {
 ///             vec[i] += 1;
@@ -191,8 +191,8 @@ macro_rules! ocaml {
 ///     }
 ///
 ///     fn rust_make_tuple(cr, fst: OCamlRooted<String>, snd: OCamlRooted<OCamlInt>) -> OCaml<(String, OCamlInt)> {
-///         let fst: String = cr.get(&fst).to_rust();
-///         let snd: i64 = cr.get(&snd).to_rust();
+///         let fst: String = fst.to_rust(cr);
+///         let snd: i64 = snd.to_rust(cr);
 ///         let tuple = (fst, snd);
 ///         ocaml_alloc!(tuple.to_ocaml(cr))
 ///     }

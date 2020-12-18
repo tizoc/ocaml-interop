@@ -1,8 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::conv::FromOCaml;
-use crate::value::OCaml;
+use crate::{conv::FromOCaml, value::OCaml};
 
 /// Counterpart to [`FromOCaml`], usually more convenient to use.
 pub trait ToRust<T>: Sized {

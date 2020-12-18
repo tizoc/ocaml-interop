@@ -1,12 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{
-    mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
-    runtime::OCamlAllocToken,
-    value::{make_ocaml, OCaml},
-    OCamlRuntime,
-};
+use crate::{FromOCaml, OCamlRuntime, mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml}, runtime::OCamlAllocToken, value::{make_ocaml, OCaml}};
 use core::{cell::Cell, marker::PhantomData, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
@@ -137,6 +132,10 @@ pub struct OCamlRawRooted<'a> {
 }
 
 impl<'a, T> OCamlRooted<'a, T> {
+    pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT where RustT: FromOCaml<T> {
+        RustT::from_ocaml(cr.get(self))
+    }
+
     /// Updates the value of this GC tracked reference.
     pub fn set(&mut self, x: OCaml<T>) {
         self.cell.set(unsafe { x.raw() });

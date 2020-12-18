@@ -137,7 +137,7 @@
 //!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //!     let arg1_rooted = arg1_root.keep(arg1);
 //!     let result = ocaml_call!(ocaml_function(cr, cr.get(&arg1_rooted), /* ..., argN */)).unwrap();
-//!     let s = String::from_ocaml(result);
+//!     let s: String = result.to_rust();
 //!     // ...
 //!     arg1_rooted
 //! });
@@ -358,13 +358,14 @@
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
 //!     fn rust_twice(cr, num: OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
-//!         let num = i64::from_ocaml(cr.get(&num));
+//!         let num: i64 = num.to_rust(cr);
 //!         unsafe { OCaml::of_i64_unchecked(num * 2) }
 //!     }
 //!
 //!     fn rust_increment_bytes(cr, bytes: OCamlRooted<OCamlBytes>, first_n: OCamlRooted<OCamlInt>) -> OCaml<OCamlBytes> {
-//!         let first_n = i64::from_ocaml(cr.get(&first_n)) as usize;
-//!         let mut vec = Vec::from_ocaml(cr.get(&bytes));
+//!         let first_n: i64 = first_n.to_rust(cr);
+//!         let first_n = first_n as usize;
+//!         let mut vec: Vec<u8> = bytes.to_rust(cr);
 //!
 //!         for i in 0..first_n {
 //!             vec[i] += 1;
