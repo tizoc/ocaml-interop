@@ -92,6 +92,13 @@ impl OCaml<'static, ()> {
             raw: UNIT,
         }
     }
+
+    pub fn none<T>() -> OCaml<'static, Option<T>> {
+        OCaml {
+            _marker: PhantomData,
+            raw: NONE,
+        }
+    }
 }
 
 impl<'a> OCaml<'a, String> {
