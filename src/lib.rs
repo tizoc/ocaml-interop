@@ -348,7 +348,7 @@
 //! #### Example
 //!
 //! ```rust,no_run
-//! use ocaml_interop::{to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, ToOCaml};
+//! use ocaml_interop::{to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, OCamlRooted, ToOCaml};
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
@@ -357,14 +357,14 @@
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
-//!     fn rust_twice(_cr, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
-//!         let num = i64::from_ocaml(num);
+//!     fn rust_twice(cr, num: OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
+//!         let num = i64::from_ocaml(cr.get(&num));
 //!         unsafe { OCaml::of_i64_unchecked(num * 2) }
 //!     }
 //!
-//!     fn rust_increment_bytes(cr, bytes: OCaml<OCamlBytes>, first_n: OCaml<OCamlInt>) -> OCaml<OCamlBytes> {
-//!         let first_n = i64::from_ocaml(first_n) as usize;
-//!         let mut vec = Vec::from_ocaml(bytes);
+//!     fn rust_increment_bytes(cr, bytes: OCamlRooted<OCamlBytes>, first_n: OCamlRooted<OCamlInt>) -> OCaml<OCamlBytes> {
+//!         let first_n = i64::from_ocaml(cr.get(&first_n)) as usize;
+//!         let mut vec = Vec::from_ocaml(cr.get(&bytes));
 //!
 //!         for i in 0..first_n {
 //!             vec[i] += 1;

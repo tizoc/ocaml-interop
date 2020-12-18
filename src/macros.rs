@@ -159,13 +159,13 @@ macro_rules! ocaml {
 /// ```
 /// # use ocaml_interop::*;
 /// ocaml_export! {
-///     fn rust_twice(_cr, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
-///         let num: i64 = num.to_rust();
+///     fn rust_twice(cr, num: OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
+///         let num: i64 = cr.get(&num).to_rust();
 ///         unsafe { OCaml::of_i64_unchecked(num * 2) }
 ///     }
 ///
-///     fn rust_twice_boxed_i32(cr, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
-///         let num: i32 = num.to_rust();
+///     fn rust_twice_boxed_i32(cr, num: OCamlRooted<OCamlInt32>) -> OCaml<OCamlInt32> {
+///         let num: i32 = cr.get(&num).to_rust();
 ///         let result = num * 2;
 ///         ocaml_alloc!(result.to_ocaml(cr))
 ///     }
@@ -174,14 +174,14 @@ macro_rules! ocaml {
 ///         num * num2
 ///     }
 ///
-///     fn rust_twice_boxed_float(cr, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
-///         let num: f64 = num.to_rust();
+///     fn rust_twice_boxed_float(cr, num: OCamlRooted<OCamlFloat>) -> OCaml<OCamlFloat> {
+///         let num: f64 = cr.get(&num).to_rust();
 ///         let result = num * 2.0;
 ///         ocaml_alloc!(result.to_ocaml(cr))
 ///     }
 ///
-///     fn rust_increment_ints_list(cr, ints: OCaml<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
-///         let mut vec: Vec<i64> = ints.to_rust();
+///     fn rust_increment_ints_list(cr, ints: OCamlRooted<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
+///         let mut vec: Vec<i64> = cr.get(&ints).to_rust();
 ///
 ///         for i in 0..vec.len() {
 ///             vec[i] += 1;
@@ -190,9 +190,9 @@ macro_rules! ocaml {
 ///         ocaml_alloc!(vec.to_ocaml(cr))
 ///     }
 ///
-///     fn rust_make_tuple(cr, fst: OCaml<String>, snd: OCaml<OCamlInt>) -> OCaml<(String, OCamlInt)> {
-///         let fst: String = fst.to_rust();
-///         let snd: i64 = snd.to_rust();
+///     fn rust_make_tuple(cr, fst: OCamlRooted<String>, snd: OCamlRooted<OCamlInt>) -> OCaml<(String, OCamlInt)> {
+///         let fst: String = cr.get(&fst).to_rust();
+///         let snd: i64 = cr.get(&snd).to_rust();
 ///         let tuple = (fst, snd);
 ///         ocaml_alloc!(tuple.to_ocaml(cr))
 ///     }
@@ -212,6 +212,7 @@ macro_rules! ocaml_export {
         $crate::expand_exported_function!(
             @name $name
             @cr $cr
+            @roots { }
             @final_args { }
             @proc_args { $($args)*, }
             @return { f64 }
@@ -232,6 +233,7 @@ macro_rules! ocaml_export {
         $crate::expand_exported_function!(
             @name $name
             @cr $cr
+            @roots { }
             @final_args { }
             @proc_args { $($args)*, }
             @return { $($rtyp)? }
@@ -1354,21 +1356,23 @@ macro_rules! default_to_unit {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! expand_args_init {
-    ($cr:ident) => ();
-    ($cr:ident ,) => ();
+macro_rules! expand_rooted_args_init {
+    // No more args
+    ((), ) => ();
 
     // Nothing is done for unboxed floats
-    ($cr:ident, $arg:ident : f64) => ();
+    ((), $arg:ident : f64) => ();
 
-    ($cr:ident, $arg:ident : f64, $($args:tt)*) => ($crate::expand_args_init!($cr, $($args)*));
+    (($($roots:ident)*), $arg:ident : f64, $($args:tt)*) =>
+        ($crate::expand_rooted_args_init!(($($roots)*), $($args)*));
 
-    // Other values are wrapped in `OCaml<T>` as given the same lifetime as the OCaml runtime handle borrow.
-    ($cr:ident, $arg:ident : $typ:ty) => (let $arg : $typ = unsafe { $crate::OCaml::new($cr, $arg) };);
+    // Other values are wrapped in `OCamlRooted<T>` as given the same lifetime as the OCaml runtime handle borrow.
+    (($root:ident), $arg:ident : $typ:ty) =>
+        (let $arg : $typ = unsafe { $root.keep_from_raw($arg) };);
 
-    ($cr:ident, $arg:ident : $typ:ty, $($args:tt)*) => {
-        let $arg : $typ = unsafe { $crate::OCaml::new($cr, $arg) };
-        $crate::expand_args_init!($cr, $($args)*)
+    (($root:ident $($roots:ident)*), $arg:ident : $typ:ty, $($args:tt)*) => {
+        let $arg : $typ = unsafe { $root.keep_from_raw($arg) };
+        $crate::expand_rooted_args_init!(($($roots)*), $($args)*)
     };
 }
 
@@ -1377,9 +1381,12 @@ macro_rules! expand_args_init {
 macro_rules! expand_exported_function {
     // Final expansions, with all argument types converted
 
+    // If there are no roots, don't open a frame
+
     {
         @name $name:ident
         @cr $cr:ident
+        @roots { }
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
@@ -1389,8 +1396,35 @@ macro_rules! expand_exported_function {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
             let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle() };
-            $crate::expand_args_init!($cr, $($original_args)*);
-            $crate::expand_exported_function_body!(@body $body @return $($rtyp)* )
+            $crate::expand_exported_function_body!(
+                @body $body
+                @return $($rtyp)*
+            )
+        }
+    };
+
+    // If there are roots, open a new frame and root the arguments
+
+    {
+        @name $name:ident
+        @cr $cr:ident
+        @roots { $($roots:ident)* }
+        @final_args { $($arg:ident : $typ:ty,)+ }
+        @proc_args { $(,)? }
+        @return { $($rtyp:tt)* }
+        @body $body:block
+        @original_args $($original_args:tt)*
+    } => {
+        #[no_mangle]
+        pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
+            let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle() };
+            $crate::ocaml_frame!($cr, ($($roots),*), {
+                $crate::expand_rooted_args_init!(($($roots)*), $($original_args)*);
+                $crate::expand_exported_function_body!(
+                    @body $body
+                    @return $($rtyp)*
+                )
+            })
         }
     };
 
@@ -1401,6 +1435,7 @@ macro_rules! expand_exported_function {
     {
         @name $name:ident
         @cr $cr:ident
+        @roots { $($roots:ident)* }
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : f64, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1410,6 +1445,7 @@ macro_rules! expand_exported_function {
         $crate::expand_exported_function!{
             @name $name
             @cr $cr
+            @roots { $($roots)* }
             @final_args { $($final_args)* $next_arg : f64, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }
@@ -1418,11 +1454,12 @@ macro_rules! expand_exported_function {
         }
     };
 
-    // Next arg is not an unboxed float, replace with RawOCaml in output
+    // Next arg is not an unboxed float, replace with RawOCaml in output, add a root
 
     {
         @name $name:ident
         @cr $cr:ident
+        @roots { $($roots:ident)* }
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : $typ:ty, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1432,6 +1469,7 @@ macro_rules! expand_exported_function {
         $crate::expand_exported_function!{
             @name $name
             @cr $cr
+            @roots { $($roots)* root }
             @final_args { $($final_args)* $next_arg : $crate::RawOCaml, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }
@@ -1486,9 +1524,10 @@ macro_rules! polymorphic_variant_tag_hash {
         static INIT_TAG_HASH: std::sync::Once = std::sync::Once::new();
         unsafe {
             INIT_TAG_HASH.call_once(|| {
-                TAG_HASH = $crate::internal::caml_hash_variant(concat!(stringify!($tag), "\0").as_ptr())
+                TAG_HASH =
+                    $crate::internal::caml_hash_variant(concat!(stringify!($tag), "\0").as_ptr())
             });
             TAG_HASH
         }
-    }}
+    }};
 }

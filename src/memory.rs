@@ -107,6 +107,14 @@ impl<'a> OCamlRoot<'a> {
         }
     }
 
+    pub unsafe fn keep_from_raw<'tmp, T>(&'tmp mut self, val: RawOCaml) -> OCamlRooted<'tmp, T> {
+        self.cell.set(val);
+        OCamlRooted {
+            _marker: PhantomData,
+            cell: self.cell,
+        }
+    }
+
     #[allow(clippy::needless_lifetimes)]
     pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRooted<'tmp> {
         self.cell.set(val);
