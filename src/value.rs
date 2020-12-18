@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{error::OCamlFixnumConversionError, mlvalues::*, OCamlRuntime};
+use crate::{FromOCaml, OCamlRuntime, error::OCamlFixnumConversionError, mlvalues::*};
 use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
@@ -81,6 +81,16 @@ impl<'a, T> OCaml<'a, T> {
     /// working with these values.
     pub unsafe fn raw(&self) -> RawOCaml {
         self.raw
+    }
+
+    /// Converts this OCaml value into a Rust value.
+    ///
+    /// # Example
+    ///
+    /// TODO
+    #[allow(clippy::wrong_self_convention)]
+    pub fn to_rust<RustT>(self) -> RustT where RustT: FromOCaml<T> {
+        RustT::from_ocaml(self)
     }
 }
 

@@ -94,6 +94,7 @@ impl<'a> OCamlRoot<'a> {
         OCamlRoot { cell }
     }
 
+    /// Roots an [`OCaml`] value.
     pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRooted<'tmp, T> {
         self.cell.set(unsafe { val.raw() });
         OCamlRooted {
@@ -102,7 +103,13 @@ impl<'a> OCamlRoot<'a> {
         }
     }
 
-    pub unsafe fn keep_from_raw<'tmp, T>(&'tmp mut self, val: RawOCaml) -> OCamlRooted<'tmp, T> {
+    /// Roots a [`RawOCaml`] value and attaches a type to it.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe because there is no way to validate that the [`RawOCaml`] value
+    /// is of the correct type.
+    pub unsafe fn keep_from_raw<T>(&mut self, val: RawOCaml) -> OCamlRooted<T> {
         self.cell.set(val);
         OCamlRooted {
             _marker: PhantomData,
@@ -110,8 +117,8 @@ impl<'a> OCamlRoot<'a> {
         }
     }
 
-    #[allow(clippy::needless_lifetimes)]
-    pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRooted<'tmp> {
+    /// Roots a [`RawOCaml`] value without attaching a type to it.
+    pub fn keep_raw(&mut self, val: RawOCaml) -> OCamlRawRooted {
         self.cell.set(val);
         OCamlRawRooted { cell: self.cell }
     }
@@ -132,6 +139,7 @@ pub struct OCamlRawRooted<'a> {
 }
 
 impl<'a, T> OCamlRooted<'a, T> {
+    /// Converts this value into a Rust value.
     pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT where RustT: FromOCaml<T> {
         RustT::from_ocaml(cr.get(self))
     }

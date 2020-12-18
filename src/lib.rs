@@ -17,7 +17,6 @@
 //!     + [Rule 3: Liveness and scope of rooted OCaml values](#rule-3-liveness-and-scope-of-rooted-ocaml-values)
 //!   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
 //!     + [`FromOCaml` trait](#fromocaml-trait)
-//!     + [`ToRust` trait](#torust-trait)
 //!     + [`ToOCaml` trait](#toocaml-trait)
 //!   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
 //!   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
@@ -173,9 +172,9 @@
 //!
 //! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
 //!
-//! #### [`ToRust`] trait
+//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
 //!
-//! [`ToRust`] is the counterpart to [`FromOCaml`] similar to how `Into` is to `From`. Using `ocaml_val.to_rust()` instead of `Type::from_ocaml(ocaml_val)` is usually more convenient, specially when more complicated types are involved.
+//! [`OCamlRooted`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
 //!
 //! #### [`ToOCaml`] trait
 //!
@@ -216,7 +215,7 @@
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, ToRust, FromOCaml, OCaml, OCamlRooted, ToOCaml,
+//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, FromOCaml, OCaml, OCamlRooted, ToOCaml,
 //!     OCamlRuntime
 //! };
 //!
@@ -402,7 +401,7 @@ mod runtime;
 mod value;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCamlResult};
-pub use crate::conv::{FromOCaml, ToOCaml, ToRust};
+pub use crate::conv::{FromOCaml, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::{OCamlAllocResult, OCamlRooted};
 pub use crate::mlvalues::{
