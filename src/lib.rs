@@ -356,12 +356,12 @@
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
-//!     fn rust_twice(cr, num: OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
+//!     fn rust_twice(cr, num: &OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
 //!         let num: i64 = num.to_rust(cr);
 //!         unsafe { OCaml::of_i64_unchecked(num * 2) }
 //!     }
 //!
-//!     fn rust_increment_bytes(cr, bytes: OCamlRooted<OCamlBytes>, first_n: OCamlRooted<OCamlInt>) -> OCaml<OCamlBytes> {
+//!     fn rust_increment_bytes(cr, bytes: &OCamlRooted<OCamlBytes>, first_n: &OCamlRooted<OCamlInt>) -> OCaml<OCamlBytes> {
 //!         let first_n: i64 = first_n.to_rust(cr);
 //!         let first_n = first_n as usize;
 //!         let mut vec: Vec<u8> = bytes.to_rust(cr);

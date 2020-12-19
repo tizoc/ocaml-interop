@@ -159,12 +159,12 @@ macro_rules! ocaml {
 /// ```
 /// # use ocaml_interop::*;
 /// ocaml_export! {
-///     fn rust_twice(cr, num: OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
+///     fn rust_twice(cr, num: &OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
 ///         let num: i64 = num.to_rust(cr);
 ///         unsafe { OCaml::of_i64_unchecked(num * 2) }
 ///     }
 ///
-///     fn rust_twice_boxed_i32(cr, num: OCamlRooted<OCamlInt32>) -> OCaml<OCamlInt32> {
+///     fn rust_twice_boxed_i32(cr, num: &OCamlRooted<OCamlInt32>) -> OCaml<OCamlInt32> {
 ///         let num: i32 = num.to_rust(cr);
 ///         let result = num * 2;
 ///         ocaml_alloc!(result.to_ocaml(cr))
@@ -174,13 +174,13 @@ macro_rules! ocaml {
 ///         num * num2
 ///     }
 ///
-///     fn rust_twice_boxed_float(cr, num: OCamlRooted<OCamlFloat>) -> OCaml<OCamlFloat> {
+///     fn rust_twice_boxed_float(cr, num: &OCamlRooted<OCamlFloat>) -> OCaml<OCamlFloat> {
 ///         let num: f64 = num.to_rust(cr);
 ///         let result = num * 2.0;
 ///         ocaml_alloc!(result.to_ocaml(cr))
 ///     }
 ///
-///     fn rust_increment_ints_list(cr, ints: OCamlRooted<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
+///     fn rust_increment_ints_list(cr, ints: &OCamlRooted<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
 ///         let mut vec: Vec<i64> = ints.to_rust(cr);
 ///
 ///         for i in 0..vec.len() {
@@ -190,7 +190,7 @@ macro_rules! ocaml {
 ///         ocaml_alloc!(vec.to_ocaml(cr))
 ///     }
 ///
-///     fn rust_make_tuple(cr, fst: OCamlRooted<String>, snd: OCamlRooted<OCamlInt>) -> OCaml<(String, OCamlInt)> {
+///     fn rust_make_tuple(cr, fst: &OCamlRooted<String>, snd: &OCamlRooted<OCamlInt>) -> OCaml<(String, OCamlInt)> {
 ///         let fst: String = fst.to_rust(cr);
 ///         let snd: i64 = snd.to_rust(cr);
 ///         let tuple = (fst, snd);
@@ -1368,10 +1368,10 @@ macro_rules! expand_rooted_args_init {
 
     // Other values are wrapped in `OCamlRooted<T>` as given the same lifetime as the OCaml runtime handle borrow.
     (($root:ident), $arg:ident : $typ:ty) =>
-        (let $arg : $typ = unsafe { $root.keep_raw($arg) };);
+        (let $arg : $typ = unsafe { &$root.keep_raw($arg) };);
 
     (($root:ident $($roots:ident)*), $arg:ident : $typ:ty, $($args:tt)*) => {
-        let $arg : $typ = unsafe { $root.keep_raw($arg) };
+        let $arg : $typ = unsafe { &$root.keep_raw($arg) };
         $crate::expand_rooted_args_init!(($($roots)*), $($args)*)
     };
 }
