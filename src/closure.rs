@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::OCamlAllocResult;
+use crate::{OCamlRooted, OCamlRuntime, memory::OCamlAllocResult};
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
 use crate::value::OCaml;
@@ -65,45 +65,45 @@ impl OCamlClosure {
         get_named(name).map(OCamlClosure)
     }
 
-    pub fn call<T, R>(&self, _token: OCamlAllocToken, arg: OCaml<T>) -> OCamlResult<R> {
-        let result = unsafe { caml_callback_exn(*self.0, arg.raw()) };
-        self.handle_result(result)
+    pub fn call<'a, T, R>(&self, cr: &'a mut OCamlRuntime, arg: &OCamlRooted<T>) -> Result<OCaml<'a, R>, OCamlError> {
+        let result = unsafe { caml_callback_exn(*self.0, arg.get_raw()) };
+        self.handle_call_result(cr, result)
     }
 
-    pub fn call2<T, U, R>(
+    pub fn call2<'a, T, U, R>(
         &self,
-        _token: OCamlAllocToken,
-        arg1: OCaml<T>,
-        arg2: OCaml<U>,
-    ) -> OCamlResult<R> {
-        let result = unsafe { caml_callback2_exn(*self.0, arg1.raw(), arg2.raw()) };
-        self.handle_result(result)
+        cr: &'a mut OCamlRuntime,
+        arg1: &OCamlRooted<T>,
+        arg2: &OCamlRooted<U>,
+    ) -> Result<OCaml<'a, R>, OCamlError> {
+        let result = unsafe { caml_callback2_exn(*self.0, arg1.get_raw(), arg2.get_raw()) };
+        self.handle_call_result(cr, result)
     }
 
-    pub fn call3<T, U, V, R>(
+    pub fn call3<'a, T, U, V, R>(
         &self,
-        _token: OCamlAllocToken,
-        arg1: OCaml<T>,
-        arg2: OCaml<U>,
-        arg3: OCaml<V>,
-    ) -> OCamlResult<R> {
-        let result = unsafe { caml_callback3_exn(*self.0, arg1.raw(), arg2.raw(), arg3.raw()) };
-        self.handle_result(result)
+        cr: &'a mut OCamlRuntime,
+        arg1: &OCamlRooted<T>,
+        arg2: &OCamlRooted<U>,
+        arg3: &OCamlRooted<V>,
+    ) -> Result<OCaml<'a, R>, OCamlError> {
+        let result = unsafe { caml_callback3_exn(*self.0, arg1.get_raw(), arg2.get_raw(), arg3.get_raw()) };
+        self.handle_call_result(cr, result)
     }
 
-    pub fn call_n<R>(&self, _token: OCamlAllocToken, args: &mut [RawOCaml]) -> OCamlResult<R> {
+    pub fn call_n<'a, R>(&self, cr: &'a mut OCamlRuntime, args: &mut [RawOCaml]) -> Result<OCaml<'a, R>, OCamlError> {
         let len = args.len();
         let result = unsafe { caml_callbackN_exn(*self.0, len, args.as_mut_ptr()) };
-        self.handle_result(result)
+        self.handle_call_result(cr, result)
     }
 
     #[inline]
-    fn handle_result<R>(self, result: RawOCaml) -> OCamlResult<R> {
+    fn handle_call_result<'a, R>(&self, cr: &'a mut OCamlRuntime, result: RawOCaml) -> Result<OCaml<'a, R>, OCamlError> {
         if is_exception_result(result) {
             let ex = extract_exception(result);
             Err(OCamlError::Exception(OCamlException::of(ex)))
         } else {
-            let gv = OCamlAllocResult::of(result);
+            let gv = unsafe { OCaml::new(cr, result) };
             Ok(gv)
         }
     }

@@ -139,7 +139,7 @@ impl<'a, T> OCamlRooted<'a, T> {
     }
 
     /// Gets the raw value contained by this reference.
-    pub fn get_raw(&self) -> RawOCaml {
+    pub unsafe fn get_raw(&self) -> RawOCaml {
         self.cell.get()
     }
 }

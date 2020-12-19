@@ -30,7 +30,7 @@ pub unsafe trait ToOCaml<T> {
 
 unsafe impl<'a, T> ToOCaml<T> for OCamlRooted<'a, T> {
     fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<T> {
-        OCamlAllocResult::of(self.get_raw())
+        OCamlAllocResult::of(unsafe { self.get_raw() })
     }
 }
 

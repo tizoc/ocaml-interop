@@ -53,12 +53,15 @@ macro_rules! ocaml_frame {
 
 /// Declares OCaml functions.
 ///
-/// `ocaml! { pub fn ocaml_name(arg1: typ1, ...) -> ret_typ; ... }` declares a function that has been
+/// `ocaml! { pub fn ocaml_name(arg1: Typ1, ...) -> Ret_typ; ... }` declares a function that has been
 /// defined in OCaml code and registered with `Callback.register "ocaml_name" the_function`.
 ///
 /// Visibility and return value type can be omitted. The return type defaults to unit when omitted.
 ///
-/// These functions must be invoked with the [`ocaml_call!`] macro.
+/// When invoking one of these functions, the first argument must be a `&mut OCamlRuntime`,
+/// and the remaining arguments `&OCamlRooted<ArgT>`.
+///
+/// The return value is an `OCaml<RetType>`.
 ///
 /// # Examples
 ///
@@ -83,12 +86,12 @@ macro_rules! ocaml {
     ($vis:vis fn $name:ident(
         $arg:ident: $typ:ty $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(
-            token: $crate::OCamlAllocToken,
-            $arg: $crate::OCaml<$typ>,
-        ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
+        $vis fn $name<'a>(
+            cr: &'a mut $crate::OCamlRuntime,
+            $arg: &$crate::OCamlRooted<$typ>,
+        ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
             $crate::ocaml_closure_reference!(F, $name);
-            F.call(token, $arg)
+            F.call(cr, $arg)
         }
 
         $crate::ocaml!($($t)*);
@@ -98,13 +101,13 @@ macro_rules! ocaml {
         $arg1:ident: $typ1:ty,
         $arg2:ident: $typ2:ty $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(
-            token: $crate::OCamlAllocToken,
-            $arg1: $crate::OCaml<$typ1>,
-            $arg2: $crate::OCaml<$typ2>,
-        ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
+        $vis fn $name<'a>(
+            cr: &'a mut $crate::OCamlRuntime,
+            $arg1: &$crate::OCamlRooted<$typ1>,
+            $arg2: &$crate::OCamlRooted<$typ2>,
+        ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
             $crate::ocaml_closure_reference!(F, $name);
-            F.call2(token, $arg1, $arg2)
+            F.call2(cr, $arg1, $arg2)
         }
 
         $crate::ocaml!($($t)*);
@@ -115,14 +118,14 @@ macro_rules! ocaml {
         $arg2:ident: $typ2:ty,
         $arg3:ident: $typ3:ty $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(
-            token: $crate::OCamlAllocToken,
-            $arg1: $crate::OCaml<$typ1>,
-            $arg2: $crate::OCaml<$typ2>,
-            $arg3: $crate::OCaml<$typ3>,
-        ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
+        $vis fn $name<'a>(
+            cr: &'a mut $crate::OCamlRuntime,
+            $arg1: &$crate::OCamlRooted<$typ1>,
+            $arg2: &$crate::OCamlRooted<$typ2>,
+            $arg3: &$crate::OCamlRooted<$typ3>,
+        ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
             $crate::ocaml_closure_reference!(F, $name);
-            F.call3(token, $arg1, $arg2, $arg3)
+            F.call3(cr, $arg1, $arg2, $arg3)
         }
 
         $crate::ocaml!($($t)*);
@@ -131,12 +134,12 @@ macro_rules! ocaml {
     ($vis:vis fn $name:ident(
         $($arg:ident: $typ:ty),+ $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis unsafe fn $name(
-            token: $crate::OCamlAllocToken,
-            $($arg: $crate::OCaml<$typ>),+
-    ) -> $crate::OCamlResult<$crate::default_to_unit!($($rtyp)?)> {
+        $vis fn $name<'a>(
+            cr: &'a mut $crate::OCamlRuntime,
+            $($arg: &$crate::OCamlRooted<$typ>),+
+    ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
             $crate::ocaml_closure_reference!(F, $name);
-            F.call_n(token, &mut [$($arg.raw()),+])
+            F.call_n(cr, &mut [$($arg.get_raw()),+])
         }
 
         $crate::ocaml!($($t)*);
@@ -1311,11 +1314,13 @@ macro_rules! ocaml_closure_reference {
     ($var:ident, $name:ident) => {
         static name: &str = stringify!($name);
         static mut OC: Option<$crate::internal::OCamlClosure> = None;
-        if OC.is_none() {
-            OC = $crate::internal::OCamlClosure::named(name);
-        }
-        let $var =
-            OC.unwrap_or_else(|| panic!("OCaml closure with name '{}' not registered", name));
+        static INIT: ::std::sync::Once = ::std::sync::Once::new();
+        let $var = unsafe {
+            INIT.call_once(|| {
+                OC = $crate::internal::OCamlClosure::named(name);
+            });
+            OC.unwrap_or_else(|| panic!("OCaml closure with name '{}' not registered", name))
+        };
     };
 }
 
