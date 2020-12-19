@@ -12,8 +12,8 @@ use ocaml_sys::{caml_string_length, int_val, val_int};
 /// of functions defined inside [`ocaml_export!`] blocks.
 #[derive(Copy)]
 pub struct OCaml<'a, T: 'a> {
-    _marker: PhantomData<&'a T>,
-    raw: RawOCaml,
+    pub(crate) _marker: PhantomData<&'a T>,
+    pub(crate) raw: RawOCaml,
 }
 
 impl<'a, T> Clone for OCaml<'a, T> {
@@ -22,13 +22,6 @@ impl<'a, T> Clone for OCaml<'a, T> {
             _marker: PhantomData,
             raw: self.raw,
         }
-    }
-}
-
-pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
-    OCaml {
-        _marker: PhantomData,
-        raw: x,
     }
 }
 

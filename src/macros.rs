@@ -517,7 +517,7 @@ macro_rules! ocaml_alloc_tagged_block {
             $crate::ocaml_frame!($cr, (block), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
-                let block = block.keep_raw($crate::internal::caml_alloc(field_count, $tag));
+                let block: $crate::OCamlRooted<()> = block.keep_raw($crate::internal::caml_alloc(field_count, $tag));
                 $(
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!($cr, $field);
                     $crate::internal::store_field(block.get_raw(), current, $field.raw());
@@ -581,7 +581,7 @@ macro_rules! ocaml_alloc_record {
             $crate::ocaml_frame!($cr, (record), {
                 let mut current = 0;
                 let field_count = $crate::count_fields!($($field)*);
-                let record = record.keep_raw($crate::internal::caml_alloc(field_count, 0));
+                let record: $crate::OCamlRooted<()> = record.keep_raw($crate::internal::caml_alloc(field_count, 0));
                 $(
                     let $field = &$crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
                     let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!($cr, $field);
@@ -1368,10 +1368,10 @@ macro_rules! expand_rooted_args_init {
 
     // Other values are wrapped in `OCamlRooted<T>` as given the same lifetime as the OCaml runtime handle borrow.
     (($root:ident), $arg:ident : $typ:ty) =>
-        (let $arg : $typ = unsafe { $root.keep_from_raw($arg) };);
+        (let $arg : $typ = unsafe { $root.keep_raw($arg) };);
 
     (($root:ident $($roots:ident)*), $arg:ident : $typ:ty, $($args:tt)*) => {
-        let $arg : $typ = unsafe { $root.keep_from_raw($arg) };
+        let $arg : $typ = unsafe { $root.keep_raw($arg) };
         $crate::expand_rooted_args_init!(($($roots)*), $($args)*)
     };
 }
