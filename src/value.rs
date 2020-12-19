@@ -10,10 +10,19 @@ use ocaml_sys::{caml_string_length, int_val, val_int};
 /// Should not be instantiated directly, and will usually be the result
 /// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
 /// of functions defined inside [`ocaml_export!`] blocks.
-#[derive(Copy, Clone)]
+#[derive(Copy)]
 pub struct OCaml<'a, T: 'a> {
     _marker: PhantomData<&'a T>,
     raw: RawOCaml,
+}
+
+impl<'a, T> Clone for OCaml<'a, T> {
+    fn clone(&self) -> Self {
+        OCaml {
+            _marker: PhantomData,
+            raw: self.raw,
+        }
+    }
 }
 
 pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
@@ -88,9 +97,8 @@ impl<'a, T> OCaml<'a, T> {
     /// # Example
     ///
     /// TODO
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_rust<RustT>(self) -> RustT where RustT: FromOCaml<T> {
-        RustT::from_ocaml(self)
+    pub fn to_rust<RustT>(&self) -> RustT where RustT: FromOCaml<T> {
+        RustT::from_ocaml(self.clone())
     }
 }
 
