@@ -1,7 +1,12 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{FromOCaml, OCamlRuntime, mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml}, runtime::OCamlAllocToken, value::OCaml};
+use crate::{
+    conv::FromOCaml,
+    mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
+    runtime::OCamlRuntime,
+    value::OCaml,
+};
 use core::{cell::Cell, marker::PhantomData, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
@@ -129,7 +134,10 @@ pub struct OCamlRooted<'a, T> {
 
 impl<'a, T> OCamlRooted<'a, T> {
     /// Converts this value into a Rust value.
-    pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT where RustT: FromOCaml<T> {
+    pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT
+    where
+        RustT: FromOCaml<T>,
+    {
         RustT::from_ocaml(cr.get(self))
     }
 
@@ -144,151 +152,104 @@ impl<'a, T> OCamlRooted<'a, T> {
     }
 }
 
-/// Intermediary allocation result.
-pub struct OCamlAllocResult<T> {
-    raw: RawOCaml,
-    _marker: PhantomData<T>,
-}
-
-/// Allocation result that has been marked by the GC.
-pub struct GCMarkedResult<T> {
-    raw: RawOCaml,
-    _marker: PhantomData<T>,
-}
-
-impl<T> OCamlAllocResult<T> {
-    pub fn of(raw: RawOCaml) -> OCamlAllocResult<T> {
-        OCamlAllocResult {
-            _marker: PhantomData,
-            raw,
-        }
-    }
-
-    pub fn of_ocaml(v: OCaml<T>) -> OCamlAllocResult<T> {
-        OCamlAllocResult {
-            _marker: PhantomData,
-            raw: unsafe { v.raw() },
-        }
-    }
-
-    pub fn mark(self, _cr: &mut OCamlRuntime) -> GCMarkedResult<T> {
-        GCMarkedResult {
-            _marker: PhantomData,
-            raw: self.raw,
-        }
-    }
-}
-
-impl<T> GCMarkedResult<T> {
-    pub fn eval(self, _cr: &OCamlRuntime) -> OCaml<T> {
-        OCaml {
-            _marker: PhantomData,
-            raw: self.raw
-        }
-    }
-}
-
-pub fn alloc_bytes(_token: OCamlAllocToken, s: &[u8]) -> OCamlAllocResult<OCamlBytes> {
+pub fn alloc_bytes<'a>(cr: &'a mut OCamlRuntime, s: &[u8]) -> OCaml<'a, OCamlBytes> {
     unsafe {
         let len = s.len();
         let value = caml_alloc_string(len);
         let ptr = string_val(value);
         core::ptr::copy_nonoverlapping(s.as_ptr(), ptr, len);
-        OCamlAllocResult::of(value)
+        OCaml::new(cr, value)
     }
 }
 
-pub fn alloc_string(_token: OCamlAllocToken, s: &str) -> OCamlAllocResult<String> {
+pub fn alloc_string<'a>(cr: &'a mut OCamlRuntime, s: &str) -> OCaml<'a, String> {
     unsafe {
         let len = s.len();
         let value = caml_alloc_string(len);
         let ptr = string_val(value);
         core::ptr::copy_nonoverlapping(s.as_ptr(), ptr, len);
-        OCamlAllocResult::of(value)
+        OCaml::new(cr, value)
     }
 }
 
-pub fn alloc_int32(_token: OCamlAllocToken, i: i32) -> OCamlAllocResult<OCamlInt32> {
-    OCamlAllocResult::of(unsafe { caml_copy_int32(i) })
+pub fn alloc_int32<'a>(cr: &'a mut OCamlRuntime, i: i32) -> OCaml<'a, OCamlInt32> {
+    unsafe { OCaml::new(cr, caml_copy_int32(i)) }
 }
 
-pub fn alloc_int64(_token: OCamlAllocToken, i: i64) -> OCamlAllocResult<OCamlInt64> {
-    OCamlAllocResult::of(unsafe { caml_copy_int64(i) })
+pub fn alloc_int64<'a>(cr: &'a mut OCamlRuntime, i: i64) -> OCaml<'a, OCamlInt64> {
+    unsafe { OCaml::new(cr, caml_copy_int64(i)) }
 }
 
-pub fn alloc_double(_token: OCamlAllocToken, d: f64) -> OCamlAllocResult<OCamlFloat> {
-    OCamlAllocResult::of(unsafe { caml_copy_double(d) })
+pub fn alloc_double<'a>(cr: &'a mut OCamlRuntime, d: f64) -> OCaml<'a, OCamlFloat> {
+    unsafe { OCaml::new(cr, caml_copy_double(d)) }
 }
 
 // TODO: it is possible to directly alter the fields memory upon first allocation of
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<A>(
-    _token: OCamlAllocToken,
-    value: &OCamlRooted<A>,
-) -> OCamlAllocResult<Option<A>> {
+pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: &OCamlRooted<A>) -> OCaml<'a, Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
         store_field(ocaml_some, 0, value.get_raw());
-        OCamlAllocResult::of(ocaml_some)
+        OCaml::new(cr, ocaml_some)
     }
 }
 
-pub fn alloc_tuple<F, S>(
-    _token: OCamlAllocToken,
+pub fn alloc_tuple<'a, F, S>(
+    cr: &'a mut OCamlRuntime,
     fst: &OCamlRooted<F>,
     snd: &OCamlRooted<S>,
-) -> OCamlAllocResult<(F, S)> {
+) -> OCaml<'a, (F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
         store_field(ocaml_tuple, 0, fst.get_raw());
         store_field(ocaml_tuple, 1, snd.get_raw());
-        OCamlAllocResult::of(ocaml_tuple)
+        OCaml::new(cr, ocaml_tuple)
     }
 }
 
-pub fn alloc_tuple_3<F, S, T3>(
-    _token: OCamlAllocToken,
+pub fn alloc_tuple_3<'a, F, S, T3>(
+    cr: &'a mut OCamlRuntime,
     fst: &OCamlRooted<F>,
     snd: &OCamlRooted<S>,
     elt3: &OCamlRooted<T3>,
-) -> OCamlAllocResult<(F, S, T3)> {
+) -> OCaml<'a, (F, S, T3)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(3);
         store_field(ocaml_tuple, 0, fst.get_raw());
         store_field(ocaml_tuple, 1, snd.get_raw());
         store_field(ocaml_tuple, 2, elt3.get_raw());
-        OCamlAllocResult::of(ocaml_tuple)
+        OCaml::new(cr, ocaml_tuple)
     }
 }
 
-pub fn alloc_tuple_4<F, S, T3, T4>(
-    _token: OCamlAllocToken,
+pub fn alloc_tuple_4<'a, F, S, T3, T4>(
+    cr: &'a mut OCamlRuntime,
     fst: &OCamlRooted<F>,
     snd: &OCamlRooted<S>,
     elt3: &OCamlRooted<T3>,
     elt4: &OCamlRooted<T4>,
-) -> OCamlAllocResult<(F, S, T3, T4)> {
+) -> OCaml<'a, (F, S, T3, T4)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(4);
         store_field(ocaml_tuple, 0, fst.get_raw());
         store_field(ocaml_tuple, 1, snd.get_raw());
         store_field(ocaml_tuple, 2, elt3.get_raw());
         store_field(ocaml_tuple, 3, elt4.get_raw());
-        OCamlAllocResult::of(ocaml_tuple)
+        OCaml::new(cr, ocaml_tuple)
     }
 }
 
-pub fn alloc_cons<A>(
-    _token: OCamlAllocToken,
+pub fn alloc_cons<'a, A>(
+    cr: &'a mut OCamlRuntime,
     head: &OCamlRooted<A>,
     tail: &OCamlRooted<OCamlList<A>>,
-) -> OCamlAllocResult<OCamlList<A>> {
+) -> OCaml<'a, OCamlList<A>> {
     unsafe {
         let ocaml_cons = caml_alloc(2, tag::CONS);
         store_field(ocaml_cons, 0, head.get_raw());
         store_field(ocaml_cons, 1, tail.get_raw());
-        OCamlAllocResult::of(ocaml_cons)
+        OCaml::new(cr, ocaml_cons)
     }
 }

@@ -1,13 +1,12 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{OCamlRooted, OCamlRuntime, memory::OCamlAllocResult};
+use crate::{OCamlRooted, OCamlRuntime};
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
 use crate::value::OCaml;
 use crate::{
     error::{OCamlError, OCamlException},
-    OCamlAllocToken,
 };
 use ocaml_sys::{
     caml_callback2_exn, caml_callback3_exn, caml_callbackN_exn, caml_callback_exn, caml_named_value,
@@ -37,28 +36,25 @@ fn get_named(name: &str) -> Option<*const RawOCaml> {
     }
 }
 
-/// The result of calls to OCaml functions. Can be a value or an error.
-pub type OCamlResult<T> = Result<OCamlAllocResult<T>, OCamlError>;
-
 /// OCaml function that accepts one argument.
-pub type OCamlFn1<A, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>) -> OCamlResult<Ret>;
+pub type OCamlFn1<'a, A, Ret> = unsafe fn(&'a mut OCamlRuntime, OCaml<A>) -> OCaml<'a, Ret>;
 /// OCaml function that accepts two arguments.
-pub type OCamlFn2<A, B, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>) -> OCamlResult<Ret>;
+pub type OCamlFn2<'a, A, B, Ret> = unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>) -> OCaml<'a, Ret>;
 /// OCaml function that accepts three arguments.
-pub type OCamlFn3<A, B, C, Ret> =
-    unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>) -> OCamlResult<Ret>;
+pub type OCamlFn3<'a, A, B, C, Ret> =
+    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>, OCaml<C>) -> OCaml<'a, Ret>;
 /// OCaml function that accepts four arguments.
-pub type OCamlFn4<A, B, C, D, Ret> =
-    unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCamlResult<Ret>;
+pub type OCamlFn4<'a, A, B, C, D, Ret> =
+    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCaml<'a, Ret>;
 /// OCaml function that accepts five arguments.
-pub type OCamlFn5<A, B, C, D, E, Ret> = unsafe fn(
-    OCamlAllocToken,
+pub type OCamlFn5<'a, A, B, C, D, E, Ret> = unsafe fn(
+    &'a mut OCamlRuntime,
     OCaml<A>,
     OCaml<B>,
     OCaml<C>,
     OCaml<D>,
     OCaml<E>,
-) -> OCamlResult<Ret>;
+) -> OCaml<'a, Ret>;
 
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {

@@ -259,40 +259,6 @@ macro_rules! ocaml_export {
     }
 }
 
-/// Calls an OCaml allocator function.
-///
-/// Useful for calling functions that construct new values and never raise an exception.
-///
-/// It is used internally by the [`to_ocaml!`] macro, and may be used directly only in rare occasions.
-///
-/// # Examples
-///
-/// ```
-/// # use ocaml_interop::*;
-/// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
-///     let hello_string = "hello OCaml!";
-///     let ocaml_string: OCaml<String> = ocaml_alloc!(hello_string.to_ocaml(cr));
-///     // ...
-///     # ()
-/// # }
-/// ```
-#[macro_export]
-macro_rules! ocaml_alloc {
-    ( $(($obj:expr).)?$($fn:ident).+($cr:ident $(, $($arg:expr),+)? $(,)? ) ) => {
-        {
-            let res = $(($obj).)?$($fn).+(unsafe { $cr.token() } $(, $($arg),+)? );
-            res.mark($cr).eval($cr)
-        }
-    };
-
-    ( $obj:literal.$($fn:ident).+($cr:ident $(, $($arg:expr),+)? $(,)?) ) => {
-        {
-            let res = $obj.$($fn).+(unsafe { $cr.token() } $(, $($arg),+)? );
-            res.mark($cr).eval($cr)
-        }
-    };
-}
-
 /// Converts Rust values into OCaml values.
 ///
 /// In `to_ocaml!(cr, value)`, `cr` is an OCaml Runtime handle, and `value` is
@@ -333,56 +299,11 @@ macro_rules! to_ocaml {
     };
 
     ($cr:ident, $obj:expr) => {
-        $crate::ocaml_alloc!(($obj).to_ocaml($cr))
+        ($obj).to_ocaml($cr)
     };
 
     ($($t:tt)*) => {
         compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(cr, expr[, rootvar])`")
-    };
-}
-
-/// Calls an OCaml function
-///
-/// The called function must be declared with [`ocaml!`]. The first
-/// argument to the function in this invocation must be a `&mut` reference
-/// to the OCaml runtime handle.
-///
-/// The result is either `Ok(result)` or `Err(ocaml_exception)` if
-/// an exception is raised by the OCaml function.
-///
-/// # Examples
-///
-/// ```
-/// # use ocaml_interop::*;
-/// ocaml! { fn print_endline(s: String); }
-///
-/// # fn ocaml_frame_macro_example(cr: &mut OCamlRuntime) {
-/// // ...somewhere else inside a function
-/// let ocaml_string = to_ocaml!(cr, "hello OCaml!");
-/// ocaml_call!(print_endline(cr, ocaml_string)).unwrap();
-/// # }
-/// ```
-#[macro_export]
-macro_rules! ocaml_call {
-    ( $(($obj:expr).)?$($fn:ident).+($cr:ident, $($arg:expr),+ $(,)?)) => {
-        {
-            let res = unsafe { $(($obj).)?$($fn).+($cr.token(), $($arg),* ) };
-            $crate::gcmark_result!($cr, res)
-        }
-    };
-
-    ( $($path:ident)::+($cr:ident, $($args:expr),+ $(,)?) ) => {
-        {
-            let res = unsafe { $($path)::+($cr.token(), $($args),+) };
-            $crate::gcmark_result!($cr, res)
-        }
-    };
-
-    ( $($path:ident)::+.$($field:ident).+($cr:ident, $($args:expr),+ $(,)?) ) => {
-        {
-            let res = unsafe { $($path)::+$($field).+($cr.token(), $($args),+) };
-            $crate::gcmark_result!($cr, res)
-        }
     };
 }
 
@@ -526,7 +447,7 @@ macro_rules! ocaml_alloc_tagged_block {
                     $crate::internal::store_field(block.get_raw(), current, $field.raw());
                     current += 1;
                 )+
-                $crate::OCamlAllocResult::of(block.get_raw())
+                $crate::OCaml::new($cr, block.get_raw())
             })
         }
     };
@@ -591,7 +512,7 @@ macro_rules! ocaml_alloc_record {
                     $crate::internal::store_field(record.get_raw(), current, $field.raw());
                     current += 1;
                 )+
-                $crate::OCamlAllocResult::of(record.get_raw())
+                $crate::OCaml::new($cr, record.get_raw())
             })
         }
     };
@@ -697,8 +618,7 @@ macro_rules! impl_to_ocaml_record {
         $($field:ident : $ocaml_field_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
-            fn to_ocaml(&self, token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
-                let cr = unsafe { &mut token.recover_runtime_handle() };
+            fn to_ocaml<'a>(&self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
                 $crate::ocaml_alloc_record! {
                     cr, self {
                         $($field : $ocaml_field_typ $(=> $conv_expr)?),+
@@ -948,8 +868,7 @@ macro_rules! impl_to_ocaml_variant {
         $($t:tt)*
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
-            fn to_ocaml(&self, token: $crate::OCamlAllocToken) -> $crate::OCamlAllocResult<$ocaml_typ> {
-                let cr = unsafe { &mut token.recover_runtime_handle() };
+            fn to_ocaml<'a>(&self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
                 $crate::ocaml_alloc_variant! {
                     cr, self => {
                         $($t)*
@@ -1211,7 +1130,7 @@ macro_rules! ocaml_alloc_variant_match {
         match $self {
             $(
                 $($unit_tag)::+ =>
-                    $crate::OCamlAllocResult::of(unsafe { $crate::OCaml::of_i64_unchecked($unit_tag_counter as i64).raw() }),
+                    unsafe { $crate::OCaml::new($cr, $crate::OCaml::of_i64_unchecked($unit_tag_counter as i64).raw()) },
             )*
             $(
                 $($block_tag)::+($($block_slot_name),+) =>

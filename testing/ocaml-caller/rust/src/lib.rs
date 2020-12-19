@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_interop::{
-    ocaml_alloc, ocaml_export, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant, to_ocaml,
+    ocaml_export, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant, to_ocaml,
     OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, OCamlRooted,
     ToOCaml,
 };
@@ -29,13 +29,13 @@ ocaml_export! {
     fn rust_twice_boxed_i64(cr, num: &OCamlRooted<OCamlInt64>) -> OCaml<OCamlInt64> {
         let num: i64 = num.to_rust(cr);
         let result = num * 2;
-        ocaml_alloc!(result.to_ocaml(cr))
+        result.to_ocaml(cr)
     }
 
     fn rust_twice_boxed_i32(cr, num: &OCamlRooted<OCamlInt32>) -> OCaml<OCamlInt32> {
         let num: i32 = num.to_rust(cr);
         let result = num * 2;
-        ocaml_alloc!(result.to_ocaml(cr))
+        result.to_ocaml(cr)
     }
 
     fn rust_add_unboxed_floats_noalloc(_cr, num: f64, num2: f64) -> f64 {
@@ -45,7 +45,7 @@ ocaml_export! {
     fn rust_twice_boxed_float(cr, num: &OCamlRooted<OCamlFloat>) -> OCaml<OCamlFloat> {
         let num: f64 = num.to_rust(cr);
         let result = num * 2.0;
-        ocaml_alloc!(result.to_ocaml(cr))
+        result.to_ocaml(cr)
     }
 
     fn rust_twice_unboxed_float(_cr, num: f64) -> f64 {
@@ -61,7 +61,7 @@ ocaml_export! {
             vec[i] += 1;
         }
 
-        ocaml_alloc!(vec.to_ocaml(cr))
+        vec.to_ocaml(cr)
     }
 
     fn rust_increment_ints_list(cr, ints: &OCamlRooted<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
@@ -71,20 +71,20 @@ ocaml_export! {
             vec[i] += 1;
         }
 
-        ocaml_alloc!(vec.to_ocaml(cr))
+        vec.to_ocaml(cr)
     }
 
     fn rust_make_tuple(cr, fst: &OCamlRooted<String>, snd: &OCamlRooted<OCamlInt>) -> OCaml<(String, OCamlInt)> {
         let fst: String = fst.to_rust(cr);
         let snd: i64 = snd.to_rust(cr);
         let tuple = (fst, snd);
-        ocaml_alloc!(tuple.to_ocaml(cr))
+        tuple.to_ocaml(cr)
     }
 
     fn rust_make_some(cr, value: &OCamlRooted<String>) -> OCaml<Option<String>> {
         let value: String = value.to_rust(cr);
         let some_value = Some(value);
-        ocaml_alloc!(some_value.to_ocaml(cr))
+        some_value.to_ocaml(cr)
     }
 
     fn rust_make_ok(cr, value: &OCamlRooted<OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
