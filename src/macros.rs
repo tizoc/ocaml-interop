@@ -89,7 +89,7 @@ macro_rules! ocaml {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
             $arg: &$crate::OCamlRooted<$typ>,
-        ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
+        ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call(cr, $arg)
         }
@@ -105,7 +105,7 @@ macro_rules! ocaml {
             cr: &'a mut $crate::OCamlRuntime,
             $arg1: &$crate::OCamlRooted<$typ1>,
             $arg2: &$crate::OCamlRooted<$typ2>,
-        ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
+        ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call2(cr, $arg1, $arg2)
         }
@@ -123,7 +123,7 @@ macro_rules! ocaml {
             $arg1: &$crate::OCamlRooted<$typ1>,
             $arg2: &$crate::OCamlRooted<$typ2>,
             $arg3: &$crate::OCamlRooted<$typ3>,
-        ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
+        ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call3(cr, $arg1, $arg2, $arg3)
         }
@@ -137,7 +137,7 @@ macro_rules! ocaml {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
             $($arg: &$crate::OCamlRooted<$typ>),+
-    ) -> Result<$crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)>, $crate::OCamlError> {
+    ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(F, $name);
             F.call_n(cr, &mut [$($arg.get_raw()),+])
         }

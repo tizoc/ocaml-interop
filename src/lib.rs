@@ -402,7 +402,7 @@ mod value;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5};
 pub use crate::conv::{FromOCaml, ToOCaml};
-pub use crate::error::{OCamlError, OCamlException};
+pub use crate::error::OCamlException;
 pub use crate::memory::OCamlRooted;
 pub use crate::mlvalues::{
     OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
@@ -414,8 +414,8 @@ pub use crate::value::OCaml;
 pub mod internal {
     pub use crate::closure::OCamlClosure;
     pub use crate::memory::{caml_alloc, store_field, OCamlRoot};
-    pub use crate::mlvalues::UNIT;
     pub use crate::mlvalues::tag;
+    pub use crate::mlvalues::UNIT;
     pub use ocaml_sys::{caml_hash_variant, int_val};
 }
 

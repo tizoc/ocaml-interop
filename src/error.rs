@@ -4,17 +4,12 @@
 use crate::mlvalues::{is_block, string_val, tag_val, RawOCaml};
 use crate::mlvalues::{tag, MAX_FIXNUM, MIN_FIXNUM};
 use core::{fmt, slice};
-use ocaml_sys::caml_string_length;
+use ocaml_sys::{caml_string_length, is_exception_result};
 
 /// An OCaml exception value.
 #[derive(Debug)]
 pub struct OCamlException {
     raw: RawOCaml,
-}
-
-#[derive(Debug)]
-pub enum OCamlError {
-    Exception(OCamlException),
 }
 
 #[derive(Debug)]
@@ -42,6 +37,7 @@ impl fmt::Display for OCamlFixnumConversionError {
 
 impl OCamlException {
     pub fn of(raw: RawOCaml) -> Self {
+        assert!(is_exception_result(raw));
         OCamlException { raw }
     }
 

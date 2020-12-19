@@ -3,15 +3,12 @@
 
 extern crate ocaml_interop;
 
-use ocaml_interop::{
-    ocaml_frame, to_ocaml, OCaml, OCamlBytes, OCamlInt, OCamlList, OCamlRuntime,
-    ToOCaml,
-};
+use ocaml_interop::{ocaml_frame, to_ocaml, OCaml, OCamlBytes, OCamlRuntime, ToOCaml};
 
 mod ocaml {
     use ocaml_interop::{
-        impl_to_ocaml_record, impl_to_ocaml_variant, ocaml, OCamlFloat, OCamlInt,
-        OCamlInt32, OCamlInt64, OCamlList,
+        impl_to_ocaml_record, impl_to_ocaml_variant, ocaml, OCamlFloat, OCamlInt, OCamlInt32,
+        OCamlInt64, OCamlList,
     };
 
     pub struct TestRecord {
@@ -65,7 +62,7 @@ pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> St
     ocaml_frame!(cr, (bytes_root, first_n_root), {
         let bytes = to_ocaml!(cr, bytes, bytes_root);
         let first_n = to_ocaml!(cr, first_n as i64, first_n_root);
-        let result = ocaml::increment_bytes(cr, &bytes, &first_n).unwrap();
+        let result = ocaml::increment_bytes(cr, &bytes, &first_n);
         result.to_rust()
     })
 }
@@ -74,8 +71,6 @@ pub fn increment_ints_list(cr: &mut OCamlRuntime, ints: &Vec<i64>) -> Vec<i64> {
     ocaml_frame!(cr, (root), {
         let ints = to_ocaml!(cr, ints, root);
         let result = ocaml::increment_ints_list(cr, &ints);
-        let result: OCaml<OCamlList<OCamlInt>> =
-            result.expect("Error in 'increment_ints_list' call result");
         result.to_rust()
     })
 }
@@ -85,7 +80,6 @@ pub fn twice(cr: &mut OCamlRuntime, num: i64) -> i64 {
         let num = unsafe { OCaml::of_i64_unchecked(num) };
         let num = root.keep(num);
         let result = ocaml::twice(cr, &num);
-        let result: OCaml<OCamlInt> = result.expect("Error in 'twice' call result");
         result.to_rust()
     })
 }
@@ -96,7 +90,6 @@ pub fn make_tuple(cr: &mut OCamlRuntime, fst: String, snd: i64) -> (String, i64)
         let num = num_root.keep(num);
         let str = to_ocaml!(cr, fst, str_root);
         let result = ocaml::make_tuple(cr, &str, &num);
-        let result: OCaml<(String, OCamlInt)> = result.expect("Error in 'make_tuple' call result");
         result.to_rust()
     })
 }
@@ -105,7 +98,6 @@ pub fn make_some(cr: &mut OCamlRuntime, value: String) -> Option<String> {
     ocaml_frame!(cr, (root), {
         let str = to_ocaml!(cr, value, root);
         let result = ocaml::make_some(cr, &str);
-        let result: OCaml<Option<String>> = result.expect("Error in 'make_some' call result");
         result.to_rust()
     })
 }
@@ -114,8 +106,6 @@ pub fn make_ok(cr: &mut OCamlRuntime, value: i64) -> Result<i64, String> {
     ocaml_frame!(cr, (root), {
         let result = to_ocaml!(cr, value, root);
         let result = ocaml::make_ok(cr, &result);
-        let result: OCaml<Result<OCamlInt, String>> =
-            result.expect("Error in 'make_ok' call result");
         result.to_rust()
     })
 }
@@ -124,8 +114,6 @@ pub fn make_error(cr: &mut OCamlRuntime, value: String) -> Result<i64, String> {
     ocaml_frame!(cr, (root), {
         let result = to_ocaml!(cr, value, root);
         let result = ocaml::make_error(cr, &result);
-        let result: OCaml<Result<OCamlInt, String>> =
-            result.expect("Error in 'make_error' call result");
         result.to_rust()
     })
 }
@@ -134,7 +122,6 @@ pub fn verify_record_test(cr: &mut OCamlRuntime, record: ocaml::TestRecord) -> S
     ocaml_frame!(cr, (root), {
         let ocaml_record = to_ocaml!(cr, record, root);
         let result = ocaml::stringify_record(cr, &ocaml_record);
-        let result: OCaml<String> = result.expect("Error in 'stringify_record' call result");
         result.to_rust()
     })
 }
@@ -143,7 +130,6 @@ pub fn verify_variant_test(cr: &mut OCamlRuntime, variant: ocaml::Movement) -> S
     ocaml_frame!(cr, (root), {
         let ocaml_variant = to_ocaml!(cr, variant, root);
         let result = ocaml::stringify_variant(cr, &ocaml_variant);
-        let result: OCaml<String> = result.expect("Error in 'stringify_variant' call result");
         result.to_rust()
     })
 }
