@@ -82,10 +82,6 @@ impl<'a, T> OCaml<'a, T> {
     }
 
     /// Converts this OCaml value into a Rust value.
-    ///
-    /// # Example
-    ///
-    /// TODO
     pub fn to_rust<RustT>(&self) -> RustT
     where
         RustT: FromOCaml<T>,
