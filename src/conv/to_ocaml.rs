@@ -4,13 +4,20 @@
 use core::str;
 use ocaml_sys::{caml_alloc, store_field};
 
-use crate::{OCamlRuntime, memory::{
+use crate::{
+    memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
         alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlRooted,
-    }, mlvalues::{
+    },
+    mlvalues::{
         tag, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE,
         NONE, TRUE,
-    }, ocaml_frame, to_ocaml, value::OCaml};
+    },
+    ocaml_frame,
+    runtime::OCamlRuntime,
+    to_ocaml,
+    value::OCaml,
+};
 
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {

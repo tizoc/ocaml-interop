@@ -4,7 +4,7 @@
 use ocaml_sys::{caml_shutdown, caml_startup};
 use std::marker::PhantomData;
 
-use crate::{memory::GCFrame, value::OCaml, memory::OCamlRooted};
+use crate::{memory::GCFrame, memory::OCamlRooted, value::OCaml};
 
 /// OCaml runtime handle.
 pub struct OCamlRuntime {
