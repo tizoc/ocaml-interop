@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{error::OCamlFixnumConversionError, mlvalues::*, OCamlRuntime};
+use crate::{FromOCaml, OCamlRuntime, error::OCamlFixnumConversionError, mlvalues::*};
 use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
@@ -10,16 +10,18 @@ use ocaml_sys::{caml_string_length, int_val, val_int};
 /// Should not be instantiated directly, and will usually be the result
 /// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
 /// of functions defined inside [`ocaml_export!`] blocks.
-#[derive(Copy, Clone)]
+#[derive(Copy)]
 pub struct OCaml<'a, T: 'a> {
-    _marker: PhantomData<&'a T>,
-    raw: RawOCaml,
+    pub(crate) _marker: PhantomData<&'a T>,
+    pub(crate) raw: RawOCaml,
 }
 
-pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
-    OCaml {
-        _marker: PhantomData,
-        raw: x,
+impl<'a, T> Clone for OCaml<'a, T> {
+    fn clone(&self) -> Self {
+        OCaml {
+            _marker: PhantomData,
+            raw: self.raw,
+        }
     }
 }
 
@@ -81,6 +83,15 @@ impl<'a, T> OCaml<'a, T> {
     /// working with these values.
     pub unsafe fn raw(&self) -> RawOCaml {
         self.raw
+    }
+
+    /// Converts this OCaml value into a Rust value.
+    ///
+    /// # Example
+    ///
+    /// TODO
+    pub fn to_rust<RustT>(&self) -> RustT where RustT: FromOCaml<T> {
+        RustT::from_ocaml(self.clone())
     }
 }
 

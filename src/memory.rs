@@ -1,12 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{
-    mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
-    runtime::OCamlAllocToken,
-    value::{make_ocaml, OCaml},
-    OCamlRuntime,
-};
+use crate::{FromOCaml, OCamlRuntime, mlvalues::{tag, Intnat, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml}, runtime::OCamlAllocToken, value::OCaml};
 use core::{cell::Cell, marker::PhantomData, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
@@ -99,6 +94,7 @@ impl<'a> OCamlRoot<'a> {
         OCamlRoot { cell }
     }
 
+    /// Roots an [`OCaml`] value.
     pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRooted<'tmp, T> {
         self.cell.set(unsafe { val.raw() });
         OCamlRooted {
@@ -107,10 +103,18 @@ impl<'a> OCamlRoot<'a> {
         }
     }
 
-    #[allow(clippy::needless_lifetimes)]
-    pub fn keep_raw<'tmp>(&'tmp mut self, val: RawOCaml) -> OCamlRawRooted<'tmp> {
+    /// Roots a [`RawOCaml`] value and attaches a type to it.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe because there is no way to validate that the [`RawOCaml`] value
+    /// is of the correct type.
+    pub unsafe fn keep_raw<T>(&mut self, val: RawOCaml) -> OCamlRooted<T> {
         self.cell.set(val);
-        OCamlRawRooted { cell: self.cell }
+        OCamlRooted {
+            _marker: PhantomData,
+            cell: self.cell,
+        }
     }
 }
 
@@ -123,27 +127,15 @@ pub struct OCamlRooted<'a, T> {
     _marker: PhantomData<Cell<T>>,
 }
 
-/// Like [`OCamlRooted`] but for [`RawOCaml`] values.
-pub struct OCamlRawRooted<'a> {
-    cell: &'a Cell<RawOCaml>,
-}
-
 impl<'a, T> OCamlRooted<'a, T> {
+    /// Converts this value into a Rust value.
+    pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT where RustT: FromOCaml<T> {
+        RustT::from_ocaml(cr.get(self))
+    }
+
     /// Updates the value of this GC tracked reference.
     pub fn set(&mut self, x: OCaml<T>) {
         self.cell.set(unsafe { x.raw() });
-    }
-
-    /// Gets the raw value contained by this reference.
-    pub fn get_raw(&self) -> RawOCaml {
-        self.cell.get()
-    }
-}
-
-impl<'a> OCamlRawRooted<'a> {
-    /// Updates the raw value of this GC tracked reference.
-    pub fn set_raw(&mut self, x: RawOCaml) {
-        self.cell.set(x);
     }
 
     /// Gets the raw value contained by this reference.
@@ -189,7 +181,10 @@ impl<T> OCamlAllocResult<T> {
 
 impl<T> GCMarkedResult<T> {
     pub fn eval(self, _cr: &OCamlRuntime) -> OCaml<T> {
-        make_ocaml(self.raw)
+        OCaml {
+            _marker: PhantomData,
+            raw: self.raw
+        }
     }
 }
 

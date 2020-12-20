@@ -17,7 +17,6 @@
 //!     + [Rule 3: Liveness and scope of rooted OCaml values](#rule-3-liveness-and-scope-of-rooted-ocaml-values)
 //!   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
 //!     + [`FromOCaml` trait](#fromocaml-trait)
-//!     + [`ToRust` trait](#torust-trait)
 //!     + [`ToOCaml` trait](#toocaml-trait)
 //!   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
 //!   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
@@ -137,7 +136,7 @@
 //!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
 //!     let arg1_rooted = arg1_root.keep(arg1);
 //!     let result = ocaml_call!(ocaml_function(cr, cr.get(&arg1_rooted), /* ..., argN */)).unwrap();
-//!     let s = String::from_ocaml(result);
+//!     let s: String = result.to_rust();
 //!     // ...
 //!     arg1_rooted
 //! });
@@ -173,9 +172,9 @@
 //!
 //! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
 //!
-//! #### [`ToRust`] trait
+//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
 //!
-//! [`ToRust`] is the counterpart to [`FromOCaml`] similar to how `Into` is to `From`. Using `ocaml_val.to_rust()` instead of `Type::from_ocaml(ocaml_val)` is usually more convenient, specially when more complicated types are involved.
+//! [`OCamlRooted`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
 //!
 //! #### [`ToOCaml`] trait
 //!
@@ -216,7 +215,7 @@
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, ToRust, FromOCaml, OCaml, OCamlRooted, ToOCaml,
+//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, FromOCaml, OCaml, OCamlRooted, ToOCaml,
 //!     OCamlRuntime
 //! };
 //!
@@ -348,7 +347,7 @@
 //! #### Example
 //!
 //! ```rust,no_run
-//! use ocaml_interop::{to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, ToOCaml};
+//! use ocaml_interop::{to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes, OCamlRooted, ToOCaml};
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
@@ -357,14 +356,15 @@
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
 //!     // The remaining parameters and return value must have a declared type of `OCaml<T>`.
-//!     fn rust_twice(_cr, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
-//!         let num = i64::from_ocaml(num);
+//!     fn rust_twice(cr, num: &OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
+//!         let num: i64 = num.to_rust(cr);
 //!         unsafe { OCaml::of_i64_unchecked(num * 2) }
 //!     }
 //!
-//!     fn rust_increment_bytes(cr, bytes: OCaml<OCamlBytes>, first_n: OCaml<OCamlInt>) -> OCaml<OCamlBytes> {
-//!         let first_n = i64::from_ocaml(first_n) as usize;
-//!         let mut vec = Vec::from_ocaml(bytes);
+//!     fn rust_increment_bytes(cr, bytes: &OCamlRooted<OCamlBytes>, first_n: &OCamlRooted<OCamlInt>) -> OCaml<OCamlBytes> {
+//!         let first_n: i64 = first_n.to_rust(cr);
+//!         let first_n = first_n as usize;
+//!         let mut vec: Vec<u8> = bytes.to_rust(cr);
 //!
 //!         for i in 0..first_n {
 //!             vec[i] += 1;
@@ -401,7 +401,7 @@ mod runtime;
 mod value;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5, OCamlResult};
-pub use crate::conv::{FromOCaml, ToOCaml, ToRust};
+pub use crate::conv::{FromOCaml, ToOCaml};
 pub use crate::error::{OCamlError, OCamlException};
 pub use crate::memory::{OCamlAllocResult, OCamlRooted};
 pub use crate::mlvalues::{

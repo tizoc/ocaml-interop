@@ -5,7 +5,7 @@ extern crate ocaml_interop;
 
 use ocaml_interop::{
     ocaml_call, ocaml_frame, to_ocaml, OCaml, OCamlBytes, OCamlInt, OCamlList, OCamlRuntime,
-    ToOCaml, ToRust,
+    ToOCaml,
 };
 
 mod ocaml {

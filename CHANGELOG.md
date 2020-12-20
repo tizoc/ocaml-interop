@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `OCamlRuntime::releasing_runtime(&mut self, f: FnOnce() -> T)` releases the OCaml runtime, calls `f`, and then re-acquires the OCaml runtime. Maybe more complicated patterns should be supported, but for now I haven't given this much thought.
 - Support for unpacking OCaml polymorphic variants into Rust values.
+- Added `to_rust(cr: &OCamlRuntime)` method to `OCamlRooted<T>` values.
 
 ### Changed
 
@@ -20,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ocaml_frame!` is now only required to instantiate Root-variables, any interaction with the OCaml runtime will make use of an OCaml-Runtime-handle, which should be around already. The syntax also changed slightly, requiring a comma after the OCaml-Runtime-handle parameter.
 - `OCamlRef` has been renamed to `OCamlRooted`.
 - Rust functions that are exported to OCaml must now declare at least one argument.
+- Functions that are exported to OCaml now follow a caller-save convention. These functions now receive `OCamlRooted<T>`  parameters.
+- `to_rust()` method is now implemented directly into `OCaml<T>`, the `ToRust` trait is not required anymore.
+- `keep_raw()` method in root variables is now `unsafe` and returns an `OCamlRooted<T>`.
 
 ### Deprecated
 
@@ -27,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Nothing.
+- Removed `ToRust` trait.
+- Removed `OCamlRawRooted` type.
 
 ### Fixed
 
