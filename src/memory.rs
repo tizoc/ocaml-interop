@@ -152,6 +152,33 @@ impl<'a, T> OCamlRooted<'a, T> {
     }
 }
 
+struct ConstantRoot(Cell<RawOCaml>);
+
+unsafe impl Sync for ConstantRoot {}
+
+static ROOTED_UNIT: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::UNIT));
+static ROOTED_NONE: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::NONE));
+
+impl OCamlRooted<'static, ()> {
+    /// Convenience constructor for rooted unit values.
+    pub fn unit() -> OCamlRooted<'static, ()> {
+        OCamlRooted {
+            cell: &ROOTED_UNIT.0,
+            _marker: PhantomData
+        }
+    }
+}
+
+impl<T> OCamlRooted<'static, Option<T>> {
+    /// Convenience constructor for rooted None values.
+    pub fn none() -> OCamlRooted<'static, Option<T>> {
+        OCamlRooted {
+            cell: &ROOTED_NONE.0,
+            _marker: PhantomData
+        }
+    }
+}
+
 pub fn alloc_bytes<'a>(cr: &'a mut OCamlRuntime, s: &[u8]) -> OCaml<'a, OCamlBytes> {
     unsafe {
         let len = s.len();
