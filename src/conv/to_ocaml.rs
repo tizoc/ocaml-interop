@@ -250,3 +250,9 @@ where
         })
     }
 }
+
+unsafe impl<'a, A> ToOCaml<A> for OCaml<'a, A> {
+    fn to_ocaml(&self, _token: OCamlAllocToken) -> OCamlAllocResult<A> {
+        OCamlAllocResult::of_ocaml(*self)
+    }
+}
