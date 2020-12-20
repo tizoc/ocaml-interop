@@ -112,7 +112,7 @@ ocaml_export! {
     }
 
     fn rust_string_of_movement(cr, movement: &OCamlRooted<PolymorphicMovement>) -> OCaml<String> {
-        let movement = cr.get(&movement);
+        let movement = cr.get(movement);
         let pm = ocaml_unpack_variant! {
             movement => {
                 Step(count: OCamlInt) => { Movement::Step {count} },
@@ -130,7 +130,7 @@ ocaml_export! {
     }
 
     fn rust_string_of_polymorphic_movement(cr, polymorphic_movement: &OCamlRooted<PolymorphicMovement>) -> OCaml<String> {
-        let polymorphic_movement = cr.get(&polymorphic_movement);
+        let polymorphic_movement = cr.get(polymorphic_movement);
         let pm = ocaml_unpack_polymorphic_variant! {
             polymorphic_movement => {
                 Step(count: OCamlInt) => { PolymorphicMovement::Step {count} },
