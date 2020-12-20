@@ -396,7 +396,7 @@ pub use crate::memory::OCamlRooted;
 pub use crate::mlvalues::{
     OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
-pub use crate::runtime::{OCamlAllocToken, OCamlRuntime};
+pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;
 
 #[doc(hidden)]
