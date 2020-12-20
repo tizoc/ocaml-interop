@@ -164,7 +164,7 @@ impl OCamlRooted<'static, ()> {
     pub fn unit() -> OCamlRooted<'static, ()> {
         OCamlRooted {
             cell: &ROOTED_UNIT.0,
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 }
@@ -174,7 +174,7 @@ impl<T> OCamlRooted<'static, Option<T>> {
     pub fn none() -> OCamlRooted<'static, Option<T>> {
         OCamlRooted {
             cell: &ROOTED_NONE.0,
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 }
