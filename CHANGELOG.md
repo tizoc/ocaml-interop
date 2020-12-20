@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCamlRuntime::releasing_runtime(&mut self, f: FnOnce() -> T)` releases the OCaml runtime, calls `f`, and then re-acquires the OCaml runtime. Maybe more complicated patterns should be supported, but for now I haven't given this much thought.
 - Support for unpacking OCaml polymorphic variants into Rust values.
 - Added `to_rust(cr: &OCamlRuntime)` method to `OCamlRooted<T>` values.
+- `OCamlRooted::unit()` method to obtain a static OCaml unit value that is rooted.
+- `OCamlRooted::none()` method to obtain a static OCaml `None` value that is rooted.
 
 ### Changed
 
@@ -21,9 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ocaml_frame!` is now only required to instantiate Root-variables, any interaction with the OCaml runtime will make use of an OCaml-Runtime-handle, which should be around already. The syntax also changed slightly, requiring a comma after the OCaml-Runtime-handle parameter.
 - `OCamlRef` has been renamed to `OCamlRooted`.
 - Rust functions that are exported to OCaml must now declare at least one argument.
-- Functions that are exported to OCaml now follow a caller-save convention. These functions now receive `OCamlRooted<T>`  parameters.
+- Functions that are exported to OCaml now follow a caller-save convention. These functions now receive `&OCamlRooted<T>`  arguments.
+- Functions that are imported from OCaml now follow a caller-save convention. These functions  now receive `&OCamlRooted<T>`  arguments.
+- Calls to OCaml functions don't return `Result` anymore, and instead panic on unexpected exceptions.
 - `to_rust()` method is now implemented directly into `OCaml<T>`, the `ToRust` trait is not required anymore.
 - `keep_raw()` method in root variables is now `unsafe` and returns an `OCamlRooted<T>`.
+- `OCaml<T>::as_i64()` -> `to_i64()`.
+- `OCaml<T>::as_bool()` -> `to_bool()`.
 
 ### Deprecated
 
@@ -31,8 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Removed `ToRust` trait.
-- Removed `OCamlRawRooted` type.
+- `ToRust` trait.
+- `OCamlRawRooted` type.
+- `ocaml_call!` macro.
+- `ocaml_alloc!` macro.
+- `OCamlAllocToken` type.
 
 ### Fixed
 
