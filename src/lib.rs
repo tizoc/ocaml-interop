@@ -42,20 +42,6 @@
 //!
 //! Example:
 //!
-//! ```rust,no_run
-//! # use ocaml_interop::*;
-//! # ocaml! { fn ocaml_function(arg1: String); }
-//! # let a_string = "string";
-//! # let arg1 = "arg1";
-//! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
-//! // cr: &mut OCamlRuntime
-//! let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
-//! // ...
-//! let result = ocaml_call!(ocaml_function(cr, arg1, /* ...,  argN */));
-//! let ocaml_string: OCaml<String> = ocaml_alloc!(a_string.to_ocaml(cr));
-//! // ...
-//! ```
-//!
 //! Without the macros, this error is produced, because without the macros an incorrect token is passed as the first argument:
 //!
 //! ```text,no_run
@@ -76,7 +62,7 @@
 //!
 //! Example:
 //!
-//! ```rust,no_run
+//! ```text,no_run
 //! # use ocaml_interop::*;
 //! # ocaml! {
 //! #     fn ocaml_function(arg1: String) -> String;
@@ -87,13 +73,13 @@
 //! # let arg2 = "arg2";
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
 //! ocaml_frame!(cr, (result_root), {
-//!     let arg1 = ocaml_alloc!(arg1.to_ocaml(cr));
-//!     let result = ocaml_call!(ocaml_function(cr, arg1, /* ..., argN */)).unwrap();
+//!     let arg1 = arg1.to_ocaml(cr);
+//!     let result = ocaml_function(cr, arg1, /* ..., argN */);
 //!     let rooted_result = &result_root.keep(result);
 //!     let arg2 = ocaml_alloc!(arg2.to_ocaml(cr));
-//!     let another_result = ocaml_call!(ocaml_function(cr, arg2, /* ..., argN */)).unwrap();
+//!     let another_result = ocaml_function(cr, arg2, /* ..., argN */);
 //!     // ...
-//!     let more_results = ocaml_call!(another_ocaml_function(cr, cr.get(rooted_result))).unwrap();
+//!     let more_results = another_ocaml_function(cr, rooted_result);
 //!     // ...
 //! })
 //! ```
@@ -215,8 +201,7 @@
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_alloc, ocaml_call, ocaml_frame, to_ocaml, FromOCaml, OCaml, OCamlRooted, ToOCaml,
-//!     OCamlRuntime
+//!     ocaml_frame, to_ocaml, FromOCaml, OCaml, OCamlRooted, ToOCaml, OCamlRuntime
 //! };
 //!
 //! // To call an OCaml function, it first has to be declared inside an `ocaml!` macro block:
@@ -245,7 +230,7 @@
 //!     // The first argument to the macro is a reference to an OCamlRuntime, followed by an optional
 //!     // list of "root variables" (more on this later). The last argument
 //!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(cr, (bytes1_root, bytes2_root), {
+//!     ocaml_frame!(cr, (bytes1_root, bytes2_root, first_n_root), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values. Because such conversions usually require
 //!         // the OCaml runtime to perform an allocation, calls to `to_ocaml` have
@@ -279,19 +264,20 @@
 //!         // so this call doesn't have to be wrapped by `ocaml_alloc!` or `to_ocaml!`,
 //!         // and no GC handle is passed as an argument.
 //!         let ocaml_first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
+//!         let first_n_rooted = &first_n_root.keep(ocaml_first_n);
 //!
 //!         // To call an OCaml function (declared above in a `ocaml!` block) the
 //!         // `ocaml_call!` macro is used. The GC handle has to be passed as the first argument,
 //!         // before all the other declared arguments.
 //!         // The result of this call is a Result<OCaml<T>, ocaml_interop::Error>, with `Err(...)`
 //!         // being the result of calls for which the OCaml runtime raises an exception.
-//!         let result1 = ocaml_call!(ocaml_funcs::increment_bytes(
+//!         let result1 = ocaml_funcs::increment_bytes(
 //!             cr,
 //!             // The reference created above is used here to obtain the value
 //!             // of `ocaml_bytes1`
-//!             cr.get(bytes1_rooted),
-//!             ocaml_first_n
-//!         )).unwrap();
+//!             bytes1_rooted,
+//!             first_n_rooted,
+//!         );
 //!
 //!         // Perform the conversion of the OCaml result value into a
 //!         // Rust value while the reference is still valid because the
@@ -299,11 +285,11 @@
 //!         // Alternatively, the result of `rootvar.keep(result1)` could be used
 //!         // to be able to reference the value later through an `OCamlRooted` value.
 //!         let new_bytes1: String = result1.to_rust();
-//!         let result2 = ocaml_call!(ocaml_funcs::increment_bytes(
+//!         let result2 = ocaml_funcs::increment_bytes(
 //!             cr,
-//!             cr.get(bytes2_rooted),
-//!             ocaml_first_n
-//!         )).unwrap();
+//!             bytes2_rooted,
+//!             first_n_rooted,
+//!         );
 //!
 //!         // The `FromOCaml` trait provides the `from_ocaml` method to convert from
 //!         // OCaml values into OCaml values. Unlike the `to_ocaml` method, it doesn't
@@ -316,9 +302,12 @@
 //! }
 //!
 //! fn twice(cr: &mut OCamlRuntime, num: usize) -> usize {
-//!     let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
-//!     let result = ocaml_call!(ocaml_funcs::twice(cr, ocaml_num));
-//!     i64::from_ocaml(result.unwrap()) as usize
+//!     ocaml_frame!(cr, (num_root), {
+//!         let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
+//!         let num_rooted = &num_root.keep(ocaml_num);
+//!         let result = ocaml_funcs::twice(cr, num_rooted);
+//!         i64::from_ocaml(result) as usize
+//!     })
 //! }
 //!
 //! fn entry_point() {

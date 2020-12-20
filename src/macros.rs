@@ -26,11 +26,8 @@ use crate::*;
 ///     ocaml_frame!(cr, (hello_ocaml, bye_ocaml), {
 ///         let hello_ocaml = &to_ocaml!(cr, "hello OCaml!", hello_ocaml);
 ///         let bye_ocaml = &to_ocaml!(cr, "bye OCaml!", bye_ocaml);
-///         ocaml_call!(print_endline(cr, cr.get(hello_ocaml)));
-///         ocaml_call!(print_endline(cr, cr.get(bye_ocaml)));
-///         // Values that don't need to be kept across calls can be used directly
-///         let immediate_use = to_ocaml!(cr, "no need to `keep` me");
-///         ocaml_call!(print_endline(cr, immediate_use));
+///         print_endline(cr, hello_ocaml);
+///         print_endline(cr, bye_ocaml);
 ///     });
 /// # }
 /// ```
@@ -170,7 +167,7 @@ macro_rules! ocaml {
 ///     fn rust_twice_boxed_i32(cr, num: &OCamlRooted<OCamlInt32>) -> OCaml<OCamlInt32> {
 ///         let num: i32 = num.to_rust(cr);
 ///         let result = num * 2;
-///         ocaml_alloc!(result.to_ocaml(cr))
+///         result.to_ocaml(cr)
 ///     }
 ///
 ///     fn rust_add_unboxed_floats_noalloc(_cr, num: f64, num2: f64) -> f64 {
@@ -180,7 +177,7 @@ macro_rules! ocaml {
 ///     fn rust_twice_boxed_float(cr, num: &OCamlRooted<OCamlFloat>) -> OCaml<OCamlFloat> {
 ///         let num: f64 = num.to_rust(cr);
 ///         let result = num * 2.0;
-///         ocaml_alloc!(result.to_ocaml(cr))
+///         result.to_ocaml(cr)
 ///     }
 ///
 ///     fn rust_increment_ints_list(cr, ints: &OCamlRooted<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
@@ -190,14 +187,14 @@ macro_rules! ocaml {
 ///             vec[i] += 1;
 ///         }
 ///
-///         ocaml_alloc!(vec.to_ocaml(cr))
+///         vec.to_ocaml(cr)
 ///     }
 ///
 ///     fn rust_make_tuple(cr, fst: &OCamlRooted<String>, snd: &OCamlRooted<OCamlInt>) -> OCaml<(String, OCamlInt)> {
 ///         let fst: String = fst.to_rust(cr);
 ///         let snd: i64 = snd.to_rust(cr);
 ///         let tuple = (fst, snd);
-///         ocaml_alloc!(tuple.to_ocaml(cr))
+///         tuple.to_ocaml(cr)
 ///     }
 /// }
 /// ```
@@ -397,7 +394,7 @@ macro_rules! impl_conv_ocaml_variant {
 /// // NOTE: What is important is the order of the fields, not their names.
 ///
 /// # fn unpack_record_example(cr: &mut OCamlRuntime) {
-/// let ocaml_struct = ocaml_call!(make_mystruct(cr, OCaml::unit())).unwrap();
+/// let ocaml_struct = make_mystruct(cr, &OCamlRooted::unit());
 /// let my_struct = ocaml_unpack_record! {
 ///     //  value    => RustConstructor { field: OCamlType, ... }
 ///     ocaml_struct => MyStruct {
@@ -481,7 +478,7 @@ macro_rules! ocaml_alloc_tagged_block {
 ///
 /// # fn alloc_record_example(cr: &mut OCamlRuntime) {
 /// let ms = MyStruct { int_field: 132, string_field: "blah".to_owned() };
-/// let ocaml_ms: OCamlAllocResult<MyStruct> = ocaml_alloc_record! {
+/// let ocaml_ms: OCaml<MyStruct> = ocaml_alloc_record! {
 ///     //  value { field: OCamlType, ... }
 ///     cr, ms {  // cr: &mut OCamlRuntime
 ///         // optionally `=> expr` can be used to pre-process the field value
@@ -738,7 +735,7 @@ macro_rules! impl_from_ocaml_variant {
 /// // NOTE: What is important is the order of the tags, not their names.
 ///
 /// # fn unpack_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_variant = ocaml_call!(make_ocaml_movement(cr, OCaml::unit())).unwrap();
+/// let ocaml_variant = make_ocaml_movement(cr, &OCamlRooted::unit());
 /// let result = ocaml_unpack_variant! {
 ///     ocaml_variant => {
 ///         // Alternative: StepLeft  => Movement::StepLeft
@@ -799,7 +796,7 @@ macro_rules! ocaml_unpack_variant {
 ///
 /// # fn alloc_variant_example(cr: &mut OCamlRuntime) {
 /// let movement = Movement::Rotate(180.0);
-/// let ocaml_movement: OCamlAllocResult<Movement> = ocaml_alloc_variant! {
+/// let ocaml_movement: OCaml<Movement> = ocaml_alloc_variant! {
 ///     cr, movement => {
 ///         Movement::StepLeft,
 ///         Movement::StepRight,
@@ -983,7 +980,7 @@ macro_rules! impl_from_ocaml_polymorphic_variant {
 /// //      ]
 ///
 /// # fn unpack_polymorphic_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_polymorphic_variant = ocaml_call!(make_ocaml_polymorphic_movement(cr, OCaml::unit())).unwrap();
+/// let ocaml_polymorphic_variant = make_ocaml_polymorphic_movement(cr, &OCamlRooted::unit());
 /// let result = ocaml_unpack_polymorphic_variant! {
 ///     ocaml_polymorphic_variant => {
 ///         StepLeft  => Movement::StepLeft,
