@@ -151,6 +151,8 @@
 //! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the [`ocaml!`] macro.
 //! - Before the program exist, or once the OCaml runtime is not required anymore, it has to be de-initialized by calling the `shutdown()` method on the OCaml runtime handle.
 //!
+//! If an exception is raised by an OCaml function, a `panic!` will happen. OCaml functions that are meant to be called from Rust should return values of `Result.t` type to signal errors.
+//!
 //! ### Example
 //!
 //! ```rust,no_run
