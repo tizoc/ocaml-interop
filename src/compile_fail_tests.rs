@@ -1,43 +1,22 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
+// Check that OCaml<T> values are not accessible after an allocation.
 // Must fail with:
-// error[E0308]: mismatched types
+// error[E0499]: cannot borrow `*cr` as mutable more than once at a time
 /// ```compile_fail
 /// # use ocaml_interop::*;
-/// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// # let cr = &mut OCamlRuntime::init();
-/// let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(cr));
-/// let result = ocaml_function(cr, arg1).unwrap();
+/// ocaml_frame!(cr, (root), {
+/// let arg1: OCaml<String> = "test".to_owned().to_ocaml(cr);
+/// let arg2: OCaml<String> = "test".to_owned().to_ocaml(cr);
+/// let arg1_rooted = root.keep(arg1);
 /// # ()
-/// ```
-pub struct FailsWithoutOCamlCallMacro;
-
-// Must fail with:
-// error[E0308]: mismatched types
-/// ```compile_fail
-/// # use ocaml_interop::*;
-/// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
-/// # let cr = &mut OCamlRuntime::init();
-/// let arg1 = ("test".to_owned()).to_ocaml(cr);
-/// # ()
-/// ```
-pub struct FailsWithoutOCamlAllocMacro;
-
-// Must fail with:
-// error[E0502]: cannot borrow `*cr` as mutable because it is also borrowed as immutable
-/// ```compile_fail
-/// # use ocaml_interop::*;
-/// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
-/// # let cr = &mut OCamlRuntime::init();
-/// let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(cr));
-/// let arg2 = ocaml_alloc!(("test".to_owned()).to_ocaml(cr));
-/// let result = ocaml_call!(ocaml_function(cr, arg1)).unwrap();
-/// let another_result = ocaml_call!(ocaml_function(cr, arg2)).unwrap();
-/// # ()
+/// });
 /// ```
 pub struct LivenessFailureCheck;
 
+// Check that OCamlRoot values cannot escape the frame that created them.
 // Must fail with:
 // error[E0716]: temporary value dropped while borrowed
 /// ```compile_fail
@@ -50,6 +29,7 @@ pub struct LivenessFailureCheck;
 /// # ()
 pub struct OCamlRootEscapeFailureCheck;
 
+// Check that OCamlRooted values cannot escape the frame that created the associated root.
 // Must fail with:
 // error[E0716]: temporary value dropped while borrowed
 /// ```compile_fail
@@ -57,9 +37,9 @@ pub struct OCamlRootEscapeFailureCheck;
 /// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
 /// # let cr = &mut OCamlRuntime::init();
 /// let escaped = ocaml_frame!(cr, (rootvar), {
-///     let arg1 = ocaml_alloc!(("test".to_owned()).to_ocaml(cr));
-///     let arg1_ref = rootvar.keep(arg1);
-///     arg1_ref
+///     let arg1: OCaml<String> = "test".to_owned().to_ocaml(cr);
+///     let arg1_rooted = rootvar.keep(arg1);
+///     arg1_rooted
 /// });
 /// # ()
-pub struct OCamlRefEscapeFailureCheck;
+pub struct OCamlRootedEscapeFailureCheck;
