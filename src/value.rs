@@ -167,7 +167,7 @@ impl<'a> OCaml<'a, OCamlBytes> {
 
 impl<'a> OCaml<'a, OCamlInt> {
     /// Converts an OCaml int to an `i64`.
-    pub fn as_i64(&self) -> i64 {
+    pub fn to_i64(&self) -> i64 {
         int_val(self.raw) as i64
     }
 
@@ -212,7 +212,7 @@ impl<'a> OCaml<'a, OCamlInt> {
 
 impl<'a> OCaml<'a, bool> {
     /// Converts an OCaml boolean into a Rust boolean.
-    pub fn as_bool(self) -> bool {
+    pub fn to_bool(self) -> bool {
         int_val(self.raw) != 0
     }
 

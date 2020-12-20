@@ -14,13 +14,13 @@ pub unsafe trait FromOCaml<T> {
 
 unsafe impl FromOCaml<OCamlInt> for i64 {
     fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
-        v.as_i64()
+        v.to_i64()
     }
 }
 
 unsafe impl FromOCaml<OCamlInt> for i32 {
     fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
-        v.as_i64() as i32
+        v.to_i64() as i32
     }
 }
 
@@ -40,7 +40,7 @@ unsafe impl FromOCaml<OCamlInt64> for i64 {
 
 unsafe impl FromOCaml<bool> for bool {
     fn from_ocaml(v: OCaml<bool>) -> Self {
-        v.as_bool()
+        v.to_bool()
     }
 }
 
