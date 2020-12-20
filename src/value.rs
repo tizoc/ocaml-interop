@@ -10,11 +10,26 @@ use ocaml_sys::{caml_string_length, int_val, val_int};
 /// Should not be instantiated directly, and will usually be the result
 /// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
 /// of functions defined inside [`ocaml_export!`] blocks.
-#[derive(Copy, Clone)]
 pub struct OCaml<'a, T: 'a> {
     _marker: PhantomData<&'a T>,
     raw: RawOCaml,
 }
+
+// Trivial, manual implementation because the derive is overly conservative
+// and places bounds on type parameter T
+// https://github.com/rust-lang/rust/issues/26925
+// https://github.com/rust-lang/rust/issues/52079
+impl<'a, T: 'a> Clone for OCaml<'a, T> {
+    fn clone(&self) -> Self {
+        Self {
+            _marker: PhantomData,
+            raw: self.raw,
+        }
+    }
+}
+
+// As above, avoid unnecessary bounds
+impl<'a, T: 'a> Copy for OCaml<'a, T> {}
 
 pub fn make_ocaml<'a, T>(x: RawOCaml) -> OCaml<'a, T> {
     OCaml {
