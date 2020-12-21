@@ -211,7 +211,7 @@ impl<'a> OCaml<'a, OCamlInt> {
 
 impl<'a> OCaml<'a, bool> {
     /// Converts an OCaml boolean into a Rust boolean.
-    pub fn to_bool(self) -> bool {
+    pub fn to_bool(&self) -> bool {
         int_val(self.raw) != 0
     }
 
