@@ -101,7 +101,7 @@
 //!
 //! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
 //!
-//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
+//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(&ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
 //!
 //! [`OCamlRooted`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
 //!
@@ -246,7 +246,7 @@
 //!         // OCaml runtime when converting into Rust values.
 //!         // A more convenient alternative, is to use the `to_rust` method as
 //!         // above when `result1` was converted.
-//!         (new_bytes1, String::from_ocaml(result2))
+//!         (new_bytes1, String::from_ocaml(&result2))
 //!     })
 //! }
 //!
@@ -255,7 +255,7 @@
 //!         let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
 //!         let num_rooted = &num_root.keep(ocaml_num);
 //!         let result = ocaml_funcs::twice(cr, num_rooted);
-//!         i64::from_ocaml(result) as usize
+//!         i64::from_ocaml(&result) as usize
 //!     })
 //! }
 //!

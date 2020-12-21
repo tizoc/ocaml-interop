@@ -138,7 +138,7 @@ impl<'a, T> OCamlRooted<'a, T> {
     where
         RustT: FromOCaml<T>,
     {
-        RustT::from_ocaml(cr.get(self))
+        RustT::from_ocaml(&cr.get(self))
     }
 
     /// Updates the value of this GC tracked reference.
