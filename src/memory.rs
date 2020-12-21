@@ -146,7 +146,11 @@ impl<'a, T> OCamlRooted<'a, T> {
         self.cell.set(unsafe { x.raw() });
     }
 
-    /// Gets the raw value contained by this reference.
+    /// Borrows the raw value contained in this root.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe, because the RawOCaml value obtained will not be tracked.
     pub unsafe fn get_raw(&self) -> RawOCaml {
         self.cell.get()
     }
