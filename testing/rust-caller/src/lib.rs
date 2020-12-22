@@ -70,6 +70,7 @@ mod ocaml {
         pub fn raises_message_exception(message: String);
         pub fn raises_nonmessage_exception(unit: ());
         pub fn raises_nonblock_exception(unit: ());
+        pub fn gc_compact(unit: ());
     }
 }
 
@@ -141,7 +142,6 @@ pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
         let _x: OCaml<OCamlBytes> = vec.to_ocaml(cr);
         let _y: OCaml<OCamlBytes> = vec.to_ocaml(cr);
         let _z: OCaml<OCamlBytes> = vec.to_ocaml(cr);
-        ()
     }
     true
 }
