@@ -87,3 +87,4 @@ let () =
   Callback.register "raises_message_exception" raises_message_exception;
   Callback.register "raises_nonmessage_exception" raises_nonmessage_exception;
   Callback.register "raises_nonblock_exception" raises_nonblock_exception;
+  Callback.register "gc_compact" Gc.compact;
