@@ -60,6 +60,8 @@ macro_rules! ocaml_frame {
 ///
 /// The return value is an `OCaml<RetType>`.
 ///
+/// Calls that raise an OCaml exception will `panic!`.
+///
 /// # Examples
 ///
 /// ```
