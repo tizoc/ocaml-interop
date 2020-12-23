@@ -203,15 +203,15 @@ pub fn alloc_string<'a>(cr: &'a mut OCamlRuntime, s: &str) -> OCaml<'a, String> 
     }
 }
 
-pub fn alloc_int32<'a>(cr: &'a mut OCamlRuntime, i: i32) -> OCaml<'a, OCamlInt32> {
+pub fn alloc_int32(cr: &mut OCamlRuntime, i: i32) -> OCaml<OCamlInt32> {
     unsafe { OCaml::new(cr, caml_copy_int32(i)) }
 }
 
-pub fn alloc_int64<'a>(cr: &'a mut OCamlRuntime, i: i64) -> OCaml<'a, OCamlInt64> {
+pub fn alloc_int64(cr: &mut OCamlRuntime, i: i64) -> OCaml<OCamlInt64> {
     unsafe { OCaml::new(cr, caml_copy_int64(i)) }
 }
 
-pub fn alloc_double<'a>(cr: &'a mut OCamlRuntime, d: f64) -> OCaml<'a, OCamlFloat> {
+pub fn alloc_double(cr: &mut OCamlRuntime, d: f64) -> OCaml<OCamlFloat> {
     unsafe { OCaml::new(cr, caml_copy_double(d)) }
 }
 
