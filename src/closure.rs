@@ -15,49 +15,20 @@ pub struct OCamlClosure(*const RawOCaml);
 
 unsafe impl Sync for OCamlClosure {}
 
-fn get_named(name: &str) -> Option<*const RawOCaml> {
-    unsafe {
-        let s = match std::ffi::CString::new(name) {
-            Ok(s) => s,
-            Err(_) => return None,
-        };
-        let named = caml_named_value(s.as_ptr());
-        if named.is_null() {
-            return None;
-        }
-
-        if tag_val(*named) != tag::CLOSURE {
-            return None;
-        }
-
-        Some(named)
-    }
-}
-
-/// OCaml function that accepts one argument.
-pub type OCamlFn1<'a, A, Ret> = unsafe fn(&'a mut OCamlRuntime, OCaml<A>) -> OCaml<'a, Ret>;
-/// OCaml function that accepts two arguments.
-pub type OCamlFn2<'a, A, B, Ret> =
-    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>) -> OCaml<'a, Ret>;
-/// OCaml function that accepts three arguments.
-pub type OCamlFn3<'a, A, B, C, Ret> =
-    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>, OCaml<C>) -> OCaml<'a, Ret>;
-/// OCaml function that accepts four arguments.
-pub type OCamlFn4<'a, A, B, C, D, Ret> =
-    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCaml<'a, Ret>;
-/// OCaml function that accepts five arguments.
-pub type OCamlFn5<'a, A, B, C, D, E, Ret> = unsafe fn(
-    &'a mut OCamlRuntime,
-    OCaml<A>,
-    OCaml<B>,
-    OCaml<C>,
-    OCaml<D>,
-    OCaml<E>,
-) -> OCaml<'a, Ret>;
-
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {
-        get_named(name).map(OCamlClosure)
+        let named = unsafe {
+            let s = match std::ffi::CString::new(name) {
+                Ok(s) => s,
+                Err(_) => return None,
+            };
+            caml_named_value(s.as_ptr())
+        };
+        if named.is_null() || unsafe { tag_val(*named) } != tag::CLOSURE {
+            None
+        } else {
+            Some(OCamlClosure(named))
+        }
     }
 
     pub fn call<'a, T, R>(&self, cr: &'a mut OCamlRuntime, arg: &OCamlRoot<T>) -> OCaml<'a, R> {
@@ -107,3 +78,24 @@ impl OCamlClosure {
         }
     }
 }
+
+/// OCaml function that accepts one argument.
+pub type OCamlFn1<'a, A, Ret> = unsafe fn(&'a mut OCamlRuntime, OCaml<A>) -> OCaml<'a, Ret>;
+/// OCaml function that accepts two arguments.
+pub type OCamlFn2<'a, A, B, Ret> =
+    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>) -> OCaml<'a, Ret>;
+/// OCaml function that accepts three arguments.
+pub type OCamlFn3<'a, A, B, C, Ret> =
+    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>, OCaml<C>) -> OCaml<'a, Ret>;
+/// OCaml function that accepts four arguments.
+pub type OCamlFn4<'a, A, B, C, D, Ret> =
+    unsafe fn(&'a mut OCamlRuntime, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCaml<'a, Ret>;
+/// OCaml function that accepts five arguments.
+pub type OCamlFn5<'a, A, B, C, D, E, Ret> = unsafe fn(
+    &'a mut OCamlRuntime,
+    OCaml<A>,
+    OCaml<B>,
+    OCaml<C>,
+    OCaml<D>,
+    OCaml<E>,
+) -> OCaml<'a, Ret>;
