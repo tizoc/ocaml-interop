@@ -216,7 +216,7 @@ impl<'a> OCaml<'a, bool> {
     }
 
     /// Creates an OCaml boolean from a Rust boolean.
-    pub fn of_bool(b: bool) -> Self {
+    pub fn of_bool(b: bool) -> OCaml<'static, bool> {
         OCaml {
             _marker: PhantomData,
             raw: if b { TRUE } else { FALSE },
