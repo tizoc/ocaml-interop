@@ -7,7 +7,7 @@ use ocaml_sys::{caml_alloc, store_field};
 use crate::{
     memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
-        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlRooted,
+        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlRoot,
     },
     mlvalues::{
         tag, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE,
@@ -25,7 +25,7 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T>;
 }
 
-unsafe impl<'root, T> ToOCaml<T> for OCamlRooted<'root, T> {
+unsafe impl<'root, T> ToOCaml<T> for OCamlRoot<'root, T> {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T> {
         unsafe { OCaml::new(cr, self.get_raw()) }
     }

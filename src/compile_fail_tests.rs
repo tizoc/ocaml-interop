@@ -10,13 +10,13 @@
 /// ocaml_frame!(cr, (root), {
 /// let arg1: OCaml<String> = "test".to_owned().to_ocaml(cr);
 /// let arg2: OCaml<String> = "test".to_owned().to_ocaml(cr);
-/// let arg1_rooted = root.keep(arg1);
+/// let arg1_root = root.keep(arg1);
 /// # ()
 /// });
 /// ```
 pub struct LivenessFailureCheck;
 
-// Check that OCamlRoot values cannot escape the frame that created them.
+// Check that OCamlRawRoot values cannot escape the frame that created them.
 // Must fail with:
 // error[E0716]: temporary value dropped while borrowed
 /// ```compile_fail
@@ -27,9 +27,9 @@ pub struct LivenessFailureCheck;
 ///     rootvar
 /// });
 /// # ()
-pub struct OCamlRootEscapeFailureCheck;
+pub struct OCamlRawRootEscapeFailureCheck;
 
-// Check that OCamlRooted values cannot escape the frame that created the associated root.
+// Check that OCamlRoot values cannot escape the frame that created the associated root.
 // Must fail with:
 // error[E0716]: temporary value dropped while borrowed
 /// ```compile_fail
@@ -38,8 +38,8 @@ pub struct OCamlRootEscapeFailureCheck;
 /// # let cr = &mut OCamlRuntime::init();
 /// let escaped = ocaml_frame!(cr, (rootvar), {
 ///     let arg1: OCaml<String> = "test".to_owned().to_ocaml(cr);
-///     let arg1_rooted = rootvar.keep(arg1);
-///     arg1_rooted
+///     let arg1_root = rootvar.keep(arg1);
+///     arg1_root
 /// });
 /// # ()
-pub struct OCamlRootedEscapeFailureCheck;
+pub struct OCamlRootEscapeFailureCheck;

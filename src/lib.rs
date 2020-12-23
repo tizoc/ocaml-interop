@@ -14,7 +14,7 @@
 //!   * [Rules](#rules)
 //!     + [Rule 1: The OCaml runtime handle](#rule-1-the-ocaml-runtime-handle)
 //!     + [Rule 2: Liveness of OCaml values and rooting](#rule-2-liveness-of-ocaml-values-and-rooting)
-//!     + [Rule 3: Liveness and scope of rooted OCaml values](#rule-3-liveness-and-scope-of-rooted-ocaml-values)
+//!     + [Rule 3: Liveness and scope of OCaml roots](#rule-3-liveness-and-scope-ocaml-roots)
 //!   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
 //!     + [`FromOCaml` trait](#fromocaml-trait)
 //!     + [`ToOCaml` trait](#toocaml-trait)
@@ -42,13 +42,13 @@
 //!
 //! Rust references to OCaml values become stale after calls into the OCaml runtime and cannot be used again. This is enforced by Rust's borrow checker.
 //!
-//! To have OCaml values survive across calls into the OCaml runtime, they have to be rooted.
+//! To have OCaml values survive across calls into the OCaml runtime, they have to be rooted, and then recovered from a root.
 //!
 //! Rooting is only possible inside `ocaml_frame!` blocks, which initialize a list of root variables that can be used to root OCaml values.
 //!
-//! #### Rule 3: Liveness and scope of rooted OCaml values
+//! #### Rule 3: Liveness and scope of OCaml roots
 //!
-//! Rooted OCaml values are only valid inside the [`ocaml_frame!`] that instantiated the root variable that was used to root them, and cannot escape this scope.
+//! OCaml roots are only valid inside the [`ocaml_frame!`] that instantiated them, and cannot escape this scope.
 //!
 //! Example (fails to compile):
 //!
@@ -63,15 +63,15 @@
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
 //! let escape = ocaml_frame!(cr, (arg1_root), {
 //!     let arg1 = arg1.to_ocaml(cr);
-//!     let arg1_rooted = &arg1_root.keep(arg1);
-//!     let result = ocaml_function(cr, arg1_rooted, /* ..., argN */);
+//!     let arg1_root = &arg1_root.keep(arg1);
+//!     let result = ocaml_function(cr, arg1_root, /* ..., argN */);
 //!     let s: String = result.to_rust();
 //!     // ...
-//!     arg1_rooted
+//!     arg1_root
 //! });
 //! ```
 //!
-//! In the above example `arg1_rooted` cannot escape the [`ocaml_frame!`] scope, Rust's borrow checker will complain:
+//! In the above example `arg1_root` cannot escape the [`ocaml_frame!`] scope, Rust's borrow checker will complain:
 //!
 //! ```text,no_run
 //! error[E0716]: temporary value dropped while borrowed
@@ -82,10 +82,10 @@
 //!    | |     |
 //!    | |     borrow later stored here
 //!    | |     let arg1 = arg1.to_ocaml(cr);
-//!    | |     let arg1_rooted = &arg1_root.keep(arg1);
-//!    | |     let result = ocaml_function(cr, arg1_rooted, /* ..., argN */);
+//!    | |     let arg1_root = &arg1_root.keep(arg1);
+//!    | |     let result = ocaml_function(cr, arg1_root, /* ..., argN */);
 //! ...  |
-//!    | |     arg1_rooted
+//!    | |     arg1_root
 //!    | | });
 //!    | |  ^
 //!    | |  |
@@ -103,16 +103,16 @@
 //!
 //! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(&ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
 //!
-//! [`OCamlRooted`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
+//! [`OCamlRoot`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
 //!
 //! #### [`ToOCaml`] trait
 //!
 //! The [`ToOCaml`] trait implements conversion from Rust values into OCaml values, using the `to_ocaml` method. It takes a single parameter that must be a `&mut OCamlRuntime`.
 //!
-//! A more convenient way to convert Rust values into OCaml values is provided by the [`to_ocaml!`] macro that accepts a root variable as an optional third argument to return a value that is rooted already.
+//! A more convenient way to convert Rust values into OCaml values is provided by the [`to_ocaml!`] macro that accepts a root variable as an optional third argument to return a root containing the value.
 //!
 //! ### Calling convention
-//!
+//! TODO: fix all this
 //! There are two possible calling conventions in regards to rooting, one with *callee rooted arguments*, and another with *caller rooted arguments*.
 //!
 //! #### Callee rooted arguments calling convention
@@ -121,9 +121,9 @@
 //!
 //! #### Caller rooted arguments calling convention
 //!
-//! With this calling convention, values that are arguments to a function call must be rooted by the caller. Then instead of the value, it is the root pointing to it is passed as an argument. This is how `ocaml-interop` works starting with version `0.5.0`.
+//! With this calling convention, values that are arguments to a function call must be rooted by the caller. Then instead of the value, it is the root pointing to the value that is passed as an argument. This is how `ocaml-interop` works starting with version `0.5.0`.
 //!
-//! When a Rust function is called from OCaml, it will receive arguments as `&OCamlRooted<T>` values, and when a OCaml function is called from Rust, arguments will be passed as `&OCamlRooted<T>` values.
+//! When a Rust function is called from OCaml, it will receive arguments as `&OCamlRoot<T>` values, and when a OCaml function is called from Rust, arguments will be passed as `&OCamlRoot<T>` values.
 //!
 //! ### Calling into OCaml from Rust
 //!
@@ -157,7 +157,7 @@
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_frame, to_ocaml, FromOCaml, OCaml, OCamlRooted, ToOCaml, OCamlRuntime
+//!     ocaml_frame, to_ocaml, FromOCaml, OCaml, OCamlRoot, ToOCaml, OCamlRuntime
 //! };
 //!
 //! // To call an OCaml function, it first has to be declared inside an `ocaml!` macro block:
@@ -200,44 +200,44 @@
 //!         // this frame.
 //!         // Each "root variable" reserves space for a reference that will be tracked by the GC.
 //!         // A root variable's `root_var.keep(value)` method returns
-//!         // a rooted OCaml value that is going to be valid during the scope of
-//!         // the current `ocaml_frame!` block. Later `cr.get(rooted_value)` can be used
+//!         // an value-containing root that is going to be valid during the scope of
+//!         // the current `ocaml_frame!` block. Later `cr.get(value_root)` can be used
 //!         // to recover the original OCaml value.
-//!         let bytes1_rooted: &OCamlRooted<String> = &bytes1_root.keep(ocaml_bytes1);
+//!         let bytes1_root: &OCamlRoot<String> = &bytes1_root.keep(ocaml_bytes1);
 //!
 //!         // Same as above. Here the convenience macro [`to_ocaml!`] is used.
 //!         // It works like `value.to_ocaml(cr)`, but has an optional third argument that
 //!         // can be a root variable to perform the rooting.
-//!         // This variation returns an `OCamlRooted` value instead of an `OCaml` one.
-//!         let bytes2_rooted = &to_ocaml!(cr, bytes2, bytes2_root);
+//!         // This variation returns an `OCamlRoot` value instead of an `OCaml` one.
+//!         let bytes2_root = &to_ocaml!(cr, bytes2, bytes2_root);
 //!
 //!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64`
 //!         // and `OCaml::of_i64_unchecked`.
 //!         // Such conversion doesn't require any allocation on the OCaml side, and doesn't
 //!         // invalidate other `OCaml<T>` values.
 //!         let ocaml_first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
-//!         let first_n_rooted = &first_n_root.keep(ocaml_first_n);
+//!         let first_n_root = &first_n_root.keep(ocaml_first_n);
 //!
 //!         // Any OCaml function (declared above in a `ocaml!` block) can be called as a regular
 //!         // Rust function, by passing a `&mut OCamlRuntime` as the first argument, followed by
 //!         // the rest of the arguments declared for that function.
-//!         // Arguments to these functions must be references to rooted values: `&OCamlRooted<T>`
+//!         // Arguments to these functions must be references to roots: `&OCamlRoot<T>`
 //!         let result1 = ocaml_funcs::increment_bytes(
 //!             cr,             // &mut OCamlRuntime
-//!             bytes1_rooted,  // &OCamlRooted<String>
-//!             first_n_rooted, // &OCamlRooted<OCamlInt>
+//!             bytes1_root,    // &OCamlRoot<String>
+//!             first_n_root,   // &OCamlRoot<OCamlInt>
 //!         );
 //!
 //!         // Perform the conversion of the OCaml result value into a
 //!         // Rust value while the reference is still valid because the
 //!         // call that follows will invalidate it.
 //!         // Alternatively, the result of `rootvar.keep(result1)` could be used
-//!         // to be able to reference the value later through an `OCamlRooted` value.
+//!         // to be able to reference the value later through an `OCamlRoot` value.
 //!         let new_bytes1: String = result1.to_rust();
 //!         let result2 = ocaml_funcs::increment_bytes(
 //!             cr,
-//!             bytes2_rooted,
-//!             first_n_rooted,
+//!             bytes2_root,
+//!             first_n_root,
 //!         );
 //!
 //!         // The `FromOCaml` trait provides the `from_ocaml` method to convert from
@@ -253,8 +253,8 @@
 //! fn twice(cr: &mut OCamlRuntime, num: usize) -> usize {
 //!     ocaml_frame!(cr, (num_root), {
 //!         let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
-//!         let num_rooted = &num_root.keep(ocaml_num);
-//!         let result = ocaml_funcs::twice(cr, num_rooted);
+//!         let num_root = &num_root.keep(ocaml_num);
+//!         let result = ocaml_funcs::twice(cr, num_root);
 //!         i64::from_ocaml(&result) as usize
 //!     })
 //! }
@@ -287,7 +287,7 @@
 //! ```rust,no_run
 //! use ocaml_interop::{
 //!     to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes,
-//!     OCamlRooted, ToOCaml,
+//!     OCamlRoot, ToOCaml,
 //! };
 //!
 //! // `ocaml_export` expands the function definitions by adding `pub` visibility and
@@ -296,17 +296,17 @@
 //! // the first parameter of the function.
 //! ocaml_export! {
 //!     // The first parameter is a name to which the GC frame handle will be bound to.
-//!     // The remaining parameters must have type `&OCamlRooted<T>`, and the return
+//!     // The remaining parameters must have type `&OCamlRoot<T>`, and the return
 //!     // value `OCaml<T>`.
-//!     fn rust_twice(cr, num: &OCamlRooted<OCamlInt>) -> OCaml<OCamlInt> {
+//!     fn rust_twice(cr, num: &OCamlRoot<OCamlInt>) -> OCaml<OCamlInt> {
 //!         let num: i64 = num.to_rust(cr);
 //!         unsafe { OCaml::of_i64_unchecked(num * 2) }
 //!     }
 //!
 //!     fn rust_increment_bytes(
 //!         cr,
-//!         bytes: &OCamlRooted<OCamlBytes>,
-//!         first_n: &OCamlRooted<OCamlInt>,
+//!         bytes: &OCamlRoot<OCamlBytes>,
+//!         first_n: &OCamlRoot<OCamlInt>,
 //!     ) -> OCaml<OCamlBytes> {
 //!         let first_n: i64 = first_n.to_rust(cr);
 //!         let first_n = first_n as usize;
@@ -349,7 +349,7 @@ mod value;
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5};
 pub use crate::conv::{FromOCaml, ToOCaml};
 pub use crate::error::OCamlException;
-pub use crate::memory::OCamlRooted;
+pub use crate::memory::OCamlRoot;
 pub use crate::mlvalues::{
     OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
@@ -359,7 +359,7 @@ pub use crate::value::OCaml;
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, store_field, OCamlRoot};
+    pub use crate::memory::{caml_alloc, store_field, OCamlRawRoot};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
     pub use ocaml_sys::{caml_hash_variant, int_val};

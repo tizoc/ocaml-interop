@@ -84,25 +84,25 @@ impl<'gc> Drop for GCFrame<'gc> {
     }
 }
 
-pub struct OCamlRoot<'a> {
+pub struct OCamlRawRoot<'a> {
     cell: &'a Cell<RawOCaml>,
 }
 
-impl<'a> OCamlRoot<'a> {
+impl<'a> OCamlRawRoot<'a> {
     #[doc(hidden)]
-    pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> OCamlRoot<'gc> {
+    pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> OCamlRawRoot<'gc> {
         assert_eq!(&_gc.block as *const _, local_roots());
         let block = &mut *local_roots();
         let locals: *const Cell<RawOCaml> = &*(block.local_roots as *const Cell<RawOCaml>);
         let cell = &*locals.offset(block.nitems);
         block.nitems += 1;
-        OCamlRoot { cell }
+        OCamlRawRoot { cell }
     }
 
     /// Roots an [`OCaml`] value.
-    pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRooted<'tmp, T> {
+    pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRoot<'tmp, T> {
         self.cell.set(unsafe { val.raw() });
-        OCamlRooted {
+        OCamlRoot {
             _marker: PhantomData,
             cell: self.cell,
         }
@@ -114,25 +114,25 @@ impl<'a> OCamlRoot<'a> {
     ///
     /// This method is unsafe because there is no way to validate that the [`RawOCaml`] value
     /// is of the correct type.
-    pub unsafe fn keep_raw<T>(&mut self, val: RawOCaml) -> OCamlRooted<T> {
+    pub unsafe fn keep_raw<T>(&mut self, val: RawOCaml) -> OCamlRoot<T> {
         self.cell.set(val);
-        OCamlRooted {
+        OCamlRoot {
             _marker: PhantomData,
             cell: self.cell,
         }
     }
 }
 
-/// An `OCamlRooted<T>` value is the result of rooting [`OCaml`]`<T>` value using a root variable.
+/// An `OCamlRoot<T>` value is the result of rooting [`OCaml`]`<T>` value using a root variable.
 ///
-/// Rooted values can be used to recover a fresh reference to an [`OCaml`]`<T>` value what would
+/// Roots can be used to recover a fresh reference to an [`OCaml`]`<T>` value what would
 /// otherwise become stale after a call to the OCaml runtime.
-pub struct OCamlRooted<'a, T> {
+pub struct OCamlRoot<'a, T> {
     pub(crate) cell: &'a Cell<RawOCaml>,
     _marker: PhantomData<Cell<T>>,
 }
 
-impl<'a, T> OCamlRooted<'a, T> {
+impl<'a, T> OCamlRoot<'a, T> {
     /// Converts this value into a Rust value.
     pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT
     where
@@ -160,24 +160,24 @@ struct ConstantRoot(Cell<RawOCaml>);
 
 unsafe impl Sync for ConstantRoot {}
 
-static ROOTED_UNIT: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::UNIT));
-static ROOTED_NONE: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::NONE));
+static ROOT_UNIT: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::UNIT));
+static ROOT_NONE: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::NONE));
 
-impl OCamlRooted<'static, ()> {
-    /// Convenience constructor for rooted unit values.
-    pub fn unit() -> OCamlRooted<'static, ()> {
-        OCamlRooted {
-            cell: &ROOTED_UNIT.0,
+impl OCamlRoot<'static, ()> {
+    /// Convenience method to obtain a root containing an unit value.
+    pub fn unit() -> OCamlRoot<'static, ()> {
+        OCamlRoot {
+            cell: &ROOT_UNIT.0,
             _marker: PhantomData,
         }
     }
 }
 
-impl<T> OCamlRooted<'static, Option<T>> {
-    /// Convenience constructor for rooted None values.
-    pub fn none() -> OCamlRooted<'static, Option<T>> {
-        OCamlRooted {
-            cell: &ROOTED_NONE.0,
+impl<T> OCamlRoot<'static, Option<T>> {
+    /// Convenience method to obtain a root containing an `None` value.
+    pub fn none() -> OCamlRoot<'static, Option<T>> {
+        OCamlRoot {
+            cell: &ROOT_NONE.0,
             _marker: PhantomData,
         }
     }
@@ -219,7 +219,7 @@ pub fn alloc_double(cr: &mut OCamlRuntime, d: f64) -> OCaml<OCamlFloat> {
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: &OCamlRooted<A>) -> OCaml<'a, Option<A>> {
+pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: &OCamlRoot<A>) -> OCaml<'a, Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
         store_field(ocaml_some, 0, value.get_raw());
@@ -229,8 +229,8 @@ pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: &OCamlRooted<A>) -> OC
 
 pub fn alloc_tuple<'a, F, S>(
     cr: &'a mut OCamlRuntime,
-    fst: &OCamlRooted<F>,
-    snd: &OCamlRooted<S>,
+    fst: &OCamlRoot<F>,
+    snd: &OCamlRoot<S>,
 ) -> OCaml<'a, (F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
@@ -242,9 +242,9 @@ pub fn alloc_tuple<'a, F, S>(
 
 pub fn alloc_tuple_3<'a, F, S, T3>(
     cr: &'a mut OCamlRuntime,
-    fst: &OCamlRooted<F>,
-    snd: &OCamlRooted<S>,
-    elt3: &OCamlRooted<T3>,
+    fst: &OCamlRoot<F>,
+    snd: &OCamlRoot<S>,
+    elt3: &OCamlRoot<T3>,
 ) -> OCaml<'a, (F, S, T3)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(3);
@@ -257,10 +257,10 @@ pub fn alloc_tuple_3<'a, F, S, T3>(
 
 pub fn alloc_tuple_4<'a, F, S, T3, T4>(
     cr: &'a mut OCamlRuntime,
-    fst: &OCamlRooted<F>,
-    snd: &OCamlRooted<S>,
-    elt3: &OCamlRooted<T3>,
-    elt4: &OCamlRooted<T4>,
+    fst: &OCamlRoot<F>,
+    snd: &OCamlRoot<S>,
+    elt3: &OCamlRoot<T3>,
+    elt4: &OCamlRoot<T4>,
 ) -> OCaml<'a, (F, S, T3, T4)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(4);
@@ -274,8 +274,8 @@ pub fn alloc_tuple_4<'a, F, S, T3, T4>(
 
 pub fn alloc_cons<'a, A>(
     cr: &'a mut OCamlRuntime,
-    head: &OCamlRooted<A>,
-    tail: &OCamlRooted<OCamlList<A>>,
+    head: &OCamlRoot<A>,
+    tail: &OCamlRoot<OCamlList<A>>,
 ) -> OCaml<'a, OCamlList<A>> {
     unsafe {
         let ocaml_cons = caml_alloc(2, tag::CONS);

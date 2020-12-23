@@ -5,7 +5,7 @@ use crate::error::OCamlException;
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
 use crate::value::OCaml;
-use crate::{OCamlRooted, OCamlRuntime};
+use crate::{OCamlRoot, OCamlRuntime};
 use ocaml_sys::{
     caml_callback2_exn, caml_callback3_exn, caml_callbackN_exn, caml_callback_exn, caml_named_value,
 };
@@ -60,7 +60,7 @@ impl OCamlClosure {
         get_named(name).map(OCamlClosure)
     }
 
-    pub fn call<'a, T, R>(&self, cr: &'a mut OCamlRuntime, arg: &OCamlRooted<T>) -> OCaml<'a, R> {
+    pub fn call<'a, T, R>(&self, cr: &'a mut OCamlRuntime, arg: &OCamlRoot<T>) -> OCaml<'a, R> {
         let result = unsafe { caml_callback_exn(*self.0, arg.get_raw()) };
         self.handle_call_result(cr, result)
     }
@@ -68,8 +68,8 @@ impl OCamlClosure {
     pub fn call2<'a, T, U, R>(
         &self,
         cr: &'a mut OCamlRuntime,
-        arg1: &OCamlRooted<T>,
-        arg2: &OCamlRooted<U>,
+        arg1: &OCamlRoot<T>,
+        arg2: &OCamlRoot<U>,
     ) -> OCaml<'a, R> {
         let result = unsafe { caml_callback2_exn(*self.0, arg1.get_raw(), arg2.get_raw()) };
         self.handle_call_result(cr, result)
@@ -78,9 +78,9 @@ impl OCamlClosure {
     pub fn call3<'a, T, U, V, R>(
         &self,
         cr: &'a mut OCamlRuntime,
-        arg1: &OCamlRooted<T>,
-        arg2: &OCamlRooted<U>,
-        arg3: &OCamlRooted<V>,
+        arg1: &OCamlRoot<T>,
+        arg2: &OCamlRoot<U>,
+        arg3: &OCamlRoot<V>,
     ) -> OCaml<'a, R> {
         let result =
             unsafe { caml_callback3_exn(*self.0, arg1.get_raw(), arg2.get_raw(), arg3.get_raw()) };
