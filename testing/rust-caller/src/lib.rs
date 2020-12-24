@@ -59,10 +59,10 @@ mod ocaml {
 }
 
 pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> String {
-    ocaml_frame!(cr, (bytes_root, first_n_root), {
+    ocaml_frame!(cr, (bytes_root), {
         let bytes = to_ocaml!(cr, bytes, bytes_root);
-        let first_n = to_ocaml!(cr, first_n as i64, first_n_root);
-        let result = ocaml::increment_bytes(cr, &bytes, &first_n);
+        let first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
+        let result = ocaml::increment_bytes(cr, &bytes, &first_n.as_root());
         result.to_rust()
     })
 }
@@ -76,20 +76,16 @@ pub fn increment_ints_list(cr: &mut OCamlRuntime, ints: &Vec<i64>) -> Vec<i64> {
 }
 
 pub fn twice(cr: &mut OCamlRuntime, num: i64) -> i64 {
-    ocaml_frame!(cr, (root), {
-        let num = unsafe { OCaml::of_i64_unchecked(num) };
-        let num = root.keep(num);
-        let result = ocaml::twice(cr, &num);
-        result.to_rust()
-    })
+    let num = unsafe { OCaml::of_i64_unchecked(num) };
+    let result = ocaml::twice(cr, &num.as_root());
+    result.to_rust()
 }
 
 pub fn make_tuple(cr: &mut OCamlRuntime, fst: String, snd: i64) -> (String, i64) {
-    ocaml_frame!(cr, (num_root, str_root), {
+    ocaml_frame!(cr, (str_root), {
         let num = unsafe { OCaml::of_i64_unchecked(snd) };
-        let num = num_root.keep(num);
         let str = to_ocaml!(cr, fst, str_root);
-        let result = ocaml::make_tuple(cr, &str, &num);
+        let result = ocaml::make_tuple(cr, &str, &num.as_root());
         result.to_rust()
     })
 }
@@ -103,11 +99,9 @@ pub fn make_some(cr: &mut OCamlRuntime, value: String) -> Option<String> {
 }
 
 pub fn make_ok(cr: &mut OCamlRuntime, value: i64) -> Result<i64, String> {
-    ocaml_frame!(cr, (root), {
-        let result = to_ocaml!(cr, value, root);
-        let result = ocaml::make_ok(cr, &result);
-        result.to_rust()
-    })
+    let value = unsafe { OCaml::of_i64_unchecked(value) };
+    let result = ocaml::make_ok(cr, &value.as_root());
+    result.to_rust()
 }
 
 pub fn make_error(cr: &mut OCamlRuntime, value: String) -> Result<i64, String> {

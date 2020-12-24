@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `OCamlRuntime::releasing_runtime(&mut self, f: FnOnce() -> T)` releases the OCaml runtime, calls `f`, and then re-acquires the OCaml runtime. Maybe more complicated patterns should be supported, but for now I haven't given this much thought.
 - Support for unpacking OCaml polymorphic variants into Rust values.
-- Added `to_rust(cr: &OCamlRuntime)` method to `OCamlRoot<T>` values.
+- `to_rust(cr: &OCamlRuntime)` method to `OCamlRoot<T>` values.
+- `as_root(&self) -> OCamlRoot<T>` method to obtain roots for immediate values without performing actual rooting.
 - `OCamlRoot::unit()` method to obtain a static root with an OCaml unit value.
 - `OCamlRoot::none()` method to obtain a static root with an OCaml `None` value.
 

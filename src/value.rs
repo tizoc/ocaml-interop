@@ -1,7 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{error::OCamlFixnumConversionError, mlvalues::*, FromOCaml, OCamlRuntime};
+use crate::{error::OCamlFixnumConversionError, mlvalues::*, FromOCaml, OCamlRoot, OCamlRuntime};
 use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
@@ -87,6 +87,13 @@ impl<'a, T> OCaml<'a, T> {
         RustT: FromOCaml<T>,
     {
         RustT::from_ocaml(self)
+    }
+}
+
+impl<T> OCaml<'static, T> {
+    /// Gets an immediate OCaml value as a root containing that value.
+    pub fn as_root(&self) -> OCamlRoot<T> {
+        unsafe { std::mem::transmute(self) }
     }
 }
 

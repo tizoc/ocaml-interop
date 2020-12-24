@@ -27,6 +27,7 @@ pub struct LivenessFailureCheck;
 ///     rootvar
 /// });
 /// # ()
+/// ```
 pub struct OCamlRawRootEscapeFailureCheck;
 
 // Check that OCamlRoot values cannot escape the frame that created the associated root.
@@ -42,4 +43,20 @@ pub struct OCamlRawRootEscapeFailureCheck;
 ///     arg1_root
 /// });
 /// # ()
+/// ```
 pub struct OCamlRootEscapeFailureCheck;
+
+// Check that roots created from immediate values cannot escape.
+// Must fail with:
+// error[E0597]: `ocaml_n` does not live long enough
+/// ```compile_fail
+/// # use ocaml_interop::*;
+/// # ocaml! { pub fn ocaml_function(arg1: String) -> String; }
+/// # let cr = &mut OCamlRuntime::init();
+/// let escaped = {
+///     let ocaml_n: OCaml<'static, OCamlInt> = unsafe { OCaml::of_i64_unchecked(10) };
+///     ocaml_n.as_root()
+/// };
+/// # ()
+/// ```
+pub struct OCamlImmediateRootEscapeFailureCheck;

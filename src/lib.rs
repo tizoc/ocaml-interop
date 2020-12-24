@@ -187,7 +187,7 @@
 //!     // The first argument to the macro is a reference to an `OCamlRuntime`, followed by a
 //!     // list of "root variables" (more on this later). The last argument
 //!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(cr, (bytes1_root, bytes2_root, first_n_root), {
+//!     ocaml_frame!(cr, (bytes1_root, bytes2_root), {
 //!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
 //!         // values into OCaml values.
 //!         let ocaml_bytes1: OCaml<String> = bytes1.to_ocaml(cr);
@@ -216,7 +216,6 @@
 //!         // Such conversion doesn't require any allocation on the OCaml side, and doesn't
 //!         // invalidate other `OCaml<T>` values.
 //!         let ocaml_first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
-//!         let first_n_root = &first_n_root.keep(ocaml_first_n);
 //!
 //!         // Any OCaml function (declared above in a `ocaml!` block) can be called as a regular
 //!         // Rust function, by passing a `&mut OCamlRuntime` as the first argument, followed by
@@ -225,7 +224,9 @@
 //!         let result1 = ocaml_funcs::increment_bytes(
 //!             cr,             // &mut OCamlRuntime
 //!             bytes1_root,    // &OCamlRoot<String>
-//!             first_n_root,   // &OCamlRoot<OCamlInt>
+//!             // Immediate OCaml values, such as ints and books have an as_root() method
+//!             // that can be used to simulate rooting.
+//!             &ocaml_first_n.as_root(), // &OCamlRoot<OCamlInt>
 //!         );
 //!
 //!         // Perform the conversion of the OCaml result value into a
@@ -237,7 +238,7 @@
 //!         let result2 = ocaml_funcs::increment_bytes(
 //!             cr,
 //!             bytes2_root,
-//!             first_n_root,
+//!             &ocaml_first_n.as_root(),
 //!         );
 //!
 //!         // The `FromOCaml` trait provides the `from_ocaml` method to convert from
