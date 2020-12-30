@@ -89,8 +89,8 @@ macro_rules! ocaml {
             cr: &'a mut $crate::OCamlRuntime,
             $arg: &$crate::OCamlRoot<$typ>,
         ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
-            $crate::ocaml_closure_reference!(F, $name);
-            F.call(cr, $arg)
+            $crate::ocaml_closure_reference!(closure, $name);
+            closure.call(cr, $arg)
         }
 
         $crate::ocaml!($($t)*);
@@ -105,8 +105,8 @@ macro_rules! ocaml {
             $arg1: &$crate::OCamlRoot<$typ1>,
             $arg2: &$crate::OCamlRoot<$typ2>,
         ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
-            $crate::ocaml_closure_reference!(F, $name);
-            F.call2(cr, $arg1, $arg2)
+            $crate::ocaml_closure_reference!(closure, $name);
+            closure.call2(cr, $arg1, $arg2)
         }
 
         $crate::ocaml!($($t)*);
@@ -123,8 +123,8 @@ macro_rules! ocaml {
             $arg2: &$crate::OCamlRoot<$typ2>,
             $arg3: &$crate::OCamlRoot<$typ3>,
         ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
-            $crate::ocaml_closure_reference!(F, $name);
-            F.call3(cr, $arg1, $arg2, $arg3)
+            $crate::ocaml_closure_reference!(closure, $name);
+            closure.call3(cr, $arg1, $arg2, $arg3)
         }
 
         $crate::ocaml!($($t)*);
@@ -137,8 +137,8 @@ macro_rules! ocaml {
             cr: &'a mut $crate::OCamlRuntime,
             $($arg: &$crate::OCamlRoot<$typ>),+
     ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
-            $crate::ocaml_closure_reference!(F, $name);
-            F.call_n(cr, &mut [$($arg.get_raw()),+])
+            $crate::ocaml_closure_reference!(closure, $name);
+            closure.call_n(cr, &mut [$($arg.get_raw()),+])
         }
 
         $crate::ocaml!($($t)*);
@@ -1230,14 +1230,14 @@ macro_rules! unpack_polymorphic_variant_tag {
 #[macro_export]
 macro_rules! ocaml_closure_reference {
     ($var:ident, $name:ident) => {
-        static name: &str = stringify!($name);
+        static NAME: &str = stringify!($name);
         static mut OC: Option<$crate::internal::OCamlClosure> = None;
         static INIT: ::std::sync::Once = ::std::sync::Once::new();
         let $var = unsafe {
             INIT.call_once(|| {
-                OC = $crate::internal::OCamlClosure::named(name);
+                OC = $crate::internal::OCamlClosure::named(NAME);
             });
-            OC.unwrap_or_else(|| panic!("OCaml closure with name '{}' not registered", name))
+            OC.unwrap_or_else(|| panic!("OCaml closure with name '{}' not registered", NAME))
         };
     };
 }
