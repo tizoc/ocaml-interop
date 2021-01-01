@@ -30,7 +30,7 @@ pub struct LivenessFailureCheck;
 /// ```
 pub struct OCamlRawRootEscapeFailureCheck;
 
-// Check that OCamlRoot values cannot escape the frame that created the associated root.
+// Check that OCamlRef values cannot escape the frame that created the associated root.
 // Must fail with:
 // error[E0716]: temporary value dropped while borrowed
 /// ```compile_fail
@@ -55,7 +55,7 @@ pub struct OCamlRootEscapeFailureCheck;
 /// # let cr = &mut OCamlRuntime::init();
 /// let escaped = {
 ///     let ocaml_n: OCaml<'static, OCamlInt> = unsafe { OCaml::of_i64_unchecked(10) };
-///     ocaml_n.as_root()
+///     ocaml_n.as_value_ref()
 /// };
 /// # ()
 /// ```

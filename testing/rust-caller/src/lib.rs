@@ -62,7 +62,7 @@ pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> St
     ocaml_frame!(cr, (bytes_root), {
         let bytes = to_ocaml!(cr, bytes, bytes_root);
         let first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
-        let result = ocaml::increment_bytes(cr, &bytes, &first_n.as_root());
+        let result = ocaml::increment_bytes(cr, &bytes, &first_n.as_value_ref());
         result.to_rust()
     })
 }
@@ -77,7 +77,7 @@ pub fn increment_ints_list(cr: &mut OCamlRuntime, ints: &Vec<i64>) -> Vec<i64> {
 
 pub fn twice(cr: &mut OCamlRuntime, num: i64) -> i64 {
     let num = unsafe { OCaml::of_i64_unchecked(num) };
-    let result = ocaml::twice(cr, &num.as_root());
+    let result = ocaml::twice(cr, &num.as_value_ref());
     result.to_rust()
 }
 
@@ -85,7 +85,7 @@ pub fn make_tuple(cr: &mut OCamlRuntime, fst: String, snd: i64) -> (String, i64)
     ocaml_frame!(cr, (str_root), {
         let num = unsafe { OCaml::of_i64_unchecked(snd) };
         let str = to_ocaml!(cr, fst, str_root);
-        let result = ocaml::make_tuple(cr, &str, &num.as_root());
+        let result = ocaml::make_tuple(cr, &str, &num.as_value_ref());
         result.to_rust()
     })
 }
@@ -100,7 +100,7 @@ pub fn make_some(cr: &mut OCamlRuntime, value: String) -> Option<String> {
 
 pub fn make_ok(cr: &mut OCamlRuntime, value: i64) -> Result<i64, String> {
     let value = unsafe { OCaml::of_i64_unchecked(value) };
-    let result = ocaml::make_ok(cr, &value.as_root());
+    let result = ocaml::make_ok(cr, &value.as_value_ref());
     result.to_rust()
 }
 

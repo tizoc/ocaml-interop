@@ -4,7 +4,7 @@
 use ocaml_sys::{caml_shutdown, caml_startup};
 use std::marker::PhantomData;
 
-use crate::{memory::GCFrame, memory::OCamlRoot, value::OCaml};
+use crate::{memory::GCFrame, memory::OCamlRef, value::OCaml};
 
 /// OCaml runtime handle.
 pub struct OCamlRuntime {
@@ -57,7 +57,7 @@ impl OCamlRuntime {
     }
 
     /// Returns the OCaml valued to which this GC tracked reference points to.
-    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRoot<T>) -> OCaml<'tmp, T> {
+    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
         OCaml {
             _marker: PhantomData,
             raw: reference.cell.get(),

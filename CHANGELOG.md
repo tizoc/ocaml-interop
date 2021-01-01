@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `OCamlRuntime::releasing_runtime(&mut self, f: FnOnce() -> T)` releases the OCaml runtime, calls `f`, and then re-acquires the OCaml runtime. Maybe more complicated patterns should be supported, but for now I haven't given this much thought.
 - Support for unpacking OCaml polymorphic variants into Rust values.
-- `to_rust(cr: &OCamlRuntime)` method to `OCamlRoot<T>` values.
-- `as_root(&self) -> OCamlRoot<T>` method to obtain roots for immediate values without performing actual rooting.
-- `OCamlRoot::unit()` method to obtain a static root with an OCaml unit value.
-- `OCamlRoot::none()` method to obtain a static root with an OCaml `None` value.
+- `to_rust(cr: &OCamlRuntime)` method to `OCamlRef<T>` values.
+- `as_value_ref(&self) -> OCamlRef<T>` method to obtain roots for immediate values without performing actual rooting.
+- `OCamlRef::unit()` method to obtain a static ref to an OCaml unit value.
+- `OCamlRef::none()` method to obtain a static ref to an OCaml `None` value.
 
 ### Changed
 
@@ -23,13 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ocaml_frame!` doesn't create a GC-handle anymore, but instead takes as input an OCaml-Runtime-handle, and uses it to instantiate a new frame and list of Root-variables through an immutable borrow.
 - `ocaml_frame!` is now only required to instantiate Root-variables, any interaction with the OCaml runtime will make use of an OCaml-Runtime-handle, which should be around already. The syntax also changed slightly, requiring a comma after the OCaml-Runtime-handle parameter.
 - `OCamlRoot` has been renamed to `OCamlRawRoot`.
-- `OCamlRef` has been renamed to `OCamlRoot`.
 - Rust functions that are exported to OCaml must now declare at least one argument.
-- Functions that are exported to OCaml now follow a caller-save convention. These functions now receive `&OCamlRoot<T>`  arguments.
-- Functions that are imported from OCaml now follow a caller-save convention. These functions  now receive `&OCamlRoot<T>`  arguments.
+- Functions that are exported to OCaml now follow a caller-save convention. These functions now receive `&OCamlRef<T>`  arguments.
+- Functions that are imported from OCaml now follow a caller-save convention. These functions  now receive `&OCamlRef<T>`  arguments.
 - Calls to OCaml functions don't return `Result` anymore, and instead panic on unexpected exceptions.
 - `to_rust()` method is now implemented directly into `OCaml<T>`, the `ToRust` trait is not required anymore.
-- `keep_raw()` method in root variables is now `unsafe` and returns an `OCamlRoot<T>`.
+- `keep_raw()` method in root variables is now `unsafe` and returns an `OCamlRef<T>`.
 - `OCaml<T>::as_i64()` -> `to_i64()`.
 - `OCaml<T>::as_bool()` -> `to_bool()`.
 
@@ -44,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ocaml_call!` macro.
 - `ocaml_alloc!` macro.
 - `OCamlAllocToken` type.
+- `OCamlRef::set` method (use `OCamlRawRoot::keep` instead).
 
 ### Fixed
 

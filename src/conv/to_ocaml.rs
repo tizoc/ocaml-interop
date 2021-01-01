@@ -7,7 +7,7 @@ use ocaml_sys::{caml_alloc, store_field};
 use crate::{
     memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
-        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlRoot,
+        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlRef,
     },
     mlvalues::{
         tag, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE,
@@ -25,7 +25,7 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T>;
 }
 
-unsafe impl<'root, T> ToOCaml<T> for OCamlRoot<'root, T> {
+unsafe impl<'root, T> ToOCaml<T> for OCamlRef<'root, T> {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T> {
         unsafe { OCaml::new(cr, self.get_raw()) }
     }
@@ -230,13 +230,13 @@ where
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
         ocaml_frame!(cr, (result_root, ov_root), {
-            let mut result_root = result_root.keep(OCaml::nil());
+            let mut result = result_root.keep(OCaml::nil());
             for elt in self.iter().rev() {
                 let ov = to_ocaml!(cr, elt, ov_root);
-                let cons = alloc_cons(cr, &ov, &result_root);
-                result_root.set(cons);
+                let cons = alloc_cons(cr, &ov, &result);
+                result = result_root.keep(cons);
             }
-            cr.get(&result_root)
+            cr.get(&result)
         })
     }
 }
