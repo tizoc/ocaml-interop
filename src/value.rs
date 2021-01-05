@@ -291,6 +291,10 @@ impl<'a, A, Err> OCaml<'a, Result<A, Err>> {
 }
 
 impl<'a, A, B> OCaml<'a, (A, B)> {
+    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>) {
+        (self.fst(), self.snd())
+    }
+
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }
     }
@@ -301,6 +305,10 @@ impl<'a, A, B> OCaml<'a, (A, B)> {
 }
 
 impl<'a, A, B, C> OCaml<'a, (A, B, C)> {
+    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>, OCaml<'a, C>) {
+        (self.fst(), self.snd(), self.tuple_3())
+    }
+
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }
     }
@@ -315,6 +323,10 @@ impl<'a, A, B, C> OCaml<'a, (A, B, C)> {
 }
 
 impl<'a, A, B, C, D> OCaml<'a, (A, B, C, D)> {
+    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>, OCaml<'a, C>, OCaml<'a, D>) {
+        (self.fst(), self.snd(), self.tuple_3(), self.tuple_4())
+    }
+
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }
     }
