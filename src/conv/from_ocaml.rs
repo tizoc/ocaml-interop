@@ -61,7 +61,7 @@ unsafe impl FromOCaml<String> for Vec<u8> {
 
 unsafe impl FromOCaml<String> for String {
     fn from_ocaml(v: &OCaml<String>) -> Self {
-        v.as_str().to_owned()
+        String::from_utf8_lossy(v.as_bytes()).into_owned()
     }
 }
 
