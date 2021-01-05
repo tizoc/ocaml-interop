@@ -71,8 +71,8 @@ impl OCamlClosure {
         result: RawOCaml,
     ) -> OCaml<'a, R> {
         if is_exception_result(result) {
-            let ex = OCamlException::of(extract_exception(result));
-            panic!("OCaml exception: {:?}", ex)
+            let ex = unsafe { OCamlException::of(extract_exception(result)) };
+            panic!("OCaml exception, message: {:?}", ex.message())
         } else {
             unsafe { OCaml::new(cr, result) }
         }
