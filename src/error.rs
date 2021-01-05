@@ -4,7 +4,7 @@
 use crate::mlvalues::{is_block, string_val, tag_val, RawOCaml};
 use crate::mlvalues::{tag, MAX_FIXNUM, MIN_FIXNUM};
 use core::{fmt, slice};
-use ocaml_sys::{caml_string_length, is_exception_result};
+use ocaml_sys::caml_string_length;
 
 /// An OCaml exception value.
 #[derive(Debug)]
