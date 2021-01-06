@@ -148,7 +148,7 @@ impl<'a, T> OCamlRef<'a, T> {
     where
         RustT: FromOCaml<T>,
     {
-        RustT::from_ocaml(&cr.get(self))
+        RustT::from_ocaml(cr.get(self))
     }
 
     /// Borrows the raw value contained in this root.

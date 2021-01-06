@@ -86,7 +86,7 @@ impl<'a, T> OCaml<'a, T> {
     where
         RustT: FromOCaml<T>,
     {
-        RustT::from_ocaml(self)
+        RustT::from_ocaml(self.clone())
     }
 }
 

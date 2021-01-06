@@ -247,7 +247,7 @@
 //!         // OCaml runtime when converting into Rust values.
 //!         // A more convenient alternative, is to use the `to_rust` method as
 //!         // above when `result1` was converted.
-//!         (new_bytes1, String::from_ocaml(&result2))
+//!         (new_bytes1, String::from_ocaml(result2))
 //!     })
 //! }
 //!
@@ -256,7 +256,7 @@
 //!         let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
 //!         let num_root = num_root.keep(ocaml_num);
 //!         let result = ocaml_funcs::twice(cr, num_root);
-//!         i64::from_ocaml(&result) as usize
+//!         i64::from_ocaml(result) as usize
 //!     })
 //! }
 //!
