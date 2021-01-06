@@ -127,14 +127,24 @@ impl<'a> OCamlRawRoot<'a> {
 ///
 /// Roots can be used to recover a fresh reference to an [`OCaml`]`<T>` value what would
 /// otherwise become stale after a call to the OCaml runtime.
+#[derive(Copy)]
 pub struct OCamlRef<'a, T> {
     pub(crate) cell: &'a Cell<RawOCaml>,
     _marker: PhantomData<T>,
 }
 
+impl<'a, T> Clone for OCamlRef<'a, T> {
+    fn clone(&self) -> Self {
+        OCamlRef {
+            cell: self.cell,
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<'a, T> OCamlRef<'a, T> {
     /// Converts this value into a Rust value.
-    pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT
+    pub fn to_rust<RustT>(self, cr: &OCamlRuntime) -> RustT
     where
         RustT: FromOCaml<T>,
     {
@@ -214,7 +224,7 @@ pub fn alloc_double(cr: &mut OCamlRuntime, d: f64) -> OCaml<OCamlFloat> {
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: &OCamlRef<A>) -> OCaml<'a, Option<A>> {
+pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: OCamlRef<A>) -> OCaml<'a, Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
         store_field(ocaml_some, 0, value.get_raw());
@@ -224,8 +234,8 @@ pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: &OCamlRef<A>) -> OCaml
 
 pub fn alloc_tuple<'a, F, S>(
     cr: &'a mut OCamlRuntime,
-    fst: &OCamlRef<F>,
-    snd: &OCamlRef<S>,
+    fst: OCamlRef<F>,
+    snd: OCamlRef<S>,
 ) -> OCaml<'a, (F, S)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(2);
@@ -237,9 +247,9 @@ pub fn alloc_tuple<'a, F, S>(
 
 pub fn alloc_tuple_3<'a, F, S, T3>(
     cr: &'a mut OCamlRuntime,
-    fst: &OCamlRef<F>,
-    snd: &OCamlRef<S>,
-    elt3: &OCamlRef<T3>,
+    fst: OCamlRef<F>,
+    snd: OCamlRef<S>,
+    elt3: OCamlRef<T3>,
 ) -> OCaml<'a, (F, S, T3)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(3);
@@ -252,10 +262,10 @@ pub fn alloc_tuple_3<'a, F, S, T3>(
 
 pub fn alloc_tuple_4<'a, F, S, T3, T4>(
     cr: &'a mut OCamlRuntime,
-    fst: &OCamlRef<F>,
-    snd: &OCamlRef<S>,
-    elt3: &OCamlRef<T3>,
-    elt4: &OCamlRef<T4>,
+    fst: OCamlRef<F>,
+    snd: OCamlRef<S>,
+    elt3: OCamlRef<T3>,
+    elt4: OCamlRef<T4>,
 ) -> OCaml<'a, (F, S, T3, T4)> {
     unsafe {
         let ocaml_tuple = caml_alloc_tuple(4);
@@ -269,8 +279,8 @@ pub fn alloc_tuple_4<'a, F, S, T3, T4>(
 
 pub fn alloc_cons<'a, A>(
     cr: &'a mut OCamlRuntime,
-    head: &OCamlRef<A>,
-    tail: &OCamlRef<OCamlList<A>>,
+    head: OCamlRef<A>,
+    tail: OCamlRef<OCamlList<A>>,
 ) -> OCaml<'a, OCamlList<A>> {
     unsafe {
         let ocaml_cons = caml_alloc(2, tag::CONS);

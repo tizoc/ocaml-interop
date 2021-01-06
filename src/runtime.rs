@@ -57,7 +57,7 @@ impl OCamlRuntime {
     }
 
     /// Returns the OCaml valued to which this GC tracked reference points to.
-    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRef<T>) -> OCaml<'tmp, T> {
+    pub fn get<'tmp, T>(&'tmp self, reference: OCamlRef<T>) -> OCaml<'tmp, T> {
         OCaml {
             _marker: PhantomData,
             raw: reference.cell.get(),

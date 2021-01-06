@@ -24,8 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ocaml_frame!` is now only required to instantiate Root-variables, any interaction with the OCaml runtime will make use of an OCaml-Runtime-handle, which should be around already. The syntax also changed slightly, requiring a comma after the OCaml-Runtime-handle parameter.
 - `OCamlRoot` has been renamed to `OCamlRawRoot`.
 - Rust functions that are exported to OCaml must now declare at least one argument.
-- Functions that are exported to OCaml now follow a caller-save convention. These functions now receive `&OCamlRef<T>`  arguments.
-- Functions that are imported from OCaml now follow a caller-save convention. These functions  now receive `&OCamlRef<T>`  arguments.
+- Functions that are exported to OCaml now follow a caller-save convention. These functions now receive `OCamlRef<T>`  arguments.
+- Functions that are imported from OCaml now follow a caller-save convention. These functions  now receive `OCamlRef<T>`  arguments.
 - Calls to OCaml functions don't return `Result` anymore, and instead panic on unexpected exceptions.
 - `to_rust()` method is now implemented directly into `OCaml<T>`, the `ToRust` trait is not required anymore.
 - `keep_raw()` method in root variables is now `unsafe` and returns an `OCamlRef<T>`.

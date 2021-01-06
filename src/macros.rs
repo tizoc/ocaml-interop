@@ -24,8 +24,8 @@ use crate::*;
 /// # }
 /// # fn ocaml_frame_macro_example(cr: &mut OCamlRuntime) {
 ///     ocaml_frame!(cr, (hello_ocaml, bye_ocaml), {
-///         let hello_ocaml = &to_ocaml!(cr, "hello OCaml!", hello_ocaml);
-///         let bye_ocaml = &to_ocaml!(cr, "bye OCaml!", bye_ocaml);
+///         let hello_ocaml = to_ocaml!(cr, "hello OCaml!", hello_ocaml);
+///         let bye_ocaml = to_ocaml!(cr, "bye OCaml!", bye_ocaml);
 ///         print_endline(cr, hello_ocaml);
 ///         print_endline(cr, bye_ocaml);
 ///     });
@@ -56,7 +56,7 @@ macro_rules! ocaml_frame {
 /// Visibility and return value type can be omitted. The return type defaults to unit when omitted.
 ///
 /// When invoking one of these functions, the first argument must be a `&mut OCamlRuntime`,
-/// and the remaining arguments `&OCamlRef<ArgT>`.
+/// and the remaining arguments `OCamlRef<ArgT>`.
 ///
 /// The return value is an `OCaml<RetType>`.
 ///
@@ -87,7 +87,7 @@ macro_rules! ocaml {
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
-            $arg: &$crate::OCamlRef<$typ>,
+            $arg: $crate::OCamlRef<$typ>,
         ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
             closure.call(cr, $arg)
@@ -102,8 +102,8 @@ macro_rules! ocaml {
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
-            $arg1: &$crate::OCamlRef<$typ1>,
-            $arg2: &$crate::OCamlRef<$typ2>,
+            $arg1: $crate::OCamlRef<$typ1>,
+            $arg2: $crate::OCamlRef<$typ2>,
         ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
             closure.call2(cr, $arg1, $arg2)
@@ -119,9 +119,9 @@ macro_rules! ocaml {
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
-            $arg1: &$crate::OCamlRef<$typ1>,
-            $arg2: &$crate::OCamlRef<$typ2>,
-            $arg3: &$crate::OCamlRef<$typ3>,
+            $arg1: $crate::OCamlRef<$typ1>,
+            $arg2: $crate::OCamlRef<$typ2>,
+            $arg3: $crate::OCamlRef<$typ3>,
         ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
             closure.call3(cr, $arg1, $arg2, $arg3)
@@ -135,7 +135,7 @@ macro_rules! ocaml {
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
-            $($arg: &$crate::OCamlRef<$typ>),+
+            $($arg: $crate::OCamlRef<$typ>),+
     ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
             closure.call_n(cr, &mut [$($arg.get_raw()),+])
@@ -161,12 +161,12 @@ macro_rules! ocaml {
 /// ```
 /// # use ocaml_interop::*;
 /// ocaml_export! {
-///     fn rust_twice(cr, num: &OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
+///     fn rust_twice(cr, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
 ///         let num: i64 = num.to_rust(cr);
 ///         unsafe { OCaml::of_i64_unchecked(num * 2) }
 ///     }
 ///
-///     fn rust_twice_boxed_i32(cr, num: &OCamlRef<OCamlInt32>) -> OCaml<OCamlInt32> {
+///     fn rust_twice_boxed_i32(cr, num: OCamlRef<OCamlInt32>) -> OCaml<OCamlInt32> {
 ///         let num: i32 = num.to_rust(cr);
 ///         let result = num * 2;
 ///         result.to_ocaml(cr)
@@ -176,13 +176,13 @@ macro_rules! ocaml {
 ///         num * num2
 ///     }
 ///
-///     fn rust_twice_boxed_float(cr, num: &OCamlRef<OCamlFloat>) -> OCaml<OCamlFloat> {
+///     fn rust_twice_boxed_float(cr, num: OCamlRef<OCamlFloat>) -> OCaml<OCamlFloat> {
 ///         let num: f64 = num.to_rust(cr);
 ///         let result = num * 2.0;
 ///         result.to_ocaml(cr)
 ///     }
 ///
-///     fn rust_increment_ints_list(cr, ints: &OCamlRef<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
+///     fn rust_increment_ints_list(cr, ints: OCamlRef<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
 ///         let mut vec: Vec<i64> = ints.to_rust(cr);
 ///
 ///         for i in 0..vec.len() {
@@ -192,7 +192,7 @@ macro_rules! ocaml {
 ///         vec.to_ocaml(cr)
 ///     }
 ///
-///     fn rust_make_tuple(cr, fst: &OCamlRef<String>, snd: &OCamlRef<OCamlInt>) -> OCaml<(String, OCamlInt)> {
+///     fn rust_make_tuple(cr, fst: OCamlRef<String>, snd: OCamlRef<OCamlInt>) -> OCaml<(String, OCamlInt)> {
 ///         let fst: String = fst.to_rust(cr);
 ///         let snd: i64 = snd.to_rust(cr);
 ///         let tuple = (fst, snd);
@@ -285,7 +285,7 @@ macro_rules! ocaml_export {
 /// # use ocaml_interop::*;
 /// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
 ///     ocaml_frame!(cr, (rootvar), {
-///         let ocaml_string_ref: &OCamlRef<String> = &to_ocaml!(cr, "hello OCaml!", rootvar);
+///         let ocaml_string_ref: OCamlRef<String> = to_ocaml!(cr, "hello OCaml!", rootvar);
 ///         // ...
 ///         # ()
 ///     });
@@ -396,7 +396,7 @@ macro_rules! impl_conv_ocaml_variant {
 /// // NOTE: What is important is the order of the fields, not their names.
 ///
 /// # fn unpack_record_example(cr: &mut OCamlRuntime) {
-/// let ocaml_struct = make_mystruct(cr, &OCamlRef::unit());
+/// let ocaml_struct = make_mystruct(cr, OCamlRef::unit());
 /// let my_struct = ocaml_unpack_record! {
 ///     //  value    => RustConstructor { field: OCamlType, ... }
 ///     ocaml_struct => MyStruct {
@@ -737,7 +737,7 @@ macro_rules! impl_from_ocaml_variant {
 /// // NOTE: What is important is the order of the tags, not their names.
 ///
 /// # fn unpack_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_variant = make_ocaml_movement(cr, &OCamlRef::unit());
+/// let ocaml_variant = make_ocaml_movement(cr, OCamlRef::unit());
 /// let result = ocaml_unpack_variant! {
 ///     ocaml_variant => {
 ///         // Alternative: StepLeft  => Movement::StepLeft
@@ -982,7 +982,7 @@ macro_rules! impl_from_ocaml_polymorphic_variant {
 /// //      ]
 ///
 /// # fn unpack_polymorphic_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_polymorphic_variant = make_ocaml_polymorphic_movement(cr, &OCamlRef::unit());
+/// let ocaml_polymorphic_variant = make_ocaml_polymorphic_movement(cr, OCamlRef::unit());
 /// let result = ocaml_unpack_polymorphic_variant! {
 ///     ocaml_polymorphic_variant => {
 ///         StepLeft  => Movement::StepLeft,
@@ -1291,10 +1291,10 @@ macro_rules! expand_rooted_args_init {
 
     // Other values are wrapped in `OCamlRef<T>` as given the same lifetime as the OCaml runtime handle borrow.
     (($root:ident), $arg:ident : $typ:ty) =>
-        (let $arg : $typ = unsafe { &$root.keep_raw($arg) };);
+        (let $arg : $typ = unsafe { $root.keep_raw($arg) };);
 
     (($root:ident $($roots:ident)*), $arg:ident : $typ:ty, $($args:tt)*) => {
-        let $arg : $typ = unsafe { &$root.keep_raw($arg) };
+        let $arg : $typ = unsafe { $root.keep_raw($arg) };
         $crate::expand_rooted_args_init!(($($roots)*), $($args)*)
     };
 }

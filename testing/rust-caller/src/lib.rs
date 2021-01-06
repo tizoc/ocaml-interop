@@ -62,7 +62,7 @@ pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> St
     ocaml_frame!(cr, (bytes_root), {
         let bytes = to_ocaml!(cr, bytes, bytes_root);
         let first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
-        let result = ocaml::increment_bytes(cr, &bytes, &first_n.as_value_ref());
+        let result = ocaml::increment_bytes(cr, bytes, first_n.as_value_ref());
         result.to_rust()
     })
 }
@@ -70,14 +70,14 @@ pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> St
 pub fn increment_ints_list(cr: &mut OCamlRuntime, ints: &Vec<i64>) -> Vec<i64> {
     ocaml_frame!(cr, (root), {
         let ints = to_ocaml!(cr, ints, root);
-        let result = ocaml::increment_ints_list(cr, &ints);
+        let result = ocaml::increment_ints_list(cr, ints);
         result.to_rust()
     })
 }
 
 pub fn twice(cr: &mut OCamlRuntime, num: i64) -> i64 {
     let num = unsafe { OCaml::of_i64_unchecked(num) };
-    let result = ocaml::twice(cr, &num.as_value_ref());
+    let result = ocaml::twice(cr, num.as_value_ref());
     result.to_rust()
 }
 
@@ -85,7 +85,7 @@ pub fn make_tuple(cr: &mut OCamlRuntime, fst: String, snd: i64) -> (String, i64)
     ocaml_frame!(cr, (str_root), {
         let num = unsafe { OCaml::of_i64_unchecked(snd) };
         let str = to_ocaml!(cr, fst, str_root);
-        let result = ocaml::make_tuple(cr, &str, &num.as_value_ref());
+        let result = ocaml::make_tuple(cr, str, num.as_value_ref());
         result.to_rust()
     })
 }
@@ -93,21 +93,21 @@ pub fn make_tuple(cr: &mut OCamlRuntime, fst: String, snd: i64) -> (String, i64)
 pub fn make_some(cr: &mut OCamlRuntime, value: String) -> Option<String> {
     ocaml_frame!(cr, (root), {
         let str = to_ocaml!(cr, value, root);
-        let result = ocaml::make_some(cr, &str);
+        let result = ocaml::make_some(cr, str);
         result.to_rust()
     })
 }
 
 pub fn make_ok(cr: &mut OCamlRuntime, value: i64) -> Result<i64, String> {
     let value = unsafe { OCaml::of_i64_unchecked(value) };
-    let result = ocaml::make_ok(cr, &value.as_value_ref());
+    let result = ocaml::make_ok(cr, value.as_value_ref());
     result.to_rust()
 }
 
 pub fn make_error(cr: &mut OCamlRuntime, value: String) -> Result<i64, String> {
     ocaml_frame!(cr, (root), {
         let result = to_ocaml!(cr, value, root);
-        let result = ocaml::make_error(cr, &result);
+        let result = ocaml::make_error(cr, result);
         result.to_rust()
     })
 }
@@ -115,7 +115,7 @@ pub fn make_error(cr: &mut OCamlRuntime, value: String) -> Result<i64, String> {
 pub fn verify_record_test(cr: &mut OCamlRuntime, record: ocaml::TestRecord) -> String {
     ocaml_frame!(cr, (root), {
         let ocaml_record = to_ocaml!(cr, record, root);
-        let result = ocaml::stringify_record(cr, &ocaml_record);
+        let result = ocaml::stringify_record(cr, ocaml_record);
         result.to_rust()
     })
 }
@@ -123,7 +123,7 @@ pub fn verify_record_test(cr: &mut OCamlRuntime, record: ocaml::TestRecord) -> S
 pub fn verify_variant_test(cr: &mut OCamlRuntime, variant: ocaml::Movement) -> String {
     ocaml_frame!(cr, (root), {
         let ocaml_variant = to_ocaml!(cr, variant, root);
-        let result = ocaml::stringify_variant(cr, &ocaml_variant);
+        let result = ocaml::stringify_variant(cr, ocaml_variant);
         result.to_rust()
     })
 }

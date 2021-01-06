@@ -132,7 +132,7 @@ where
         if let Some(value) = self {
             ocaml_frame!(cr, (root), {
                 let ocaml_value = to_ocaml!(cr, value, root);
-                alloc_some(cr, &ocaml_value)
+                alloc_some(cr, ocaml_value)
             })
         } else {
             unsafe { OCaml::new(cr, NONE) }
@@ -172,7 +172,7 @@ where
         ocaml_frame!(cr, (fst, snd), {
             let fst = to_ocaml!(cr, self.0, fst);
             let snd = to_ocaml!(cr, self.1, snd);
-            alloc_tuple(cr, &fst, &snd)
+            alloc_tuple(cr, fst, snd)
         })
     }
 }
@@ -188,7 +188,7 @@ where
             let fst = to_ocaml!(cr, self.0, fst);
             let snd = to_ocaml!(cr, self.1, snd);
             let elt3 = to_ocaml!(cr, self.2, elt3);
-            alloc_tuple_3(cr, &fst, &snd, &elt3)
+            alloc_tuple_3(cr, fst, snd, elt3)
         })
     }
 }
@@ -210,7 +210,7 @@ where
             let snd = to_ocaml!(cr, self.1, snd);
             let elt3 = to_ocaml!(cr, self.2, elt3);
             let elt4 = to_ocaml!(cr, self.3, elt4);
-            alloc_tuple_4(cr, &fst, &snd, &elt3, &elt4)
+            alloc_tuple_4(cr, fst, snd, elt3, elt4)
         })
     }
 }
@@ -233,10 +233,10 @@ where
             let mut result = result_root.keep(OCaml::nil());
             for elt in self.iter().rev() {
                 let ov = to_ocaml!(cr, elt, ov_root);
-                let cons = alloc_cons(cr, &ov, &result);
+                let cons = alloc_cons(cr, ov, result);
                 result = result_root.keep(cons);
             }
-            cr.get(&result)
+            cr.get(result)
         })
     }
 }

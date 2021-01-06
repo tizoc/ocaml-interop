@@ -31,7 +31,7 @@ impl OCamlClosure {
         }
     }
 
-    pub fn call<'a, T, R>(&self, cr: &'a mut OCamlRuntime, arg: &OCamlRef<T>) -> OCaml<'a, R> {
+    pub fn call<'a, T, R>(&self, cr: &'a mut OCamlRuntime, arg: OCamlRef<T>) -> OCaml<'a, R> {
         let result = unsafe { caml_callback_exn(*self.0, arg.get_raw()) };
         self.handle_call_result(cr, result)
     }
@@ -39,8 +39,8 @@ impl OCamlClosure {
     pub fn call2<'a, T, U, R>(
         &self,
         cr: &'a mut OCamlRuntime,
-        arg1: &OCamlRef<T>,
-        arg2: &OCamlRef<U>,
+        arg1: OCamlRef<T>,
+        arg2: OCamlRef<U>,
     ) -> OCaml<'a, R> {
         let result = unsafe { caml_callback2_exn(*self.0, arg1.get_raw(), arg2.get_raw()) };
         self.handle_call_result(cr, result)
@@ -49,9 +49,9 @@ impl OCamlClosure {
     pub fn call3<'a, T, U, V, R>(
         &self,
         cr: &'a mut OCamlRuntime,
-        arg1: &OCamlRef<T>,
-        arg2: &OCamlRef<U>,
-        arg3: &OCamlRef<V>,
+        arg1: OCamlRef<T>,
+        arg2: OCamlRef<U>,
+        arg3: OCamlRef<V>,
     ) -> OCaml<'a, R> {
         let result =
             unsafe { caml_callback3_exn(*self.0, arg1.get_raw(), arg2.get_raw(), arg3.get_raw()) };

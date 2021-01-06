@@ -108,7 +108,7 @@ ocaml! {
 
 // ...
 
-let ocaml_string = &to_ocaml!(cr, "hello OCaml!", root_var);
+let ocaml_string = to_ocaml!(cr, "hello OCaml!", root_var);
 ocaml_print_endline(cr, ocaml_string);
 ```
 
