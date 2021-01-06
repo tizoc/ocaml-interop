@@ -7,7 +7,7 @@ use crate::{
     runtime::OCamlRuntime,
     value::OCaml,
 };
-use core::{cell::Cell, marker::PhantomData, ptr};
+use core::{cell::UnsafeCell, marker::PhantomData, ptr};
 pub use ocaml_sys::{
     caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
     store_field,
@@ -61,8 +61,8 @@ pub struct GCFrame<'gc> {
 
 impl<'gc> GCFrame<'gc> {
     #[doc(hidden)]
-    pub fn initialize(&mut self, frame_local_roots: &[Cell<RawOCaml>]) -> &mut Self {
-        self.block.local_roots = frame_local_roots[0].as_ptr();
+    pub fn initialize(&mut self, frame_local_roots: &[UnsafeCell<RawOCaml>]) -> &mut Self {
+        self.block.local_roots = frame_local_roots[0].get();
         self.block.ntables = 1;
         unsafe {
             self.block.next = local_roots();
@@ -85,7 +85,7 @@ impl<'gc> Drop for GCFrame<'gc> {
 }
 
 pub struct OCamlRawRoot<'a> {
-    cell: &'a Cell<RawOCaml>,
+    cell: &'a UnsafeCell<RawOCaml>,
 }
 
 impl<'a> OCamlRawRoot<'a> {
@@ -93,7 +93,7 @@ impl<'a> OCamlRawRoot<'a> {
     pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> OCamlRawRoot<'gc> {
         assert_eq!(&_gc.block as *const _, local_roots());
         let block = &mut *local_roots();
-        let locals: *const Cell<RawOCaml> = &*(block.local_roots as *const Cell<RawOCaml>);
+        let locals: *const UnsafeCell<RawOCaml> = &*(block.local_roots as *const UnsafeCell<RawOCaml>);
         let cell = &*locals.offset(block.nitems);
         block.nitems += 1;
         OCamlRawRoot { cell }
@@ -101,7 +101,7 @@ impl<'a> OCamlRawRoot<'a> {
 
     /// Roots an [`OCaml`] value.
     pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
-        self.cell.set(unsafe { val.raw() });
+        unsafe { *self.cell.get() = val.raw() };
         OCamlRef {
             _marker: PhantomData,
             cell: self.cell,
@@ -115,7 +115,7 @@ impl<'a> OCamlRawRoot<'a> {
     /// This method is unsafe because there is no way to validate that the [`RawOCaml`] value
     /// is of the correct type.
     pub unsafe fn keep_raw<T>(&mut self, val: RawOCaml) -> OCamlRef<T> {
-        self.cell.set(val);
+        *self.cell.get() = val;
         OCamlRef {
             _marker: PhantomData,
             cell: self.cell,
@@ -129,7 +129,7 @@ impl<'a> OCamlRawRoot<'a> {
 /// otherwise become stale after a call to the OCaml runtime.
 #[derive(Copy)]
 pub struct OCamlRef<'a, T> {
-    pub(crate) cell: &'a Cell<RawOCaml>,
+    cell: &'a UnsafeCell<RawOCaml>,
     _marker: PhantomData<T>,
 }
 
@@ -157,16 +157,16 @@ impl<'a, T> OCamlRef<'a, T> {
     ///
     /// This method is unsafe, because the RawOCaml value obtained will not be tracked.
     pub unsafe fn get_raw(&self) -> RawOCaml {
-        self.cell.get()
+        *self.cell.get()
     }
 }
 
-struct ConstantRoot(Cell<RawOCaml>);
+struct ConstantRoot(UnsafeCell<RawOCaml>);
 
 unsafe impl Sync for ConstantRoot {}
 
-static ROOT_UNIT: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::UNIT));
-static ROOT_NONE: ConstantRoot = ConstantRoot(Cell::new(ocaml_sys::NONE));
+static ROOT_UNIT: ConstantRoot = ConstantRoot(UnsafeCell::new(ocaml_sys::UNIT));
+static ROOT_NONE: ConstantRoot = ConstantRoot(UnsafeCell::new(ocaml_sys::NONE));
 
 impl OCamlRef<'static, ()> {
     /// Convenience method to obtain a root containing an unit value.

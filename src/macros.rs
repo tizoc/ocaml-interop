@@ -35,7 +35,7 @@ use crate::*;
 macro_rules! ocaml_frame {
    ($cr:ident, ($($rootvar:ident),+ $(,)?), $body:block) => {{
         let mut frame = $cr.open_frame();
-        let local_roots = $crate::repeat_slice!(::core::cell::Cell::new($crate::internal::UNIT), $($rootvar)+);
+        let local_roots = $crate::repeat_slice!(::core::cell::UnsafeCell::new($crate::internal::UNIT), $($rootvar)+);
         let gc = frame.initialize(&local_roots);
         $(
             let $rootvar = unsafe { &mut $crate::internal::OCamlRawRoot::reserve(gc) };

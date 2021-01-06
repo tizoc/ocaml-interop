@@ -60,7 +60,7 @@ impl OCamlRuntime {
     pub fn get<'tmp, T>(&'tmp self, reference: OCamlRef<T>) -> OCaml<'tmp, T> {
         OCaml {
             _marker: PhantomData,
-            raw: reference.cell.get(),
+            raw: unsafe { reference.get_raw() },
         }
     }
 }
