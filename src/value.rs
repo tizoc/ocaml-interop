@@ -6,7 +6,6 @@ use core::{marker::PhantomData, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
 /// Representation of OCaml values.
-#[derive(Copy)]
 pub struct OCaml<'a, T: 'a> {
     pub(crate) _marker: PhantomData<&'a T>,
     pub(crate) raw: RawOCaml,
@@ -20,6 +19,8 @@ impl<'a, T> Clone for OCaml<'a, T> {
         }
     }
 }
+
+impl<'a, T> Copy for OCaml<'a, T> {}
 
 impl<'a, T> OCaml<'a, T> {
     #[doc(hidden)]

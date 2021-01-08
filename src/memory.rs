@@ -93,7 +93,8 @@ impl<'a> OCamlRawRoot<'a> {
     pub unsafe fn reserve<'gc>(_gc: &GCFrame<'gc>) -> OCamlRawRoot<'gc> {
         assert_eq!(&_gc.block as *const _, local_roots());
         let block = &mut *local_roots();
-        let locals: *const UnsafeCell<RawOCaml> = &*(block.local_roots as *const UnsafeCell<RawOCaml>);
+        let locals: *const UnsafeCell<RawOCaml> =
+            &*(block.local_roots as *const UnsafeCell<RawOCaml>);
         let cell = &*locals.offset(block.nitems);
         block.nitems += 1;
         OCamlRawRoot { cell }
@@ -127,7 +128,6 @@ impl<'a> OCamlRawRoot<'a> {
 ///
 /// Roots can be used to recover a fresh reference to an [`OCaml`]`<T>` value what would
 /// otherwise become stale after a call to the OCaml runtime.
-#[derive(Copy)]
 pub struct OCamlRef<'a, T> {
     cell: &'a UnsafeCell<RawOCaml>,
     _marker: PhantomData<T>,
@@ -141,6 +141,8 @@ impl<'a, T> Clone for OCamlRef<'a, T> {
         }
     }
 }
+
+impl<'a, T> Copy for OCamlRef<'a, T> {}
 
 impl<'a, T> OCamlRef<'a, T> {
     /// Converts this value into a Rust value.
