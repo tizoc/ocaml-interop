@@ -138,7 +138,7 @@ macro_rules! ocaml {
             $($arg: $crate::OCamlRef<$typ>),+
     ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            closure.call_n(cr, &mut [$($arg.get_raw()),+])
+            closure.call_n(cr, &mut [$(unsafe { $arg.get_raw() }),+])
         }
 
         $crate::ocaml!($($t)*);
