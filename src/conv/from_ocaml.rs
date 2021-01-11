@@ -162,7 +162,7 @@ where
     fn from_ocaml(v: OCaml<OCamlList<OCamlA>>) -> Self {
         // TODO: pre-calculate actual required capacity?
         let mut vec = Vec::new();
-        let mut current = v.clone();
+        let mut current = v;
         while let Some((hd, tl)) = current.uncons() {
             current = tl;
             vec.push(A::from_ocaml(hd));
