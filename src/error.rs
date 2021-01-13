@@ -36,6 +36,7 @@ impl fmt::Display for OCamlFixnumConversionError {
 }
 
 impl OCamlException {
+    #[doc(hidden)]
     pub unsafe fn of(raw: RawOCaml) -> Self {
         OCamlException { raw }
     }

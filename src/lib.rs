@@ -226,7 +226,7 @@
 //!             bytes1_root,    // OCamlRef<String>
 //!             // Immediate OCaml values, such as ints and books have an as_value_ref() method
 //!             // that can be used to simulate rooting.
-//!             ocaml_first_n.as_value_ref(), // OCamlRef<OCamlInt>
+//!             &ocaml_first_n, // OCamlRef<OCamlInt>
 //!         );
 //!
 //!         // Perform the conversion of the OCaml result value into a
@@ -238,7 +238,7 @@
 //!         let result2 = ocaml_funcs::increment_bytes(
 //!             cr,
 //!             bytes2_root,
-//!             ocaml_first_n.as_value_ref(),
+//!             &ocaml_first_n,
 //!         );
 //!
 //!         // The `FromOCaml` trait provides the `from_ocaml` method to convert from
@@ -369,3 +369,6 @@ pub mod internal {
 #[doc(hidden)]
 #[cfg(doctest)]
 pub mod compile_fail_tests;
+
+#[cfg(test)]
+mod compile_ok_tests;

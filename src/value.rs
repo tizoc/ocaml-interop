@@ -1,8 +1,11 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{error::OCamlFixnumConversionError, mlvalues::*, FromOCaml, OCamlRef, OCamlRuntime};
-use core::{marker::PhantomData, slice, str};
+use crate::{
+    error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml, OCamlRef,
+    OCamlRuntime,
+};
+use core::{marker::PhantomData, ops::Deref, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
 /// Representation of OCaml values.
@@ -21,6 +24,14 @@ impl<'a, T> Clone for OCaml<'a, T> {
 }
 
 impl<'a, T> Copy for OCaml<'a, T> {}
+
+impl<'a, T> Deref for OCaml<'a, T> {
+    type Target = OCamlCell<T>;
+
+    fn deref(&self) -> OCamlRef<T> {
+        self.as_ref()
+    }
+}
 
 impl<'a, T> OCaml<'a, T> {
     #[doc(hidden)]
@@ -71,6 +82,15 @@ impl<'a, T> OCaml<'a, T> {
         unsafe { tag_val(self.raw) }
     }
 
+    /// Obtains an [`OCamlRef`]`<T>` for this value.
+    pub fn as_ref<'b>(&'b self) -> OCamlRef<'b, T>
+    where
+        'a: 'b,
+    {
+        let ptr = &self.raw as *const RawOCaml;
+        unsafe { OCamlCell::create_ref(ptr) }
+    }
+
     /// Gets the raw representation for this value reference (pointer or int).
     ///
     /// # Safety
@@ -91,19 +111,22 @@ impl<'a, T> OCaml<'a, T> {
     }
 }
 
-impl<T> OCaml<'static, T> {
-    /// Gets an immediate OCaml value as a root containing that value.
-    pub fn as_value_ref(&self) -> OCamlRef<T> {
-        unsafe { std::mem::transmute(self) }
-    }
-}
-
 impl OCaml<'static, ()> {
     /// Returns a value that represent OCaml's unit value.
-    pub fn unit() -> OCaml<'static, ()> {
+    pub fn unit() -> Self {
         OCaml {
             _marker: PhantomData,
             raw: UNIT,
+        }
+    }
+}
+
+impl<T> OCaml<'static, Option<T>> {
+    /// Returns a value that represent OCaml's None value.
+    pub fn none() -> Self {
+        OCaml {
+            _marker: PhantomData,
+            raw: NONE,
         }
     }
 }

@@ -102,10 +102,10 @@ impl<'a> OCamlRawRoot<'a> {
 
     /// Roots an [`OCaml`] value.
     pub fn keep<'tmp, T>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
-        unsafe { *self.cell.get() = val.raw() };
-        OCamlRef {
-            _marker: PhantomData,
-            cell: self.cell,
+        unsafe {
+            let cell = self.cell.get();
+            *cell = val.raw();
+            &*(cell as *const OCamlCell<T>)
         }
     }
 
@@ -116,37 +116,32 @@ impl<'a> OCamlRawRoot<'a> {
     /// This method is unsafe because there is no way to validate that the [`RawOCaml`] value
     /// is of the correct type.
     pub unsafe fn keep_raw<T>(&mut self, val: RawOCaml) -> OCamlRef<T> {
-        *self.cell.get() = val;
-        OCamlRef {
-            _marker: PhantomData,
-            cell: self.cell,
-        }
+        let cell = self.cell.get();
+        *cell = val;
+        &*(cell as *const OCamlCell<T>)
     }
 }
 
-/// An `OCamlRef<T>` value is the result of rooting [`OCaml`]`<T>` value using a root variable.
-///
-/// Roots can be used to recover a fresh reference to an [`OCaml`]`<T>` value what would
-/// otherwise become stale after a call to the OCaml runtime.
-pub struct OCamlRef<'a, T> {
-    cell: &'a UnsafeCell<RawOCaml>,
+pub struct OCamlCell<T> {
+    cell: UnsafeCell<RawOCaml>,
     _marker: PhantomData<T>,
 }
 
-impl<'a, T> Clone for OCamlRef<'a, T> {
-    fn clone(&self) -> Self {
-        OCamlRef {
-            cell: self.cell,
-            _marker: PhantomData,
-        }
+static_assertions::assert_eq_size!(OCamlCell<bool>, OCaml<'static, bool>, RawOCaml);
+
+/// An `OCamlRef<T>` is a reference to a location containing a [`OCaml`]`<T>` value.
+///
+/// Usually obtained as the result of rooting an OCaml value.
+pub type OCamlRef<'a, T> = &'a OCamlCell<T>;
+
+impl<T> OCamlCell<T> {
+    #[doc(hidden)]
+    pub unsafe fn create_ref<'a>(val: *const RawOCaml) -> OCamlRef<'a, T> {
+        &*(val as *const OCamlCell<T>)
     }
-}
 
-impl<'a, T> Copy for OCamlRef<'a, T> {}
-
-impl<'a, T> OCamlRef<'a, T> {
     /// Converts this value into a Rust value.
-    pub fn to_rust<RustT>(self, cr: &OCamlRuntime) -> RustT
+    pub fn to_rust<RustT>(&self, cr: &OCamlRuntime) -> RustT
     where
         RustT: FromOCaml<T>,
     {
@@ -160,33 +155,6 @@ impl<'a, T> OCamlRef<'a, T> {
     /// This method is unsafe, because the RawOCaml value obtained will not be tracked.
     pub unsafe fn get_raw(&self) -> RawOCaml {
         *self.cell.get()
-    }
-}
-
-struct ConstantRoot(UnsafeCell<RawOCaml>);
-
-unsafe impl Sync for ConstantRoot {}
-
-static ROOT_UNIT: ConstantRoot = ConstantRoot(UnsafeCell::new(ocaml_sys::UNIT));
-static ROOT_NONE: ConstantRoot = ConstantRoot(UnsafeCell::new(ocaml_sys::NONE));
-
-impl OCamlRef<'static, ()> {
-    /// Convenience method to obtain a root containing an unit value.
-    pub fn unit() -> OCamlRef<'static, ()> {
-        OCamlRef {
-            cell: &ROOT_UNIT.0,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<T> OCamlRef<'static, Option<T>> {
-    /// Convenience method to obtain a root containing an `None` value.
-    pub fn none() -> OCamlRef<'static, Option<T>> {
-        OCamlRef {
-            cell: &ROOT_NONE.0,
-            _marker: PhantomData,
-        }
     }
 }
 

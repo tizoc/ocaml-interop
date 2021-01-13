@@ -396,7 +396,7 @@ macro_rules! impl_conv_ocaml_variant {
 /// // NOTE: What is important is the order of the fields, not their names.
 ///
 /// # fn unpack_record_example(cr: &mut OCamlRuntime) {
-/// let ocaml_struct = make_mystruct(cr, OCamlRef::unit());
+/// let ocaml_struct = make_mystruct(cr, &OCaml::unit());
 /// let my_struct = ocaml_unpack_record! {
 ///     //  value    => RustConstructor { field: OCamlType, ... }
 ///     ocaml_struct => MyStruct {
@@ -737,7 +737,7 @@ macro_rules! impl_from_ocaml_variant {
 /// // NOTE: What is important is the order of the tags, not their names.
 ///
 /// # fn unpack_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_variant = make_ocaml_movement(cr, OCamlRef::unit());
+/// let ocaml_variant = make_ocaml_movement(cr, &OCaml::unit());
 /// let result = ocaml_unpack_variant! {
 ///     ocaml_variant => {
 ///         // Alternative: StepLeft  => Movement::StepLeft
@@ -982,7 +982,7 @@ macro_rules! impl_from_ocaml_polymorphic_variant {
 /// //      ]
 ///
 /// # fn unpack_polymorphic_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_polymorphic_variant = make_ocaml_polymorphic_movement(cr, OCamlRef::unit());
+/// let ocaml_polymorphic_variant = make_ocaml_polymorphic_movement(cr, &OCaml::unit());
 /// let result = ocaml_unpack_polymorphic_variant! {
 ///     ocaml_polymorphic_variant => {
 ///         StepLeft  => Movement::StepLeft,
