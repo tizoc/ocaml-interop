@@ -25,8 +25,6 @@ Report issues on [Github](https://github.com/simplestaking/ocaml-interop/issues)
 
 ocaml-interop, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
 
-This requires that the user is explicit about delimiting blocks that interact with the OCaml runtime, and that calls into the OCaml runtime are done only inside these blocks, and wrapped by a few special macros.
-
 ## A quick taste
 
 ### Convert between plain OCaml and Rust values
