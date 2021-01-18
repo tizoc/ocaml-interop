@@ -55,6 +55,9 @@ mod ocaml {
         pub fn make_error(value: String) -> Result<OCamlInt, String>;
         pub fn stringify_record(record: TestRecord) -> String;
         pub fn stringify_variant(variant: Movement) -> String;
+        pub fn raises_message_exception(message: String);
+        pub fn raises_nonmessage_exception(unit: ());
+        pub fn raises_nonblock_exception(unit: ());
     }
 }
 
@@ -249,5 +252,52 @@ fn test_variant_conversion() {
     assert_eq!(
         verify_variant_test(&mut cr, ocaml::Movement::Step(10)),
         "Step(10)".to_owned()
+    );
+}
+
+
+#[test]
+#[serial]
+fn test_exception_handling_with_message() {
+    OCamlRuntime::init_persistent();
+    let result = std::panic::catch_unwind(move || {
+        let mut cr = unsafe { OCamlRuntime::recover_handle() };
+        let mcr = &mut cr;
+        ocaml_frame!(mcr, (message_root), {
+            let message = to_ocaml!(mcr, "my-error-message", message_root);
+            ocaml::raises_message_exception(mcr, message);
+        });
+    });
+    assert_eq!(
+        result.err().and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone())).unwrap(),
+        "OCaml exception, message: Some(\"my-error-message\")"
+    );
+}
+
+#[test]
+#[serial]
+fn test_exception_handling_without_message() {
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    let result = std::panic::catch_unwind(move || {
+        ocaml::raises_nonmessage_exception(&mut cr, &OCaml::unit());
+    });
+    assert_eq!(
+        result.err().and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone())).unwrap(),
+        "OCaml exception, message: None"
+    );
+}
+
+#[test]
+#[serial]
+fn test_exception_handling_nonblock_exception() {
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    let result = std::panic::catch_unwind(move || {
+        ocaml::raises_nonblock_exception(&mut cr, &OCaml::unit());
+    });
+    assert_eq!(
+        result.err().and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone())).unwrap(),
+        "OCaml exception, message: None"
     );
 }

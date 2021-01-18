@@ -46,7 +46,7 @@ impl OCamlException {
             unsafe {
                 let message = *(self.raw as *const RawOCaml).add(1);
 
-                if tag_val(message) == tag::STRING {
+                if is_block(message) && tag_val(message) == tag::STRING {
                     let error_message =
                         slice::from_raw_parts(string_val(message), caml_string_length(message))
                             .to_owned();
