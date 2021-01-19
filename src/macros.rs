@@ -427,6 +427,24 @@ macro_rules! ocaml_unpack_record {
             }
         }
     }};
+
+    ($var:ident => $cons:ident (
+        $($field:ident : $ocaml_typ:ty),+ $(,)?
+    )) => {{
+        let record = $var;
+        unsafe {
+            let mut current = 0;
+
+            $(
+                let $field = record.field::<$ocaml_typ>(current).to_rust();
+                current += 1;
+            )+
+
+            $cons (
+                $($field),+
+            )
+        }
+    }};
 }
 
 /// Allocates an OCaml memory block tagged with the specified value.
@@ -572,6 +590,30 @@ macro_rules! impl_from_ocaml_record {
             $both_typ => $both_typ {
                 $($t)*
             }
+        }
+    };
+
+    ($ocaml_typ:ident => $rust_typ:ident (
+        $($field:ident : $ocaml_field_typ:ty),+ $(,)?
+    )) => {
+        unsafe impl $crate::FromOCaml<$ocaml_typ> for $rust_typ {
+            fn from_ocaml(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                $crate::ocaml_unpack_record! { v =>
+                    $rust_typ (
+                        $($field : $ocaml_field_typ),+
+                    )
+                }
+            }
+        }
+    };
+
+    ($both_typ:ident (
+        $($t:tt)*
+    )) => {
+        $crate::impl_from_ocaml_record! {
+            $both_typ => $both_typ (
+                $($t)*
+            )
         }
     };
 }
