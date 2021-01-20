@@ -370,7 +370,12 @@ pub mod internal {
     pub use crate::memory::{caml_alloc, store_field, OCamlRawRoot};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
-    pub use ocaml_sys::{caml_hash_variant, int_val};
+    pub use ocaml_sys::caml_hash_variant;
+
+    // To bypass ocaml_sys::int_val unsafe declaration
+    pub fn int_val(val: super::RawOCaml) -> isize {
+        unsafe { ocaml_sys::int_val(val) }
+    }
 }
 
 #[doc(hidden)]
