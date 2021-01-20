@@ -36,10 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<T>::as_i64()` -> `to_i64()`.
 - `OCaml<T>::as_bool()` -> `to_bool()`.
 
-### Deprecated
-
-- Nothing.
-
 ### Removed
 
 - `ToRust` trait.
@@ -48,14 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ocaml_alloc!` macro.
 - `OCamlAllocToken` type.
 - `OCamlRef::set` method (use `OCamlRawRoot::keep` instead).
-
-### Fixed
-
-- Nothing.
-
-### Security
-
-- Nothing.
 
 ## [0.4.4] - 2020-11-02
 
