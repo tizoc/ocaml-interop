@@ -4,7 +4,7 @@
 use ocaml_sys::{caml_shutdown, caml_startup};
 use std::marker::PhantomData;
 
-use crate::{memory::GCFrame, value::OCaml, memory::OCamlRooted};
+use crate::{memory::GCFrame, memory::OCamlRef, value::OCaml};
 
 /// OCaml runtime handle.
 pub struct OCamlRuntime {
@@ -51,28 +51,16 @@ impl OCamlRuntime {
         unsafe { caml_shutdown() }
     }
 
-    /// Produces a token that can be used to recover the OCaml runtime handle.
-    ///
-    /// # Safety
-    ///
-    /// Meant to be used internally when calling allocation functions, do not use
-    /// directly.
-    pub unsafe fn token(&self) -> OCamlAllocToken {
-        OCamlAllocToken {
-            _marker: PhantomData,
-        }
-    }
-
     #[doc(hidden)]
     pub fn open_frame<'a, 'gc>(&'a self) -> GCFrame<'gc> {
         Default::default()
     }
 
     /// Returns the OCaml valued to which this GC tracked reference points to.
-    pub fn get<'tmp, T>(&'tmp self, reference: &OCamlRooted<T>) -> OCaml<'tmp, T> {
+    pub fn get<'tmp, T>(&'tmp self, reference: OCamlRef<T>) -> OCaml<'tmp, T> {
         OCaml {
             _marker: PhantomData,
-            raw: reference.cell.get(),
+            raw: unsafe { reference.get_raw() },
         }
     }
 }
@@ -96,24 +84,5 @@ impl OCamlBlockingSection {
 impl Drop for OCamlBlockingSection {
     fn drop(&mut self) {
         unsafe { ocaml_sys::caml_leave_blocking_section() };
-    }
-}
-
-/// Token used by allocation functions. Used internally.
-pub struct OCamlAllocToken<'a> {
-    _marker: PhantomData<&'a i32>,
-}
-
-impl<'a> OCamlAllocToken<'a> {
-    /// Recover the runtime handle from this token.
-    ///
-    /// # Safety
-    ///
-    /// It is important that functions that make use of this method of
-    /// recovering the function handle are only called with the [`ocaml_alloc!`]
-    /// and [`ocaml_call!`] macros to perform the necessary bookkeeping operations
-    /// to enforce the correctness of OCaml value lifetimes.
-    pub unsafe fn recover_runtime_handle(self) -> OCamlRuntime {
-        OCamlRuntime::recover_handle()
     }
 }

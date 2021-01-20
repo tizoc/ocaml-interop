@@ -13,11 +13,6 @@ pub struct OCamlException {
 }
 
 #[derive(Debug)]
-pub enum OCamlError {
-    Exception(OCamlException),
-}
-
-#[derive(Debug)]
 pub enum OCamlFixnumConversionError {
     InputTooBig(i64),
     InputTooSmall(i64),
@@ -41,7 +36,8 @@ impl fmt::Display for OCamlFixnumConversionError {
 }
 
 impl OCamlException {
-    pub fn of(raw: RawOCaml) -> Self {
+    #[doc(hidden)]
+    pub unsafe fn of(raw: RawOCaml) -> Self {
         OCamlException { raw }
     }
 
@@ -50,7 +46,7 @@ impl OCamlException {
             unsafe {
                 let message = *(self.raw as *const RawOCaml).add(1);
 
-                if tag_val(message) == tag::STRING {
+                if is_block(message) && tag_val(message) == tag::STRING {
                     let error_message =
                         slice::from_raw_parts(string_val(message), caml_string_length(message))
                             .to_owned();

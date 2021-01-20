@@ -1,14 +1,11 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::memory::OCamlAllocResult;
+use crate::error::OCamlException;
 use crate::mlvalues::tag;
 use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
 use crate::value::OCaml;
-use crate::{
-    error::{OCamlError, OCamlException},
-    OCamlAllocToken,
-};
+use crate::{OCamlRef, OCamlRuntime};
 use ocaml_sys::{
     caml_callback2_exn, caml_callback3_exn, caml_callbackN_exn, caml_callback_exn, caml_named_value,
 };
@@ -18,93 +15,92 @@ pub struct OCamlClosure(*const RawOCaml);
 
 unsafe impl Sync for OCamlClosure {}
 
-fn get_named(name: &str) -> Option<*const RawOCaml> {
-    unsafe {
-        let s = match std::ffi::CString::new(name) {
-            Ok(s) => s,
-            Err(_) => return None,
-        };
-        let named = caml_named_value(s.as_ptr());
-        if named.is_null() {
-            return None;
-        }
-
-        if tag_val(*named) != tag::CLOSURE {
-            return None;
-        }
-
-        Some(named)
-    }
-}
-
-/// The result of calls to OCaml functions. Can be a value or an error.
-pub type OCamlResult<T> = Result<OCamlAllocResult<T>, OCamlError>;
-
-/// OCaml function that accepts one argument.
-pub type OCamlFn1<A, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>) -> OCamlResult<Ret>;
-/// OCaml function that accepts two arguments.
-pub type OCamlFn2<A, B, Ret> = unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>) -> OCamlResult<Ret>;
-/// OCaml function that accepts three arguments.
-pub type OCamlFn3<A, B, C, Ret> =
-    unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>) -> OCamlResult<Ret>;
-/// OCaml function that accepts four arguments.
-pub type OCamlFn4<A, B, C, D, Ret> =
-    unsafe fn(OCamlAllocToken, OCaml<A>, OCaml<B>, OCaml<C>, OCaml<D>) -> OCamlResult<Ret>;
-/// OCaml function that accepts five arguments.
-pub type OCamlFn5<A, B, C, D, E, Ret> = unsafe fn(
-    OCamlAllocToken,
-    OCaml<A>,
-    OCaml<B>,
-    OCaml<C>,
-    OCaml<D>,
-    OCaml<E>,
-) -> OCamlResult<Ret>;
-
 impl OCamlClosure {
     pub fn named(name: &str) -> Option<OCamlClosure> {
-        get_named(name).map(OCamlClosure)
+        let named = unsafe {
+            let s = match std::ffi::CString::new(name) {
+                Ok(s) => s,
+                Err(_) => return None,
+            };
+            caml_named_value(s.as_ptr())
+        };
+        if named.is_null() || unsafe { tag_val(*named) } != tag::CLOSURE {
+            None
+        } else {
+            Some(OCamlClosure(named))
+        }
     }
 
-    pub fn call<T, R>(&self, _token: OCamlAllocToken, arg: OCaml<T>) -> OCamlResult<R> {
-        let result = unsafe { caml_callback_exn(*self.0, arg.raw()) };
-        self.handle_result(result)
+    pub fn call<'a, T, R>(&self, cr: &'a mut OCamlRuntime, arg: OCamlRef<T>) -> OCaml<'a, R> {
+        let result = unsafe { caml_callback_exn(*self.0, arg.get_raw()) };
+        self.handle_call_result(cr, result)
     }
 
-    pub fn call2<T, U, R>(
+    pub fn call2<'a, T, U, R>(
         &self,
-        _token: OCamlAllocToken,
-        arg1: OCaml<T>,
-        arg2: OCaml<U>,
-    ) -> OCamlResult<R> {
-        let result = unsafe { caml_callback2_exn(*self.0, arg1.raw(), arg2.raw()) };
-        self.handle_result(result)
+        cr: &'a mut OCamlRuntime,
+        arg1: OCamlRef<T>,
+        arg2: OCamlRef<U>,
+    ) -> OCaml<'a, R> {
+        let result = unsafe { caml_callback2_exn(*self.0, arg1.get_raw(), arg2.get_raw()) };
+        self.handle_call_result(cr, result)
     }
 
-    pub fn call3<T, U, V, R>(
+    pub fn call3<'a, T, U, V, R>(
         &self,
-        _token: OCamlAllocToken,
-        arg1: OCaml<T>,
-        arg2: OCaml<U>,
-        arg3: OCaml<V>,
-    ) -> OCamlResult<R> {
-        let result = unsafe { caml_callback3_exn(*self.0, arg1.raw(), arg2.raw(), arg3.raw()) };
-        self.handle_result(result)
+        cr: &'a mut OCamlRuntime,
+        arg1: OCamlRef<T>,
+        arg2: OCamlRef<U>,
+        arg3: OCamlRef<V>,
+    ) -> OCaml<'a, R> {
+        let result =
+            unsafe { caml_callback3_exn(*self.0, arg1.get_raw(), arg2.get_raw(), arg3.get_raw()) };
+        self.handle_call_result(cr, result)
     }
 
-    pub fn call_n<R>(&self, _token: OCamlAllocToken, args: &mut [RawOCaml]) -> OCamlResult<R> {
+    pub fn call_n<'a, R>(&self, cr: &'a mut OCamlRuntime, args: &mut [RawOCaml]) -> OCaml<'a, R> {
         let len = args.len();
         let result = unsafe { caml_callbackN_exn(*self.0, len, args.as_mut_ptr()) };
-        self.handle_result(result)
+        self.handle_call_result(cr, result)
     }
 
     #[inline]
-    fn handle_result<R>(self, result: RawOCaml) -> OCamlResult<R> {
+    fn handle_call_result<'a, R>(
+        &self,
+        cr: &'a mut OCamlRuntime,
+        result: RawOCaml,
+    ) -> OCaml<'a, R> {
         if is_exception_result(result) {
-            let ex = extract_exception(result);
-            Err(OCamlError::Exception(OCamlException::of(ex)))
+            let ex = unsafe { OCamlException::of(extract_exception(result)) };
+            panic!("OCaml exception, message: {:?}", ex.message())
         } else {
-            let gv = OCamlAllocResult::of(result);
-            Ok(gv)
+            unsafe { OCaml::new(cr, result) }
         }
     }
 }
+
+/// OCaml function that accepts one argument.
+pub type OCamlFn1<'a, A, Ret> = unsafe fn(&'a mut OCamlRuntime, OCamlRef<A>) -> OCaml<'a, Ret>;
+/// OCaml function that accepts two arguments.
+pub type OCamlFn2<'a, A, B, Ret> =
+    unsafe fn(&'a mut OCamlRuntime, OCamlRef<A>, OCamlRef<B>) -> OCaml<'a, Ret>;
+/// OCaml function that accepts three arguments.
+pub type OCamlFn3<'a, A, B, C, Ret> =
+    unsafe fn(&'a mut OCamlRuntime, OCamlRef<A>, OCamlRef<B>, OCamlRef<C>) -> OCaml<'a, Ret>;
+/// OCaml function that accepts four arguments.
+pub type OCamlFn4<'a, A, B, C, D, Ret> = unsafe fn(
+    &'a mut OCamlRuntime,
+    OCamlRef<A>,
+    OCamlRef<B>,
+    OCamlRef<C>,
+    OCamlRef<D>,
+) -> OCaml<'a, Ret>;
+/// OCaml function that accepts five arguments.
+pub type OCamlFn5<'a, A, B, C, D, E, Ret> = unsafe fn(
+    &'a mut OCamlRuntime,
+    OCamlRef<A>,
+    OCamlRef<B>,
+    OCamlRef<C>,
+    OCamlRef<D>,
+    OCamlRef<E>,
+) -> OCaml<'a, Ret>;

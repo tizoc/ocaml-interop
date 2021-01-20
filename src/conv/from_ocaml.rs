@@ -14,13 +14,13 @@ pub unsafe trait FromOCaml<T> {
 
 unsafe impl FromOCaml<OCamlInt> for i64 {
     fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
-        v.as_i64()
+        v.to_i64()
     }
 }
 
 unsafe impl FromOCaml<OCamlInt> for i32 {
     fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
-        v.as_i64() as i32
+        v.to_i64() as i32
     }
 }
 
@@ -40,7 +40,7 @@ unsafe impl FromOCaml<OCamlInt64> for i64 {
 
 unsafe impl FromOCaml<bool> for bool {
     fn from_ocaml(v: OCaml<bool>) -> Self {
-        v.as_bool()
+        v.to_bool()
     }
 }
 
@@ -61,7 +61,7 @@ unsafe impl FromOCaml<String> for Vec<u8> {
 
 unsafe impl FromOCaml<String> for String {
     fn from_ocaml(v: OCaml<String>) -> Self {
-        v.as_str().to_owned()
+        String::from_utf8_lossy(v.as_bytes()).into_owned()
     }
 }
 

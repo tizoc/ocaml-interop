@@ -64,6 +64,14 @@ let stringify_polymorphic_variant = function
   | `RotateRight -> "`RotateRight"
   | `Step n -> Printf.sprintf "`Step(%d)" n
 
+let raises_message_exception msg = failwith msg
+
+let raises_nonblock_exception () = raise Not_found
+
+exception WithInt of int
+
+let raises_nonmessage_exception () = raise (WithInt 10)
+
 let () =
   Callback.register "increment_bytes" increment_bytes;
   Callback.register "decrement_bytes" decrement_bytes;
@@ -75,4 +83,7 @@ let () =
   Callback.register "make_error" make_error;
   Callback.register "stringify_record" stringify_record;
   Callback.register "stringify_variant" stringify_variant;
-  Callback.register "stringify_polymorphic_variant" stringify_polymorphic_variant
+  Callback.register "stringify_polymorphic_variant" stringify_polymorphic_variant;
+  Callback.register "raises_message_exception" raises_message_exception;
+  Callback.register "raises_nonmessage_exception" raises_nonmessage_exception;
+  Callback.register "raises_nonblock_exception" raises_nonblock_exception;

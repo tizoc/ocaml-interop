@@ -1,16 +1,14 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::{FromOCaml, OCamlRuntime, error::OCamlFixnumConversionError, mlvalues::*};
-use core::{marker::PhantomData, slice, str};
+use crate::{
+    error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml, OCamlRef,
+    OCamlRuntime,
+};
+use core::{marker::PhantomData, ops::Deref, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
 
 /// Representation of OCaml values.
-///
-/// Should not be instantiated directly, and will usually be the result
-/// of [`ocaml_alloc!`] and [`ocaml_call!`] expressions, or the input arguments
-/// of functions defined inside [`ocaml_export!`] blocks.
-#[derive(Copy)]
 pub struct OCaml<'a, T: 'a> {
     pub(crate) _marker: PhantomData<&'a T>,
     pub(crate) raw: RawOCaml,
@@ -22,6 +20,16 @@ impl<'a, T> Clone for OCaml<'a, T> {
             _marker: PhantomData,
             raw: self.raw,
         }
+    }
+}
+
+impl<'a, T> Copy for OCaml<'a, T> {}
+
+impl<'a, T> Deref for OCaml<'a, T> {
+    type Target = OCamlCell<T>;
+
+    fn deref(&self) -> OCamlRef<T> {
+        self.as_ref()
     }
 }
 
@@ -74,6 +82,15 @@ impl<'a, T> OCaml<'a, T> {
         unsafe { tag_val(self.raw) }
     }
 
+    /// Obtains an [`OCamlRef`]`<T>` for this value.
+    pub fn as_ref<'b>(&'b self) -> OCamlRef<'b, T>
+    where
+        'a: 'b,
+    {
+        let ptr = &self.raw as *const RawOCaml;
+        unsafe { OCamlCell::create_ref(ptr) }
+    }
+
     /// Gets the raw representation for this value reference (pointer or int).
     ///
     /// # Safety
@@ -86,21 +103,30 @@ impl<'a, T> OCaml<'a, T> {
     }
 
     /// Converts this OCaml value into a Rust value.
-    ///
-    /// # Example
-    ///
-    /// TODO
-    pub fn to_rust<RustT>(&self) -> RustT where RustT: FromOCaml<T> {
-        RustT::from_ocaml(self.clone())
+    pub fn to_rust<RustT>(&self) -> RustT
+    where
+        RustT: FromOCaml<T>,
+    {
+        RustT::from_ocaml(*self)
     }
 }
 
 impl OCaml<'static, ()> {
     /// Returns a value that represent OCaml's unit value.
-    pub fn unit() -> OCaml<'static, ()> {
+    pub fn unit() -> Self {
         OCaml {
             _marker: PhantomData,
             raw: UNIT,
+        }
+    }
+}
+
+impl<T> OCaml<'static, Option<T>> {
+    /// Returns a value that represent OCaml's None value.
+    pub fn none() -> Self {
+        OCaml {
+            _marker: PhantomData,
+            raw: NONE,
         }
     }
 }
@@ -171,7 +197,7 @@ impl<'a> OCaml<'a, OCamlBytes> {
 
 impl<'a> OCaml<'a, OCamlInt> {
     /// Converts an OCaml int to an `i64`.
-    pub fn as_i64(&self) -> i64 {
+    pub fn to_i64(&self) -> i64 {
         int_val(self.raw) as i64
     }
 
@@ -216,12 +242,12 @@ impl<'a> OCaml<'a, OCamlInt> {
 
 impl<'a> OCaml<'a, bool> {
     /// Converts an OCaml boolean into a Rust boolean.
-    pub fn as_bool(self) -> bool {
+    pub fn to_bool(&self) -> bool {
         int_val(self.raw) != 0
     }
 
     /// Creates an OCaml boolean from a Rust boolean.
-    pub fn of_bool(b: bool) -> Self {
+    pub fn of_bool(b: bool) -> OCaml<'static, bool> {
         OCaml {
             _marker: PhantomData,
             raw: if b { TRUE } else { FALSE },
@@ -289,6 +315,10 @@ impl<'a, A, Err> OCaml<'a, Result<A, Err>> {
 }
 
 impl<'a, A, B> OCaml<'a, (A, B)> {
+    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>) {
+        (self.fst(), self.snd())
+    }
+
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }
     }
@@ -299,6 +329,10 @@ impl<'a, A, B> OCaml<'a, (A, B)> {
 }
 
 impl<'a, A, B, C> OCaml<'a, (A, B, C)> {
+    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>, OCaml<'a, C>) {
+        (self.fst(), self.snd(), self.tuple_3())
+    }
+
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }
     }
@@ -313,6 +347,10 @@ impl<'a, A, B, C> OCaml<'a, (A, B, C)> {
 }
 
 impl<'a, A, B, C, D> OCaml<'a, (A, B, C, D)> {
+    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>, OCaml<'a, C>, OCaml<'a, D>) {
+        (self.fst(), self.snd(), self.tuple_3(), self.tuple_4())
+    }
+
     pub fn fst(&self) -> OCaml<'a, A> {
         unsafe { self.field(0) }
     }
