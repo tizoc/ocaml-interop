@@ -21,6 +21,7 @@
 //!     + [`FromOCaml` trait](#fromocaml-trait)
 //!     + [`ToOCaml` trait](#toocaml-trait)
 //!   * [Calling convention](#calling-convention)
+//!   * [OCaml exceptions](#ocaml-exceptions)
 //!   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
 //!   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
 //! - [References and links](#references-and-links)
@@ -65,7 +66,7 @@
 //! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
 //! let escape = ocaml_frame!(cr, (arg1_root), {
 //!     let arg1 = arg1.to_ocaml(cr);
-//!     let arg1_root = &arg1_root.keep(arg1);
+//!     let arg1_root = arg1_root.keep(arg1);
 //!     let result = ocaml_function(cr, arg1_root, /* ..., argN */);
 //!     let s: String = result.to_rust();
 //!     // ...
@@ -84,7 +85,7 @@
 //!    | |     |
 //!    | |     borrow later stored here
 //!    | |     let arg1 = arg1.to_ocaml(cr);
-//!    | |     let arg1_root = &arg1_root.keep(arg1);
+//!    | |     let arg1_root = arg1_root.keep(arg1);
 //!    | |     let result = ocaml_function(cr, arg1_root, /* ..., argN */);
 //! ...  |
 //!    | |     arg1_root
@@ -103,7 +104,7 @@
 //!
 //! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
 //!
-//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(&ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
+//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
 //!
 //! [`OCamlRef`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
 //!
@@ -114,7 +115,7 @@
 //! A more convenient way to convert Rust values into OCaml values is provided by the [`to_ocaml!`] macro that accepts a root variable as an optional third argument to return a root containing the value.
 //!
 //! ### Calling convention
-//! TODO: fix all this
+//!
 //! There are two possible calling conventions in regards to rooting, one with *callee rooted arguments*, and another with *caller rooted arguments*.
 //!
 //! #### Callee rooted arguments calling convention
@@ -126,6 +127,12 @@
 //! With this calling convention, values that are arguments to a function call must be rooted by the caller. Then instead of the value, it is the root pointing to the value that is passed as an argument. This is how `ocaml-interop` works starting with version `0.5.0`.
 //!
 //! When a Rust function is called from OCaml, it will receive arguments as `OCamlRef<T>` values, and when a OCaml function is called from Rust, arguments will be passed as `OCamlRef<T>` values.
+//!
+//! ### OCaml exceptions
+//!
+//! If an OCaml function called from Rust raises an exception, this will result in a panic.
+//!
+//! OCaml functions meant to be called from Rust should not raise exceptions to signal errors, but instead return `result` or `option` values, which can then be mapped into `Result` and `Option` values in Rust.
 //!
 //! ### Calling into OCaml from Rust
 //!
@@ -152,8 +159,6 @@
 //! - The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by doing `let runtime = OCamlRuntime::init()`, but if the driving program is an OCaml application, this is not required.
 //! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the [`ocaml!`] macro.
 //! - Before the program exist, or once the OCaml runtime is not required anymore, it has to be de-initialized by calling the `shutdown()` method on the OCaml runtime handle.
-//!
-//! If an exception is raised by an OCaml function, a `panic!` will happen. OCaml functions that are meant to be called from Rust should return values of `Result.t` type to signal errors.
 //!
 //! ### Example
 //!

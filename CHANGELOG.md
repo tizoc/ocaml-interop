@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCamlRuntime::releasing_runtime(&mut self, f: FnOnce() -> T)` releases the OCaml runtime, calls `f`, and then re-acquires the OCaml runtime. Maybe more complicated patterns should be supported, but for now I haven't given this much thought.
 - Support for unpacking OCaml polymorphic variants into Rust values.
 - `to_rust(cr: &OCamlRuntime)` method to `OCamlRef<T>` values.
-- `as_value_ref(&self) -> OCamlRef<T>` method to obtain roots for immediate values without performing actual rooting.
-- `OCamlRef::unit()` method to obtain a static ref to an OCaml unit value.
-- `OCamlRef::none()` method to obtain a static ref to an OCaml `None` value.
+- `OCaml::unit()` method to obtain an OCaml unit value.
+- `OCaml::none()` method to obtain an OCaml `None` value.
+- Support for tuple-structs in struct/record mapping macros.
+- `OCaml::as_ref(&self) -> OCamlRef<T>` method. Useful for immediate OCaml values (ints, unit, None, booleans) to convert them into `OCamlRef`s without the need for rooting.
+- `Deref` implementation to get an `OCamlRef<T>` from an `OCaml<T>`.
 
 ### Changed
 
