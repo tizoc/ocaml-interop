@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2021-01-20
+
 ### Added
 
 - `OCamlRuntime::releasing_runtime(&mut self, f: FnOnce() -> T)` releases the OCaml runtime, calls `f`, and then re-acquires the OCaml runtime. Maybe more complicated patterns should be supported, but for now I haven't given this much thought.
@@ -111,7 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.4...v0.5.0
 [0.4.4]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.1...v0.4.2
