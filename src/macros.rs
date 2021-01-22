@@ -810,6 +810,23 @@ macro_rules! ocaml_unpack_variant {
             Err("Invalid tag value found when converting from an OCaml variant")
         })()
     };
+
+    ($self:ident => {
+        $($($tag:ident)::+ $({$($slot_name:ident: $slot_typ:ty),+ $(,)?})? $(=> $conv:expr)?),+ $(,)?
+    }) => {
+        (|| {
+            let mut current_block_tag = 0;
+            let mut current_long_tag = 0;
+
+            $(
+                $crate::unpack_variant_tag!(
+                    $self, current_block_tag, current_long_tag,
+                    $($tag)::+ $({$($slot_name: $slot_typ),+})? $(=> $conv)?);
+            )+
+
+            Err("Invalid tag value found when converting from an OCaml variant")
+        })()
+    };
 }
 
 /// Allocates an OCaml variant, mapped from a Rust enum.
@@ -1128,6 +1145,7 @@ macro_rules! unpack_variant_tag {
         $current_long_tag += 1;
     };
 
+    // Parens: tuple
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
         $($tag:ident)::+ ($($slot_name:ident: $slot_typ:ty),+)) => {
 
@@ -1136,8 +1154,35 @@ macro_rules! unpack_variant_tag {
             $($tag)::+ ($($slot_name: $slot_typ),+) => $($tag)::+($($slot_name),+))
     };
 
+    // Braces: record
+    ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
+        $($tag:ident)::+ {$($slot_name:ident: $slot_typ:ty),+}) => {
+
+        $crate::unpack_variant_tag!(
+            $self, $current_block_tag, $current_long_tag,
+            $($tag)::+ {$($slot_name: $slot_typ),+} => $($tag)::+{$($slot_name),+})
+    };
+
+    // Parens: tuple
     ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
         $($tag:ident)::+ ($($slot_name:ident: $slot_typ:ty),+) => $conv:expr) => {
+
+        if $self.is_block() && $self.tag_value() == $current_block_tag {
+            let mut current_field = 0;
+
+            $(
+                let $slot_name = unsafe { $self.field::<$slot_typ>(current_field).to_rust() };
+                current_field += 1;
+            )+
+
+            return Ok($conv);
+        }
+        $current_block_tag += 1;
+    };
+
+    // Braces: record
+    ($self:ident, $current_block_tag:ident, $current_long_tag:ident,
+        $($tag:ident)::+ {$($slot_name:ident: $slot_typ:ty),+} => $conv:expr) => {
 
         if $self.is_block() && $self.tag_value() == $current_block_tag {
             let mut current_field = 0;
