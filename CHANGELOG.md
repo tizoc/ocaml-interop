@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2021-01-22
+
+- Syntax in `impl_from_ocaml_variant!` for variant tags with named fields (records instead of tuples).
+
 ## [0.5.0] - 2021-01-20
 
 ### Added
@@ -101,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.4...v0.5.0
 [0.4.4]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.2...v0.4.3
