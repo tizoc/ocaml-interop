@@ -15,7 +15,7 @@ impl OCamlRuntime {
     /// Initializes the OCaml runtime and returns an OCaml runtime handle.
     pub fn init() -> Self {
         OCamlRuntime::init_persistent();
-        unsafe { Self::recover_handle() }
+        OCamlRuntime { _private: () }
     }
 
     /// Initializes the OCaml runtime.
@@ -34,8 +34,9 @@ impl OCamlRuntime {
     /// This function is unsafe because the OCaml runtime handle should be obtained once
     /// upon initialization of the OCaml runtime and then passed around. This method exists
     /// only to ease the authoring of tests.
-    pub unsafe fn recover_handle() -> Self {
-        OCamlRuntime { _private: () }
+    pub unsafe fn recover_handle() -> &'static mut Self {
+        static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
+        &mut RUNTIME
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
@@ -44,11 +45,6 @@ impl OCamlRuntime {
         F: FnOnce() -> T,
     {
         OCamlBlockingSection::new().perform(f)
-    }
-
-    /// Performs the necessary cleanup and shuts down the OCaml runtime.
-    pub fn shutdown(self) {
-        unsafe { caml_shutdown() }
     }
 
     #[doc(hidden)]
@@ -62,6 +58,12 @@ impl OCamlRuntime {
             _marker: PhantomData,
             raw: unsafe { reference.get_raw() },
         }
+    }
+}
+
+impl Drop for OCamlRuntime {
+    fn drop(&mut self) {
+        unsafe { caml_shutdown() }
     }
 }
 

@@ -280,9 +280,8 @@
 //!     let (result1, result2) = increment_bytes(&mut cr, bytes1, bytes2, first_n);
 //!     println!("Bytes1 after: {}", result1);
 //!     println!("Bytes2 after: {}", result2);
-//!     // Once the OCaml runtime is not required anymore, the `shutdown()` method has
-//!     // to be called to perform the necessary cleanup.
-//!     cr.shutdown();
+//!     // `OCamlRuntime`'s `Drop` implementation will pefrorm the necessary cleanup
+//!     // to shutdown the OCaml runtime.
 //! }
 //! ```
 //!

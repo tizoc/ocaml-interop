@@ -278,9 +278,9 @@ fn test_exception_handling_with_message() {
 #[serial]
 fn test_exception_handling_without_message() {
     OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    let result = std::panic::catch_unwind(move || {
-        ocaml::raises_nonmessage_exception(&mut cr, &OCaml::unit());
+    let result = std::panic::catch_unwind(|| {
+        let cr = unsafe { OCamlRuntime::recover_handle() };
+        ocaml::raises_nonmessage_exception(cr, &OCaml::unit());
     });
     assert_eq!(
         result.err().and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone())).unwrap(),
@@ -292,9 +292,9 @@ fn test_exception_handling_without_message() {
 #[serial]
 fn test_exception_handling_nonblock_exception() {
     OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    let result = std::panic::catch_unwind(move || {
-        ocaml::raises_nonblock_exception(&mut cr, &OCaml::unit());
+    let result = std::panic::catch_unwind(|| {
+        let cr = unsafe { OCamlRuntime::recover_handle() };
+        ocaml::raises_nonblock_exception(cr, &OCaml::unit());
     });
     assert_eq!(
         result.err().and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone())).unwrap(),
