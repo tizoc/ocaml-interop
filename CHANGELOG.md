@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Nothing.
 
+## [0.4.5] - 2021-02-02
+
+### Security
+
+- Added nul terminator to string passed to `caml_startup` (by @mat13mn)
+
 ## [0.4.4] - 2020-11-02
 
 ### Fixed
@@ -87,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.5...v0.4.5
 [0.4.4]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/simplestaking/ocaml-interop/compare/v0.4.1...v0.4.2
