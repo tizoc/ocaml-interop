@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml, OCamlRef,
-    OCamlRuntime,
+    boxroot::BoxRoot, error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml,
+    OCamlRef, OCamlRuntime,
 };
 use core::{marker::PhantomData, ops::Deref, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
@@ -89,6 +89,10 @@ impl<'a, T> OCaml<'a, T> {
     {
         let ptr = &self.raw as *const RawOCaml;
         unsafe { OCamlCell::create_ref(ptr) }
+    }
+
+    pub fn root(self) -> BoxRoot<T> {
+        BoxRoot::new(self)
     }
 
     /// Gets the raw representation for this value reference (pointer or int).
