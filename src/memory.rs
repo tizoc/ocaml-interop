@@ -102,6 +102,9 @@ pub unsafe fn alloc_tuple<T>(cr: &mut OCamlRuntime, size: usize) -> OCaml<T> {
     OCaml::new(cr, ocaml_tuple)
 }
 
+/// List constructor
+///
+/// Build a new list from a head and a tail list.
 pub fn alloc_cons<'a, 'b, A>(
     cr: &'a mut OCamlRuntime,
     head: OCamlRef<'b, A>,
