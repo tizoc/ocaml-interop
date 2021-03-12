@@ -10,6 +10,7 @@ use ocaml_boxroot_sys::{
 
 use crate::{memory::OCamlCell, OCaml, OCamlRef, OCamlRuntime, RawOCaml};
 
+/// `BoxRoot<T>` is a container for a rooted [`OCaml`]`<T>` value.
 pub struct BoxRoot<T: 'static> {
     boxroot: PrimitiveBoxRoot,
     _marker: PhantomData<T>,

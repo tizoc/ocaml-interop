@@ -8,18 +8,27 @@ use std::{marker::PhantomData, sync::Once};
 use crate::{memory::OCamlRef, value::OCaml};
 
 /// OCaml runtime handle.
+///
+/// Should be initialized once at the beginning of the program
+/// and the obtained handle passed around.
+///
+/// Once the handle is dropped, the OCaml runtime will be shutdown.
 pub struct OCamlRuntime {
     _private: (),
 }
 
 impl OCamlRuntime {
     /// Initializes the OCaml runtime and returns an OCaml runtime handle.
+    ///
+    /// Once the handle is dropped, the OCaml runtime will be shutdown.
     pub fn init() -> Self {
         Self::init_persistent();
         Self { _private: () }
     }
 
     /// Initializes the OCaml runtime.
+    ///
+    /// After the first invocation, this method does nothing.
     pub fn init_persistent() {
         static INIT: Once = Once::new();
 
@@ -95,7 +104,7 @@ impl Drop for OCamlBlockingSection {
     }
 }
 
-// For initializing from an OCaml-drived program
+// For initializing from an OCaml-driven program
 
 #[no_mangle]
 extern "C" fn ocaml_interop_setup(_unit: crate::RawOCaml) -> crate::RawOCaml {
