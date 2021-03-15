@@ -7,16 +7,15 @@
 //!
 //! **API IS CONSIDERED UNSTABLE AT THE MOMENT AND IS LIKELY TO CHANGE IN THE FUTURE**
 //!
-//! [ocaml-interop](https://github.com/simplestaking/ocaml-interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide) and [ocaml-rs](https://github.com/zshipko/ocaml-rs).
+//! [ocaml-interop](https://github.com/simplestaking/ocaml-interop) is an OCaml<->Rust FFI with an emphasis
+//! on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide),
+//! [ocaml-rs](https://github.com/zshipko/ocaml-rs) and [CAMLroot](https://arxiv.org/abs/1812.04905).
 //!
 //! ## Table of Contents
 //!
-//! - [How does it work](#how-does-it-work)
 //! - [Usage](#usage)
-//!   * [Rules](#rules)
-//!     + [Rule 1: The OCaml runtime handle](#rule-1-the-ocaml-runtime-handle)
-//!     + [Rule 2: Liveness of OCaml values and rooting](#rule-2-liveness-of-ocaml-values-and-rooting)
-//!     + [Rule 3: Liveness and scope of OCaml roots](#rule-3-liveness-and-scope-ocaml-roots)
+//!   * [The OCaml runtime handle](#the-ocaml-runtime-handle)
+//!   * [OCaml value representation](#ocaml-value-representation)
 //!   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
 //!     + [`FromOCaml` trait](#fromocaml-trait)
 //!     + [`ToOCaml` trait](#toocaml-trait)
@@ -26,77 +25,30 @@
 //!   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
 //! - [References and links](#references-and-links)
 //!
-//! ## How does it work
-//!
-//! ocaml-interop, just like [caml-oxide](https://github.com/stedolan/caml-oxide), encodes the invariants of OCaml's garbage collector into the rules of Rust's borrow checker. Any violation of these invariants results in a compilation error produced by Rust's borrow checker.
-//!
 //! ## Usage
 //!
-//! ### Rules
+//! ### The OCaml runtime handle
 //!
-//! There are a few rules that have to be followed when calling into the OCaml runtime:
+//! The OCaml runtime handle is represented by a [`OCamlRuntime`] value. To be able to use of the capabilities
+//! offered by the OCaml runtime, access to this handle is required. The handle is first obtained when calling
+//! [`OCamlRuntime::init`] to initialize the OCaml runtime. Rust functions called form OCaml will also receive
+//! a `&mut OCamlRuntime` as their first argument.
 //!
-//! #### Rule 1: The OCaml runtime handle
+//! This OCaml runtime handle must belong to a single thread, and passed around (moved or as a `&mut` reference)
+//! to any code that needs access to the OCaml runtime.
 //!
-//! To interact with the OCaml runtime (be it reading, mutating or allocating values, or to call functions) a reference to the OCaml runtime handle must be available.
-//! Any function that interacts with the OCaml runtime takes as a first argument a reference to the OCaml runtime handle.
+//! Un-rooted non-immediate OCaml values have a lifetime associated to the OCaml runtime handle, and will become
+//! stale once the OCaml runtime is mutably borrowed.
 //!
-//! #### Rule 2: Liveness of OCaml values and rooting
+//! ### OCaml value representation
 //!
-//! Rust references to OCaml values become stale after calls into the OCaml runtime and cannot be used again. This is enforced by Rust's borrow checker.
+//! OCaml values are exposed to Rust using three types:
 //!
-//! To have OCaml values survive across calls into the OCaml runtime, they have to be rooted, and then recovered from a root.
-//!
-//! Rooting is only possible inside `ocaml_frame!` blocks, which initialize a list of root variables that can be used to root OCaml values.
-//!
-//! #### Rule 3: Liveness and scope of OCaml roots
-//!
-//! OCaml roots are only valid inside the [`ocaml_frame!`] that instantiated them, and cannot escape this scope.
-//!
-//! Example (fails to compile):
-//!
-//! ```rust,compile_fail
-//! # use ocaml_interop::*;
-//! # ocaml! {
-//! #     fn ocaml_function(arg1: String) -> String;
-//! #     fn another_ocaml_function(arg: String);
-//! # }
-//! # let a_string = "string";
-//! # let arg1 = "arg1";
-//! # let cr = unsafe { &mut OCamlRuntime::recover_handle() };
-//! let escape = ocaml_frame!(cr, (arg1_root), {
-//!     let arg1 = arg1.to_ocaml(cr);
-//!     let arg1_root = arg1_root.keep(arg1);
-//!     let result = ocaml_function(cr, arg1_root, /* ..., argN */);
-//!     let s: String = result.to_rust();
-//!     // ...
-//!     arg1_root
-//! });
-//! ```
-//!
-//! In the above example `arg1_root` cannot escape the [`ocaml_frame!`] scope, Rust's borrow checker will complain:
-//!
-//! ```text,no_run
-//! error[E0716]: temporary value dropped while borrowed
-//!   --> src/lib.rs:64:14
-//!    |
-//!    |   let escape = ocaml_frame!(cr, (arg1_root), {
-//!    |  _____------___^
-//!    | |     |
-//!    | |     borrow later stored here
-//!    | |     let arg1 = arg1.to_ocaml(cr);
-//!    | |     let arg1_root = arg1_root.keep(arg1);
-//!    | |     let result = ocaml_function(cr, arg1_root, /* ..., argN */);
-//! ...  |
-//!    | |     arg1_root
-//!    | | });
-//!    | |  ^
-//!    | |  |
-//!    | |__creates a temporary which is freed while still in use
-//!    |    temporary value is freed at the end of this statement
-//! ```
-//!
-//! A similar error would happen if a root-variable escaped the frame scope.
+//! - [`OCaml`]`<'gc, T>` is the representation of OCaml values in Rust. These values become stale
+//!   after calls into the OCaml runtime and must be re-referenced.
+//! - [`BoxRoot`]`<T>` is a container for an [`OCaml`]`<T>` value that is rooted and tracked by
+//!   OCaml's Garbage Collector.
+//! - [`OCamlRef`]`<'a, T>` is a reference to an [`OCaml`]`<T>` value that may or may not be rooted.
 //!
 //! ### Converting between OCaml and Rust data
 //!
@@ -104,35 +56,49 @@
 //!
 //! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
 //!
-//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(ocaml_value)`, and works for any combination that implements the `FromOCaml` trait.
+//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(ocaml_value)`,
+//! and works for any combination that implements the `FromOCaml` trait.
 //!
 //! [`OCamlRef`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
 //!
 //! #### [`ToOCaml`] trait
 //!
-//! The [`ToOCaml`] trait implements conversion from Rust values into OCaml values, using the `to_ocaml` method. It takes a single parameter that must be a `&mut OCamlRuntime`.
-//!
-//! A more convenient way to convert Rust values into OCaml values is provided by the [`to_ocaml!`] macro that accepts a root variable as an optional third argument to return a root containing the value.
+//! The [`ToOCaml`] trait implements conversion from Rust values into OCaml values, using the `to_ocaml` method.
+//! It takes a single parameter that must be a `&mut OCamlRuntime`.
 //!
 //! ### Calling convention
 //!
-//! There are two possible calling conventions in regards to rooting, one with *callee rooted arguments*, and another with *caller rooted arguments*.
+//! There are two possible calling conventions in regards to rooting, one with *callee rooted arguments*,
+//! and another with *caller rooted arguments*.
 //!
 //! #### Callee rooted arguments calling convention
 //!
-//! With this calling convention, values that are arguments to a function call are passed directly. Functions that receive arguments are responsible for rooting them. This is how OCaml's C API and `ocaml-interop` versions before `0.5.0` work.
+//! With this calling convention, values that are arguments to a function call are passed directly.
+//! Functions that receive arguments are responsible for rooting them. This is how OCaml's C API and
+//! `ocaml-interop` versions before `0.5.0` work.
 //!
 //! #### Caller rooted arguments calling convention
 //!
-//! With this calling convention, values that are arguments to a function call must be rooted by the caller. Then instead of the value, it is the root pointing to the value that is passed as an argument. This is how `ocaml-interop` works starting with version `0.5.0`.
+//! With this calling convention, values that are arguments to a function call must be rooted by the caller.
+//! Then instead of the value, it is the root pointing to the value that is passed as an argument.
+//! This is how `ocaml-interop` works starting with version `0.5.0`.
 //!
-//! When a Rust function is called from OCaml, it will receive arguments as `OCamlRef<T>` values, and when a OCaml function is called from Rust, arguments will be passed as `OCamlRef<T>` values.
+//! When a Rust function is called from OCaml, it will receive arguments as [`OCamlRef`]`<T>` values,
+//! and when a OCaml function is called from Rust, arguments will be passed as [`OCamlRef`]`<T>` values.
+//!
+//! #### Return values
+//!
+//! When an OCaml function is called from Rust, the return value is a [`BoxRoot`]`<T>`.
+//!
+//! Rust functions that are meant to be called from OCaml must return [`OCaml`]`<T>` values.
 //!
 //! ### OCaml exceptions
 //!
 //! If an OCaml function called from Rust raises an exception, this will result in a panic.
 //!
-//! OCaml functions meant to be called from Rust should not raise exceptions to signal errors, but instead return `result` or `option` values, which can then be mapped into `Result` and `Option` values in Rust.
+//! OCaml functions meant to be called from Rust should not raise exceptions to signal errors,
+//! but instead return `result` or `option` values, which can then be mapped into `Result` and
+//! `Option` values in Rust.
 //!
 //! ### Calling into OCaml from Rust
 //!
@@ -156,15 +122,15 @@
 //!
 //! To be able to call these from Rust, there are a few things that need to be done:
 //!
-//! - The OCaml runtime has to be initialized. If the driving program is a Rust application, it has to be done explicitly by doing `let runtime = OCamlRuntime::init()`, but if the driving program is an OCaml application, this is not required.
+//! - Rust-driven programs must initialize the OCaml runtime.
+//! - OCaml-driven programs must call the `ocaml_interop_setup` function.
 //! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the [`ocaml!`] macro.
-//! - Before the program exist, or once the OCaml runtime is not required anymore, it has to be de-initialized by calling the `shutdown()` method on the OCaml runtime handle.
 //!
 //! ### Example
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_frame, to_ocaml, FromOCaml, OCaml, OCamlRef, ToOCaml, OCamlRuntime
+//!     BoxRoot, FromOCaml, OCaml, OCamlInt, OCamlRef, ToOCaml, OCamlRuntime
 //! };
 //!
 //! // To call an OCaml function, it first has to be declared inside an `ocaml!` macro block:
@@ -173,10 +139,21 @@
 //!
 //!     ocaml! {
 //!         // OCaml: `val increment_bytes: bytes -> int -> bytes`
-//!         // registered with `Callback.register "increment_bytes" increment_bytes`
+//!         // registered with `Callback.register "increment_bytes" increment_bytes`.
+//!         // In Rust, this will be exposed as:
+//!         //     pub fn increment_bytes(
+//!         //         _: &mut OCamlRuntime,
+//!         //         bytes: OCamlRef<String>,
+//!         //         first_n: OCamlRef<OCamlInt>,
+//!         //     ) -> BoxRoot<String>;
 //!         pub fn increment_bytes(bytes: String, first_n: OCamlInt) -> String;
 //!         // OCaml: `val twice: int -> int`
-//!         // registered with `Callback.register "twice" twice`
+//!         // registered with `Callback.register "twice" twice`.
+//!         // In Rust this will be exposed as:
+//!         //     pub fn twice(
+//!         //         _: &mut OCamlRuntime,
+//!         //         num: OCamlRef<OCamlInt>,
+//!         //     ) -> BoxRoot<OCamlInt>;
 //!         pub fn twice(num: OCamlInt) -> OCamlInt;
 //!     }
 //! }
@@ -188,83 +165,45 @@
 //!     first_n: usize,
 //! ) -> (String, String) {
 //!     // Any calls into the OCaml runtime takes as input a `&mut` reference to an `OCamlRuntime`
-//!     // value that is obtained as the result of initializing the OCaml runtime.
-//!     // If rooting of OCaml values is needed, a new frame has to be opened by using the
-//!     // `ocaml_frame!` macro.
-//!     // The first argument to the macro is a reference to an `OCamlRuntime`, followed by a
-//!     // list of "root variables" (more on this later). The last argument
-//!     // is the block of code that will run inside that frame.
-//!     ocaml_frame!(cr, (bytes1_root, bytes2_root), {
-//!         // The `ToOCaml` trait provides the `to_ocaml` method to convert Rust
-//!         // values into OCaml values.
-//!         let ocaml_bytes1: OCaml<String> = bytes1.to_ocaml(cr);
+//!     // value that is obtained as the result of initializing the OCaml runtime with the
+//!     // `OCamlRuntime::init()` call.
+//!     // The `ToOCaml` trait provides the `to_ocaml` and `to_boxroot` methods to convert Rust
+//!     // values into OCaml values.
+//!     // Here `to_boxroot` is used to produce OCaml values that are already rooted.
+//!     let ocaml_bytes1_rooted: BoxRoot<String> = bytes1.to_boxroot(cr);
+//!     let ocaml_bytes2_rooted = bytes2.to_boxroot(cr);
 //!
-//!         // `ocaml_bytes1` is going to be referenced later, but there calls into the
-//!         // OCaml runtime that perform allocations happening before this value is used again.
-//!         // Those calls into the OCaml runtime invalidate this reference, so it has to be
-//!         // kept alive somehow. To do so, `bytes1_root.keep(ocaml_bytes1)` is used.
-//!         // `bytes1_root` is one of the "root variables" that were declared when opening
-//!         // this frame.
-//!         // Each "root variable" reserves space for a reference that will be tracked by the GC.
-//!         // A root variable's `root_var.keep(value)` method returns
-//!         // an value-containing root that is going to be valid during the scope of
-//!         // the current `ocaml_frame!` block. Later `cr.get(value_root)` can be used
-//!         // to recover the original OCaml value.
-//!         let bytes1_root: OCamlRef<String> = bytes1_root.keep(ocaml_bytes1);
+//!     // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64`
+//!     // and `OCaml::of_i64_unchecked`.
+//!     // Such conversion doesn't require any allocation on the OCaml side, and doesn't
+//!     // invalidate other `OCaml<T>` values. In addition, these immediate values require rooting.
+//!     let ocaml_first_n: OCaml<'static, OCamlInt> =
+//!         unsafe { OCaml::of_i64_unchecked(first_n as i64) };
 //!
-//!         // Same as above. Here the convenience macro [`to_ocaml!`] is used.
-//!         // It works like `value.to_ocaml(cr)`, but has an optional third argument that
-//!         // can be a root variable to perform the rooting.
-//!         // This variation returns an `OCamlRef` value instead of an `OCaml` one.
-//!         let bytes2_root = to_ocaml!(cr, bytes2, bytes2_root);
+//!     // Any OCaml function (declared above in a `ocaml!` block) can be called as a regular
+//!     // Rust function, by passing a `&mut OCamlRuntime` as the first argument, followed by
+//!     // the rest of the arguments declared for that function.
+//!     // Arguments to these functions must be `OCamlRef<T>` values. These are the result of
+//!     // dereferencing `OCaml<T>` and `BoxRoot<T>` values.
+//!     let result1 = ocaml_funcs::increment_bytes(
+//!         cr,                   // &mut OCamlRuntime
+//!         &ocaml_bytes1_rooted, // OCamlRef<String>
+//!         &ocaml_first_n,       // OCamlRef<OCamlInt>
+//!     );
 //!
-//!         // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64`
-//!         // and `OCaml::of_i64_unchecked`.
-//!         // Such conversion doesn't require any allocation on the OCaml side, and doesn't
-//!         // invalidate other `OCaml<T>` values.
-//!         let ocaml_first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
+//!     let result2 = ocaml_funcs::increment_bytes(
+//!         cr,
+//!         &ocaml_bytes2_rooted,
+//!         &ocaml_first_n,
+//!     );
 //!
-//!         // Any OCaml function (declared above in a `ocaml!` block) can be called as a regular
-//!         // Rust function, by passing a `&mut OCamlRuntime` as the first argument, followed by
-//!         // the rest of the arguments declared for that function.
-//!         // Arguments to these functions must be references to roots: `OCamlRef<T>`
-//!         let result1 = ocaml_funcs::increment_bytes(
-//!             cr,             // &mut OCamlRuntime
-//!             bytes1_root,    // OCamlRef<String>
-//!             // Immediate OCaml values, such as ints and books have an as_value_ref() method
-//!             // that can be used to simulate rooting.
-//!             &ocaml_first_n, // OCamlRef<OCamlInt>
-//!         );
-//!
-//!         // Perform the conversion of the OCaml result value into a
-//!         // Rust value while the reference is still valid because the
-//!         // call that follows will invalidate it.
-//!         // Alternatively, the result of `rootvar.keep(result1)` could be used
-//!         // to be able to reference the value later through an `OCamlRef` value.
-//!         let new_bytes1: String = result1.to_rust();
-//!         let result2 = ocaml_funcs::increment_bytes(
-//!             cr,
-//!             bytes2_root,
-//!             &ocaml_first_n,
-//!         );
-//!
-//!         // The `FromOCaml` trait provides the `from_ocaml` method to convert from
-//!         // OCaml values into OCaml values. Unlike the `to_ocaml` method, it doesn't
-//!         // require a GC handle argument, because no allocation is performed by the
-//!         // OCaml runtime when converting into Rust values.
-//!         // A more convenient alternative, is to use the `to_rust` method as
-//!         // above when `result1` was converted.
-//!         (new_bytes1, String::from_ocaml(result2))
-//!     })
+//!     (result1.to_rust(cr), result2.to_rust(cr))
 //! }
 //!
 //! fn twice(cr: &mut OCamlRuntime, num: usize) -> usize {
-//!     ocaml_frame!(cr, (num_root), {
-//!         let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
-//!         let num_root = num_root.keep(ocaml_num);
-//!         let result = ocaml_funcs::twice(cr, num_root);
-//!         i64::from_ocaml(result) as usize
-//!     })
+//!     let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
+//!     let result = ocaml_funcs::twice(cr, &ocaml_num);
+//!     result.to_rust::<i64>(cr) as usize
 //! }
 //!
 //! fn entry_point() {
@@ -289,11 +228,13 @@
 //!
 //! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the [`ocaml_export!`] macro.
 //!
+//! If the program is OCaml-driven, the `ocaml_interop_setup` function must be called from OCaml first, and the `ocaml_interop_teardown` function must be called at the end of the OCaml program.
+//!
 //! #### Example
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     to_ocaml, ocaml_export, ocaml_frame, FromOCaml, OCamlInt, OCaml, OCamlBytes,
+//!     ocaml_export, FromOCaml, OCamlInt, OCaml, OCamlBytes,
 //!     OCamlRef, ToOCaml,
 //! };
 //!
@@ -323,7 +264,7 @@
 //!             vec[i] += 1;
 //!         }
 //!
-//!         to_ocaml!(cr, vec)
+//!         vec.to_ocaml(cr)
 //!     }
 //! }
 //! ```
@@ -344,6 +285,7 @@
 //! - [caml-oxide](https://github.com/stedolan/caml-oxide), the code from that paper.
 //! - [ocaml-rs](https://github.com/zshipko/ocaml-rs), another OCaml<->Rust FFI library.
 
+mod boxroot;
 mod closure;
 mod conv;
 mod error;
@@ -352,6 +294,8 @@ mod memory;
 mod mlvalues;
 mod runtime;
 mod value;
+
+pub use crate::boxroot::BoxRoot;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5};
 pub use crate::conv::{FromOCaml, ToOCaml};
@@ -366,9 +310,10 @@ pub use crate::value::OCaml;
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, store_field, OCamlRawRoot};
+    pub use crate::memory::{caml_alloc, store_field};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
+    pub use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
     pub use ocaml_sys::caml_hash_variant;
 
     // To bypass ocaml_sys::int_val unsafe declaration
@@ -381,5 +326,6 @@ pub mod internal {
 #[cfg(doctest)]
 pub mod compile_fail_tests;
 
+#[doc(hidden)]
 #[cfg(test)]
 mod compile_ok_tests;

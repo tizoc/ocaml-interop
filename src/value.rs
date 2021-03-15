@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml, OCamlRef,
-    OCamlRuntime,
+    boxroot::BoxRoot, error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml,
+    OCamlRef, OCamlRuntime,
 };
 use core::{marker::PhantomData, ops::Deref, slice, str};
 use ocaml_sys::{caml_string_length, int_val, val_int};
@@ -89,6 +89,10 @@ impl<'a, T> OCaml<'a, T> {
     {
         let ptr = &self.raw as *const RawOCaml;
         unsafe { OCamlCell::create_ref(ptr) }
+    }
+
+    pub fn root(self) -> BoxRoot<T> {
+        BoxRoot::new(self)
     }
 
     /// Gets the raw representation for this value reference (pointer or int).
@@ -314,60 +318,6 @@ impl<'a, A, Err> OCaml<'a, Result<A, Err>> {
     }
 }
 
-impl<'a, A, B> OCaml<'a, (A, B)> {
-    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>) {
-        (self.fst(), self.snd())
-    }
-
-    pub fn fst(&self) -> OCaml<'a, A> {
-        unsafe { self.field(0) }
-    }
-
-    pub fn snd(&self) -> OCaml<'a, B> {
-        unsafe { self.field(1) }
-    }
-}
-
-impl<'a, A, B, C> OCaml<'a, (A, B, C)> {
-    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>, OCaml<'a, C>) {
-        (self.fst(), self.snd(), self.tuple_3())
-    }
-
-    pub fn fst(&self) -> OCaml<'a, A> {
-        unsafe { self.field(0) }
-    }
-
-    pub fn snd(&self) -> OCaml<'a, B> {
-        unsafe { self.field(1) }
-    }
-
-    pub fn tuple_3(&self) -> OCaml<'a, C> {
-        unsafe { self.field(2) }
-    }
-}
-
-impl<'a, A, B, C, D> OCaml<'a, (A, B, C, D)> {
-    pub fn to_tuple(&self) -> (OCaml<'a, A>, OCaml<'a, B>, OCaml<'a, C>, OCaml<'a, D>) {
-        (self.fst(), self.snd(), self.tuple_3(), self.tuple_4())
-    }
-
-    pub fn fst(&self) -> OCaml<'a, A> {
-        unsafe { self.field(0) }
-    }
-
-    pub fn snd(&self) -> OCaml<'a, B> {
-        unsafe { self.field(1) }
-    }
-
-    pub fn tuple_3(&self) -> OCaml<'a, C> {
-        unsafe { self.field(2) }
-    }
-
-    pub fn tuple_4(&self) -> OCaml<'a, D> {
-        unsafe { self.field(3) }
-    }
-}
-
 impl<'a, A> OCaml<'a, OCamlList<A>> {
     /// Returns an OCaml nil (empty list) value.
     pub fn nil() -> Self {
@@ -409,3 +359,75 @@ impl<'a, A> OCaml<'a, OCamlList<A>> {
         }
     }
 }
+
+// Tuples
+
+macro_rules! impl_tuple {
+    ($($n:tt: $accessor:ident -> $t:ident),+) => {
+        impl<'a, $($t),+> OCaml<'a, ($($t),+)>
+        {
+            pub fn to_tuple(&self) -> ($(OCaml<'a, $t>),+) {
+                ($(self.$accessor()),+)
+            }
+
+            $(
+                pub fn $accessor(&self) -> OCaml<'a, $t> {
+                    unsafe { self.field($n) }
+                }
+            )+
+        }
+    };
+}
+
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B);
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B,
+    2: tuple_3 -> C);
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B,
+    2: tuple_3 -> C,
+    3: tuple_4 -> D);
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B,
+    2: tuple_3 -> C,
+    3: tuple_4 -> D,
+    4: tuple_5 -> E);
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B,
+    2: tuple_3 -> C,
+    3: tuple_4 -> D,
+    4: tuple_5 -> E,
+    5: tuple_6 -> F);
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B,
+    2: tuple_3 -> C,
+    3: tuple_4 -> D,
+    4: tuple_5 -> E,
+    5: tuple_6 -> F,
+    6: tuple_7 -> G);
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B,
+    2: tuple_3 -> C,
+    3: tuple_4 -> D,
+    4: tuple_5 -> E,
+    5: tuple_6 -> F,
+    6: tuple_7 -> G,
+    7: tuple_8 -> H);
+impl_tuple!(
+    0: fst -> A,
+    1: snd -> B,
+    2: tuple_3 -> C,
+    3: tuple_4 -> D,
+    4: tuple_5 -> E,
+    5: tuple_6 -> F,
+    6: tuple_7 -> G,
+    7: tuple_8 -> H,
+    8: tuple_9 -> I);

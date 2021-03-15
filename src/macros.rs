@@ -4,63 +4,21 @@
 #[cfg(doc)]
 use crate::*;
 
-/// Opens a new frame inside of which OCaml values can be rooted to have them tracked by the GC.
-///
-/// The first argument to this macro must a reference to an OCaml runtime handle.
-///
-/// The second argument is a list of "root variables" to reserve. These variables can
-/// be used to "root" [`OCaml`] values to obtain [`OCamlRef`] values that can be used
-/// to recover stale references to [`OCaml`] values after calls to the OCaml runtime.
-///
-/// # Examples
-///
-/// The following example reserves two root variables which are consumed to create two [`OCamlRef`]
-/// values later used to retrieve two OCaml values after performing allocations through the OCaml runtime:
-///
-/// ```
-/// # use ocaml_interop::*;
-/// # ocaml! {
-/// #    fn print_endline(s: String);
-/// # }
-/// # fn ocaml_frame_macro_example(cr: &mut OCamlRuntime) {
-///     ocaml_frame!(cr, (hello_ocaml, bye_ocaml), {
-///         let hello_ocaml = to_ocaml!(cr, "hello OCaml!", hello_ocaml);
-///         let bye_ocaml = to_ocaml!(cr, "bye OCaml!", bye_ocaml);
-///         print_endline(cr, hello_ocaml);
-///         print_endline(cr, bye_ocaml);
-///     });
-/// # }
-/// ```
-#[macro_export]
-macro_rules! ocaml_frame {
-   ($cr:ident, ($($rootvar:ident),+ $(,)?), $body:block) => {{
-        let mut frame = $cr.open_frame();
-        let local_roots = $crate::repeat_slice!(::core::cell::UnsafeCell::new($crate::internal::UNIT), $($rootvar)+);
-        let gc = frame.initialize(&local_roots);
-        $(
-            let $rootvar = unsafe { &mut $crate::internal::OCamlRawRoot::reserve(gc) };
-        )+
-        $body
-    }};
-
-    ($($t:tt)*) => {
-        compile_error!("Invalid `ocaml_frame!` syntax. Must be `ocaml_frame!(cr, (vars, ...), { body-block })`.")
-    };
-}
-
 /// Declares OCaml functions.
 ///
-/// `ocaml! { pub fn ocaml_name(arg1: Typ1, ...) -> Ret_typ; ... }` declares a function that has been
-/// defined in OCaml code and registered with `Callback.register "ocaml_name" the_function`.
+/// `ocaml! { pub fn registered_name(arg1: ArgT, ...) -> Ret_typ; ... }` declares a function that has been
+/// defined in OCaml code and registered with `Callback.register "registered_name" ocaml_function`.
 ///
-/// Visibility and return value type can be omitted. The return type defaults to unit when omitted.
+/// Visibility and return value type can be omitted. The return type defaults to `()` when omitted.
 ///
-/// When invoking one of these functions, the first argument must be a `&mut OCamlRuntime`,
-/// and the remaining arguments `OCamlRef<ArgT>`.
+/// When invoking one of these functions, the first argument must be a `&mut `[`OCamlRuntime`],
+/// and the remaining arguments [`OCamlRef`]`<ArgT>`.
 ///
-/// The return value is an `OCaml<RetType>`.
+/// The return value is a [`BoxRoot`]`<RetType>`.
 ///
-/// Calls that raise an OCaml exception will `panic!`.
+/// Calls that raise an OCaml exception will `panic!`. Care must be taken on the OCaml side
+/// to avoid exceptions and return `('a, 'err) Result.t` values to signal errors, which
+/// can then be converted into Rust's `Result<A, Err>` and `Result<OCaml<A>, OCaml<Err>>`.
 ///
 /// # Examples
 ///
@@ -68,8 +26,8 @@ macro_rules! ocaml_frame {
 /// # use ocaml_interop::*;
 /// # struct MyRecord {};
 /// ocaml! {
-///     // Declares `print_endline`, with a single `String` (`OCaml<String>` when invoked)
-///     // argument and unit return type (default when omitted).
+///     // Declares `print_endline`, with a single `String` (`OCamlRef<String>` when invoked)
+///     // argument and `BoxRoot<()>` return type (default when omitted).
 ///     pub fn print_endline(s: String);
 ///
 ///     // Declares `bytes_concat`, with two arguments, an OCaml `bytes` separator,
@@ -88,9 +46,9 @@ macro_rules! ocaml {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
             $arg: $crate::OCamlRef<$typ>,
-        ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
+        ) -> $crate::BoxRoot<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            closure.call(cr, $arg)
+            $crate::BoxRoot::new(closure.call(cr, $arg))
         }
 
         $crate::ocaml!($($t)*);
@@ -104,9 +62,9 @@ macro_rules! ocaml {
             cr: &'a mut $crate::OCamlRuntime,
             $arg1: $crate::OCamlRef<$typ1>,
             $arg2: $crate::OCamlRef<$typ2>,
-        ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
+        ) -> $crate::BoxRoot<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            closure.call2(cr, $arg1, $arg2)
+            $crate::BoxRoot::new(closure.call2(cr, $arg1, $arg2))
         }
 
         $crate::ocaml!($($t)*);
@@ -122,9 +80,9 @@ macro_rules! ocaml {
             $arg1: $crate::OCamlRef<$typ1>,
             $arg2: $crate::OCamlRef<$typ2>,
             $arg3: $crate::OCamlRef<$typ3>,
-        ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
+        ) -> $crate::BoxRoot<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            closure.call3(cr, $arg1, $arg2, $arg3)
+            $crate::BoxRoot::new(closure.call3(cr, $arg1, $arg2, $arg3))
         }
 
         $crate::ocaml!($($t)*);
@@ -136,9 +94,9 @@ macro_rules! ocaml {
         $vis fn $name<'a>(
             cr: &'a mut $crate::OCamlRuntime,
             $($arg: $crate::OCamlRef<$typ>),+
-    ) -> $crate::OCaml<'a, $crate::default_to_unit!($($rtyp)?)> {
+    ) -> $crate::BoxRoot<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            closure.call_n(cr, &mut [$(unsafe { $arg.get_raw() }),+])
+            $crate::BoxRoot::new(closure.call_n(cr, &mut [$(unsafe { $arg.get_raw() }),+]))
         }
 
         $crate::ocaml!($($t)*);
@@ -147,14 +105,11 @@ macro_rules! ocaml {
 
 /// Defines Rust functions callable from OCaml.
 ///
-/// The first argument in these functions declarations is the same as in the [`ocaml_frame!`] macro.
+/// The first argument in these functions declarations is a name to bind a `&mut `[`OCamlRuntime`].
 ///
-/// Arguments and return values must be of type [`OCaml`]`<T>`, or `f64` in the case of unboxed floats.
+/// Arguments and return values must be of type [`OCamlRef`]`<T>`, or `f64` in the case of unboxed floats.
 ///
-/// The return type defaults to unit when omitted.
-///
-/// The body of the function has an implicit [`ocaml_frame!`] wrapper, with the lifetimes of every [`OCaml`]`<T>`
-/// argument bound to the lifetime of the variable bound to the function's OCaml frame GC handle.
+/// The return type defaults to [`OCaml`]`<()>` when omitted.
 ///
 /// # Examples
 ///
@@ -214,7 +169,6 @@ macro_rules! ocaml_export {
         $crate::expand_exported_function!(
             @name $name
             @cr $cr
-            @roots { }
             @final_args { }
             @proc_args { $($args)*, }
             @return { f64 }
@@ -235,7 +189,6 @@ macro_rules! ocaml_export {
         $crate::expand_exported_function!(
             @name $name
             @cr $cr
-            @roots { }
             @final_args { }
             @proc_args { $($args)*, }
             @return { $($rtyp)? }
@@ -256,54 +209,6 @@ macro_rules! ocaml_export {
     } => {
         compile_error!("Rust->OCaml exported functions must include an identifier for the OCaml runtime handle followed by at least one argument");
     }
-}
-
-/// Converts Rust values into OCaml values.
-///
-/// In `to_ocaml!(cr, value)`, `cr` is an OCaml Runtime handle, and `value` is
-/// a Rust value of a type that implements the [`ToOCaml`] trait. The resulting
-/// value's lifetime is bound to `cr`'s borrow.
-///
-/// An alternative form accepts a third "root variable" argument: `to_ocaml!(cr, value, rootvar)`.
-/// `rootvar` is one of the "root variables" declared when opening an [`ocaml_frame!`].
-/// This variant consumes `rootvar` returns an [`OCamlRef`] value instead of an [`OCaml`] one.
-///
-/// # Examples
-///
-/// ```
-/// # use ocaml_interop::*;
-/// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
-///     let ocaml_string: OCaml<String> = to_ocaml!(cr, "hello OCaml!");
-///     // ...
-///     # ()
-/// # }
-/// ```
-///
-/// Variant:
-///
-/// ```
-/// # use ocaml_interop::*;
-/// # fn to_ocaml_macro_example(cr: &mut OCamlRuntime) {
-///     ocaml_frame!(cr, (rootvar), {
-///         let ocaml_string_ref: OCamlRef<String> = to_ocaml!(cr, "hello OCaml!", rootvar);
-///         // ...
-///         # ()
-///     });
-/// # }
-/// ```
-#[macro_export]
-macro_rules! to_ocaml {
-    ($cr:ident, $obj:expr, $rootvar:ident) => {
-        $rootvar.keep($crate::to_ocaml!($cr, $obj))
-    };
-
-    ($cr:ident, $obj:expr) => {
-        ($obj).to_ocaml($cr)
-    };
-
-    ($($t:tt)*) => {
-        compile_error!("Incorrect `to_ocaml!` syntax. Must be `to_ocaml!(cr, expr[, rootvar])`")
-    };
 }
 
 /// Implements conversion between a Rust struct and an OCaml record.
@@ -372,7 +277,9 @@ macro_rules! impl_conv_ocaml_variant {
     };
 }
 
-/// Unpacks an OCaml record into a Rust record
+/// Unpacks an OCaml record into a Rust record.
+///
+/// This macro works on [`OCaml`]`<'gc, T>` values.
 ///
 /// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
@@ -396,7 +303,8 @@ macro_rules! impl_conv_ocaml_variant {
 /// // NOTE: What is important is the order of the fields, not their names.
 ///
 /// # fn unpack_record_example(cr: &mut OCamlRuntime) {
-/// let ocaml_struct = make_mystruct(cr, &OCaml::unit());
+/// let ocaml_struct_root = make_mystruct(cr, &OCaml::unit());
+/// let ocaml_struct = cr.get(&ocaml_struct_root);
 /// let my_struct = ocaml_unpack_record! {
 ///     //  value    => RustConstructor { field: OCamlType, ... }
 ///     ocaml_struct => MyStruct {
@@ -455,17 +363,15 @@ macro_rules! ocaml_unpack_record {
 macro_rules! ocaml_alloc_tagged_block {
     ($cr:ident, $tag:expr, $($field:ident : $ocaml_typ:ty),+ $(,)?) => {
         unsafe {
-            $crate::ocaml_frame!($cr, (block), {
-                let mut current = 0;
-                let field_count = $crate::count_fields!($($field)*);
-                let block: $crate::OCamlRef<()> = block.keep_raw($crate::internal::caml_alloc(field_count, $tag));
-                $(
-                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!($cr, $field);
-                    $crate::internal::store_field(block.get_raw(), current, $field.raw());
-                    current += 1;
-                )+
-                $crate::OCaml::new($cr, block.get_raw())
-            })
+            let mut current = 0;
+            let field_count = $crate::count_fields!($($field)*);
+            let block: $crate::BoxRoot<()> = $crate::BoxRoot::new($crate::OCaml::new($cr, $crate::internal::caml_alloc(field_count, $tag)));
+            $(
+                let $field: $crate::OCaml<$ocaml_typ> = $field.to_ocaml($cr);
+                $crate::internal::store_field(block.get_raw(), current, $field.raw());
+                current += 1;
+            )+
+            $crate::OCaml::new($cr, block.get_raw())
         }
     };
 }
@@ -519,18 +425,16 @@ macro_rules! ocaml_alloc_record {
         $($field:ident : $ocaml_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
         unsafe {
-            $crate::ocaml_frame!($cr, (record), {
-                let mut current = 0;
-                let field_count = $crate::count_fields!($($field)*);
-                let record: $crate::OCamlRef<()> = record.keep_raw($crate::internal::caml_alloc(field_count, 0));
-                $(
-                    let $field = &$crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
-                    let $field: $crate::OCaml<$ocaml_typ> = $crate::to_ocaml!($cr, $field);
-                    $crate::internal::store_field(record.get_raw(), current, $field.raw());
-                    current += 1;
-                )+
-                $crate::OCaml::new($cr, record.get_raw())
-            })
+            let mut current = 0;
+            let field_count = $crate::count_fields!($($field)*);
+            let record: $crate::BoxRoot<()> = $crate::BoxRoot::new($crate::OCaml::new($cr, $crate::internal::caml_alloc(field_count, 0)));
+            $(
+                let $field = &$crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
+                let $field: $crate::OCaml<$ocaml_typ> = $field.to_ocaml($cr);
+                $crate::internal::store_field(record.get_raw(), current, $field.raw());
+                current += 1;
+            )+
+            $crate::OCaml::new($cr, record.get_raw())
         }
     };
 }
@@ -751,6 +655,8 @@ macro_rules! impl_from_ocaml_variant {
 
 /// Unpacks an OCaml variant and maps it into a Rust enum.
 ///
+/// This macro works on [`OCaml`]`<'gc, T>` values.
+///
 /// It is important that the order of the fields remains the same as in the OCaml type declaration.
 ///
 /// # Note
@@ -779,7 +685,8 @@ macro_rules! impl_from_ocaml_variant {
 /// // NOTE: What is important is the order of the tags, not their names.
 ///
 /// # fn unpack_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_variant = make_ocaml_movement(cr, &OCaml::unit());
+/// let ocaml_variant_root = make_ocaml_movement(cr, &OCaml::unit());
+/// let ocaml_variant = cr.get(&ocaml_variant_root);
 /// let result = ocaml_unpack_variant! {
 ///     ocaml_variant => {
 ///         // Alternative: StepLeft  => Movement::StepLeft
@@ -1041,7 +948,8 @@ macro_rules! impl_from_ocaml_polymorphic_variant {
 /// //      ]
 ///
 /// # fn unpack_polymorphic_variant_example(cr: &mut OCamlRuntime) {
-/// let ocaml_polymorphic_variant = make_ocaml_polymorphic_movement(cr, &OCaml::unit());
+/// let ocaml_polymorphic_variant_root = make_ocaml_polymorphic_movement(cr, &OCaml::unit());
+/// let ocaml_polymorphic_variant = cr.get(&ocaml_polymorphic_variant_root);
 /// let result = ocaml_unpack_polymorphic_variant! {
 ///     ocaml_polymorphic_variant => {
 ///         StepLeft  => Movement::StepLeft,
@@ -1070,42 +978,6 @@ macro_rules! ocaml_unpack_polymorphic_variant {
 }
 
 // Internal utility macros
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! repeat_slice {
-    (@expr $value:expr;
-     @accum [$($accum:expr),+];
-     @rest) => {
-         [$($accum),+]
-     };
-
-    (@expr $value:expr;
-     @accum [$($accum:expr),+];
-     @rest $_v1:ident $_v2:ident $_v3:ident $_v4:ident $_v5:ident $($vars:ident)*) => {
-        $crate::repeat_slice!(
-            @expr $value;
-            @accum [$value, $value, $value, $value, $value, $($accum),+];
-            @rest $($vars)*)
-    };
-
-    (@expr $value:expr;
-        @accum [$($accum:expr),+];
-        @rest $_v1:ident $($vars:ident)*) => {
-
-        $crate::repeat_slice!(
-            @expr $value;
-            @accum [$value, $($accum),+];
-            @rest $($vars)*)
-    };
-
-    ($value:expr, $field:ident $($vars:ident)*) => {
-        $crate::repeat_slice!(
-            @expr $value;
-            @accum [$value];
-            @rest $($vars)*)
-    };
-}
 
 #[doc(hidden)]
 #[macro_export]
@@ -1331,27 +1203,6 @@ macro_rules! ocaml_closure_reference {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! gcmark_result {
-    ($cr:ident, $obj:expr) => {
-        match $obj {
-            Ok(t) => Ok(t.mark($cr).eval($cr)),
-            Err(e) => Err(e),
-        }
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! default_to_ocaml_unit {
-    // No return value, default to unit
-    () => ($crate::OCaml<()>);
-
-    // Return value specified
-    ($rtyp:ty) => ($rtyp);
-}
-
-#[doc(hidden)]
-#[macro_export]
 macro_rules! default_to_unit {
     // No return value, default to unit
     () => {
@@ -1368,21 +1219,22 @@ macro_rules! default_to_unit {
 #[macro_export]
 macro_rules! expand_rooted_args_init {
     // No more args
-    ((), ) => ();
+    () => ();
 
     // Nothing is done for unboxed floats
-    ((), $arg:ident : f64) => ();
+    ($arg:ident : f64) => ();
 
-    (($($roots:ident)*), $arg:ident : f64, $($args:tt)*) =>
-        ($crate::expand_rooted_args_init!(($($roots)*), $($args)*));
+    ($arg:ident : f64, $($args:tt)*) =>
+        ($crate::expand_rooted_args_init!($($args)*));
 
     // Other values are wrapped in `OCamlRef<T>` as given the same lifetime as the OCaml runtime handle borrow.
-    (($root:ident), $arg:ident : $typ:ty) =>
-        (let $arg : $typ = unsafe { $root.keep_raw($arg) };);
+    ($arg:ident : $typ:ty) => {
+        let $arg : $typ = unsafe { &$crate::BoxRoot::from_raw($arg) };
+    };
 
-    (($root:ident $($roots:ident)*), $arg:ident : $typ:ty, $($args:tt)*) => {
-        let $arg : $typ = unsafe { $root.keep_raw($arg) };
-        $crate::expand_rooted_args_init!(($($roots)*), $($args)*)
+    ($arg:ident : $typ:ty, $($args:tt)*) => {
+        let $arg : $typ = unsafe { &$crate::BoxRoot::from_raw($arg) };
+        $crate::expand_rooted_args_init!($($args)*)
     };
 }
 
@@ -1391,12 +1243,9 @@ macro_rules! expand_rooted_args_init {
 macro_rules! expand_exported_function {
     // Final expansions, with all argument types converted
 
-    // If there are no roots, don't open a frame
-
     {
         @name $name:ident
         @cr $cr:ident
-        @roots { }
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
         @return { $($rtyp:tt)* }
@@ -1406,35 +1255,11 @@ macro_rules! expand_exported_function {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
             let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle() };
+            $crate::expand_rooted_args_init!($($original_args)*);
             $crate::expand_exported_function_body!(
                 @body $body
                 @return $($rtyp)*
             )
-        }
-    };
-
-    // If there are roots, open a new frame and root the arguments
-
-    {
-        @name $name:ident
-        @cr $cr:ident
-        @roots { $($roots:ident)* }
-        @final_args { $($arg:ident : $typ:ty,)+ }
-        @proc_args { $(,)? }
-        @return { $($rtyp:tt)* }
-        @body $body:block
-        @original_args $($original_args:tt)*
-    } => {
-        #[no_mangle]
-        pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
-            let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle() };
-            $crate::ocaml_frame!($cr, ($($roots),*), {
-                $crate::expand_rooted_args_init!(($($roots)*), $($original_args)*);
-                $crate::expand_exported_function_body!(
-                    @body $body
-                    @return $($rtyp)*
-                )
-            })
         }
     };
 
@@ -1445,7 +1270,6 @@ macro_rules! expand_exported_function {
     {
         @name $name:ident
         @cr $cr:ident
-        @roots { $($roots:ident)* }
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : f64, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1455,7 +1279,6 @@ macro_rules! expand_exported_function {
         $crate::expand_exported_function!{
             @name $name
             @cr $cr
-            @roots { $($roots)* }
             @final_args { $($final_args)* $next_arg : f64, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }
@@ -1469,7 +1292,6 @@ macro_rules! expand_exported_function {
     {
         @name $name:ident
         @cr $cr:ident
-        @roots { $($roots:ident)* }
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : $typ:ty, $($proc_args:tt)* }
         @return { $($rtyp:tt)* }
@@ -1479,7 +1301,6 @@ macro_rules! expand_exported_function {
         $crate::expand_exported_function!{
             @name $name
             @cr $cr
-            @roots { $($roots)* root }
             @final_args { $($final_args)* $next_arg : $crate::RawOCaml, }
             @proc_args { $($proc_args)* }
             @return { $($rtyp)* }

@@ -7,20 +7,24 @@ use ocaml_sys::{caml_alloc, store_field};
 use crate::{
     memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
-        alloc_tuple, alloc_tuple_3, alloc_tuple_4, OCamlRef,
+        alloc_tuple, OCamlRef,
     },
     mlvalues::{
         tag, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE,
         NONE, TRUE,
     },
-    ocaml_frame,
     runtime::OCamlRuntime,
-    to_ocaml,
     value::OCaml,
+    BoxRoot,
 };
 
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
+    /// Convert to OCaml value. Return an already rooted value as [`BoxRoot`]`<T>`.
+    fn to_boxroot(&self, cr: &mut OCamlRuntime) -> BoxRoot<T> {
+        BoxRoot::new(self.to_ocaml(cr))
+    }
+
     /// Convert to OCaml value.
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T>;
 }
@@ -66,6 +70,11 @@ unsafe impl ToOCaml<bool> for bool {
         unsafe { OCaml::new(cr, if *self { TRUE } else { FALSE }) }
     }
 }
+
+// TODO: figure out how to implement all this without so much duplication
+// it is not as simple as implementing for Borrow<str/[u8]> because
+// of the Box<T> implementation bellow, which causes a trait implementation
+// conflict.
 
 unsafe impl ToOCaml<String> for &str {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, String> {
@@ -124,16 +133,14 @@ where
     }
 }
 
-unsafe impl<A, OCamlA> ToOCaml<Option<OCamlA>> for Option<A>
+unsafe impl<A, OCamlA: 'static> ToOCaml<Option<OCamlA>> for Option<A>
 where
     A: ToOCaml<OCamlA>,
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Option<OCamlA>> {
         if let Some(value) = self {
-            ocaml_frame!(cr, (root), {
-                let ocaml_value = to_ocaml!(cr, value, root);
-                alloc_some(cr, ocaml_value)
-            })
+            let ocaml_value = value.to_boxroot(cr);
+            alloc_some(cr, &ocaml_value)
         } else {
             unsafe { OCaml::new(cr, NONE) }
         }
@@ -147,96 +154,111 @@ where
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Result<OCamlA, OCamlErr>> {
         match self {
-            Ok(value) => ocaml_frame!(cr, (root), {
-                let ocaml_value = to_ocaml!(cr, value, root);
+            Ok(value) => {
                 let ocaml_ok = unsafe { caml_alloc(1, tag::TAG_OK) };
+                let ocaml_value = value.to_ocaml(cr);
                 unsafe { store_field(ocaml_ok, 0, ocaml_value.get_raw()) };
                 unsafe { OCaml::new(cr, ocaml_ok) }
-            }),
-            Err(error) => ocaml_frame!(cr, (root), {
-                let ocaml_error = to_ocaml!(cr, error, root);
+            }
+            Err(error) => {
                 let ocaml_err = unsafe { caml_alloc(1, tag::TAG_ERROR) };
+                let ocaml_error = error.to_ocaml(cr);
                 unsafe { store_field(ocaml_err, 0, ocaml_error.get_raw()) };
                 unsafe { OCaml::new(cr, ocaml_err) }
-            }),
+            }
         }
     }
 }
 
-unsafe impl<A, B, OCamlA, OCamlB> ToOCaml<(OCamlA, OCamlB)> for (A, B)
-where
-    A: ToOCaml<OCamlA>,
-    B: ToOCaml<OCamlB>,
-{
-    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, (OCamlA, OCamlB)> {
-        ocaml_frame!(cr, (fst, snd), {
-            let fst = to_ocaml!(cr, self.0, fst);
-            let snd = to_ocaml!(cr, self.1, snd);
-            alloc_tuple(cr, fst, snd)
-        })
-    }
-}
-
-unsafe impl<A, B, C, OCamlA, OCamlB, OCamlC> ToOCaml<(OCamlA, OCamlB, OCamlC)> for (A, B, C)
-where
-    A: ToOCaml<OCamlA>,
-    B: ToOCaml<OCamlB>,
-    C: ToOCaml<OCamlC>,
-{
-    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, (OCamlA, OCamlB, OCamlC)> {
-        ocaml_frame!(cr, (fst, snd, elt3), {
-            let fst = to_ocaml!(cr, self.0, fst);
-            let snd = to_ocaml!(cr, self.1, snd);
-            let elt3 = to_ocaml!(cr, self.2, elt3);
-            alloc_tuple_3(cr, fst, snd, elt3)
-        })
-    }
-}
-
-unsafe impl<A, B, C, D, OCamlA, OCamlB, OCamlC, OCamlD> ToOCaml<(OCamlA, OCamlB, OCamlC, OCamlD)>
-    for (A, B, C, D)
-where
-    A: ToOCaml<OCamlA>,
-    B: ToOCaml<OCamlB>,
-    C: ToOCaml<OCamlC>,
-    D: ToOCaml<OCamlD>,
-{
-    fn to_ocaml<'a>(
-        &self,
-        cr: &'a mut OCamlRuntime,
-    ) -> OCaml<'a, (OCamlA, OCamlB, OCamlC, OCamlD)> {
-        ocaml_frame!(cr, (fst, snd, elt3, elt4), {
-            let fst = to_ocaml!(cr, self.0, fst);
-            let snd = to_ocaml!(cr, self.1, snd);
-            let elt3 = to_ocaml!(cr, self.2, elt3);
-            let elt4 = to_ocaml!(cr, self.3, elt4);
-            alloc_tuple_4(cr, fst, snd, elt3, elt4)
-        })
-    }
-}
-
-unsafe impl<A, OCamlA> ToOCaml<OCamlList<OCamlA>> for Vec<A>
+unsafe impl<A, OCamlA: 'static> ToOCaml<OCamlList<OCamlA>> for Vec<A>
 where
     A: ToOCaml<OCamlA>,
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
-        (&self).to_ocaml(cr)
+        let mut result = BoxRoot::new(OCaml::nil());
+        for elt in self.iter().rev() {
+            let ov = elt.to_boxroot(cr);
+            let cons = alloc_cons(cr, &ov, &result);
+            result.keep(cons);
+        }
+        cr.get(&result)
     }
 }
 
-unsafe impl<A, OCamlA> ToOCaml<OCamlList<OCamlA>> for &Vec<A>
-where
-    A: ToOCaml<OCamlA>,
-{
-    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
-        ocaml_frame!(cr, (result_root, ov_root), {
-            let mut result = result_root.keep(OCaml::nil());
-            for elt in self.iter().rev() {
-                let ov = to_ocaml!(cr, elt, ov_root);
-                let cons = alloc_cons(cr, ov, result);
-                result = result_root.keep(cons);
+// Tuples
+
+macro_rules! tuple_to_ocaml {
+    ($($n:tt: $t:ident => $ot:ident),+) => {
+        unsafe impl<$($t),+, $($ot: 'static),+> ToOCaml<($($ot),+)> for ($($t),+)
+        where
+            $($t: ToOCaml<$ot>),+
+        {
+            fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, ($($ot),+)> {
+                let len = $crate::count_fields!($($t)*);
+
+                unsafe {
+                    let ocaml_tuple: BoxRoot<($($ot),+)> = BoxRoot::new(alloc_tuple(cr, len));
+                    $(
+                        let field_val = self.$n.to_ocaml(cr);
+                        store_field(ocaml_tuple.get_raw(), $n, field_val.get_raw());
+                    )+
+
+                    cr.get(&ocaml_tuple)
+                }
             }
-            cr.get(result)
-        })
-    }
+        }
+    };
 }
+
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC,
+    3: D => OCamlD);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC,
+    3: D => OCamlD,
+    4: E => OCamlE);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC,
+    3: D => OCamlD,
+    4: E => OCamlE,
+    5: F => OCamlF);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC,
+    3: D => OCamlD,
+    4: E => OCamlE,
+    5: F => OCamlF,
+    6: G => OCamlG);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC,
+    3: D => OCamlD,
+    4: E => OCamlE,
+    5: F => OCamlF,
+    6: G => OCamlG,
+    7: H => OCamlH);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC,
+    3: D => OCamlD,
+    4: E => OCamlE,
+    5: F => OCamlF,
+    6: G => OCamlG,
+    7: H => OCamlH,
+    8: I => OCamlI);
