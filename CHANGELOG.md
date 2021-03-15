@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2021-03-15
+
 ### Added
 
 - New BoxRoot type for rooted values, implemented by: https://gitlab.com/ocaml-rust/ocaml-boxroot
@@ -144,7 +146,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.0...v0.5.1
