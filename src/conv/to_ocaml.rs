@@ -175,15 +175,6 @@ where
     A: ToOCaml<OCamlA>,
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
-        (&self).to_ocaml(cr)
-    }
-}
-
-unsafe impl<A, OCamlA: 'static> ToOCaml<OCamlList<OCamlA>> for &Vec<A>
-where
-    A: ToOCaml<OCamlA>,
-{
-    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
         let mut result = BoxRoot::new(OCaml::nil());
         for elt in self.iter().rev() {
             let ov = elt.to_boxroot(cr);
