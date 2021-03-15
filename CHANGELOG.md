@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New BoxRoot type for rooted values, implemented by: https://gitlab.com/ocaml-rust/ocaml-boxroot
+- `to_boxroot(cr)` method to `ToOCaml` trait.
+- Support for OCaml tuples of up to 10 elements (until now tuples containing up to 4 elements were supported)
+- `ocaml_interop_setup` and `ocaml_interop_teardown` functions that must be called by OCaml programs before calling Rust code.
+
+### Changed
+
+- Rooted values (both local and global roots) are now handled by BoxRoot.
+
+### Removed
+
+- `ocaml_frame!` macro. BoxRoot replaces the need for opening new local root frames.
+- `to_ocaml!` macro. Without local roots this has no advantage for `value.to_ocaml(cr)`.
+
+
 ## [0.5.3] - 2021-01-26
 
 ### Security
