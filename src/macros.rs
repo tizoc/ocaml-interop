@@ -1219,22 +1219,22 @@ macro_rules! default_to_unit {
 #[macro_export]
 macro_rules! expand_rooted_args_init {
     // No more args
-    () => ();
+    ($cr:ident, ) => ();
 
     // Nothing is done for unboxed floats
-    ($arg:ident : f64) => ();
+    ($cr:ident, $arg:ident : f64) => ();
 
-    ($arg:ident : f64, $($args:tt)*) =>
-        ($crate::expand_rooted_args_init!($($args)*));
+    ($cr:ident, $arg:ident : f64, $($args:tt)*) =>
+        ($crate::expand_rooted_args_init!($cr, $($args)*));
 
     // Other values are wrapped in `OCamlRef<T>` as given the same lifetime as the OCaml runtime handle borrow.
-    ($arg:ident : $typ:ty) => {
-        let $arg : $typ = unsafe { &$crate::BoxRoot::from_raw($arg) };
+    ($cr:ident, $arg:ident : $typ:ty) => {
+        let $arg : $typ = &$crate::BoxRoot::new(unsafe { OCaml::new($cr, $arg) });
     };
 
-    ($arg:ident : $typ:ty, $($args:tt)*) => {
-        let $arg : $typ = unsafe { &$crate::BoxRoot::from_raw($arg) };
-        $crate::expand_rooted_args_init!($($args)*)
+    ($cr:ident, $arg:ident : $typ:ty, $($args:tt)*) => {
+        let $arg : $typ = &$crate::BoxRoot::new(unsafe { OCaml::new($cr, $arg) });
+        $crate::expand_rooted_args_init!($cr, $($args)*)
     };
 }
 
@@ -1255,7 +1255,7 @@ macro_rules! expand_exported_function {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
             let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle() };
-            $crate::expand_rooted_args_init!($($original_args)*);
+            $crate::expand_rooted_args_init!($cr, $($original_args)*);
             $crate::expand_exported_function_body!(
                 @body $body
                 @return $($rtyp)*

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- `BoxRoot::from_raw` method.
+- `BoxRoot::get_raw` method.
+
 ## [0.6.0] - 2021-03-15
 
 ### Added

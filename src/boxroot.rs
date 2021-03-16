@@ -8,7 +8,7 @@ use ocaml_boxroot_sys::{
     BoxRoot as PrimitiveBoxRoot,
 };
 
-use crate::{memory::OCamlCell, OCaml, OCamlRef, OCamlRuntime, RawOCaml};
+use crate::{memory::OCamlCell, OCaml, OCamlRef, OCamlRuntime};
 
 /// `BoxRoot<T>` is a container for a rooted [`OCaml`]`<T>` value.
 pub struct BoxRoot<T: 'static> {
@@ -25,31 +25,9 @@ impl<T> BoxRoot<T> {
         }
     }
 
-    /// Creates a new root from a [`RawOCaml`] value.
-    ///
-    /// # Safety
-    ///
-    /// The type of the value is not validated in any way.
-    pub unsafe fn from_raw(raw: RawOCaml) -> BoxRoot<T> {
-        BoxRoot {
-            boxroot: boxroot_create(raw),
-            _marker: PhantomData,
-        }
-    }
-
     /// Gets the value stored in this root as an [`OCaml`]`<T>`.
     pub fn get<'a>(&self, cr: &'a OCamlRuntime) -> OCaml<'a, T> {
         unsafe { OCaml::new(cr, boxroot_get(self.boxroot)) }
-    }
-
-    /// Gets the value stored in this root as a [`RawOCaml`].
-    ///
-    /// # Safety
-    ///
-    /// The [`RawOCaml`] value obtained may become invalid after the OCaml GC runs,
-    /// and correct usage will not be enforced by the borrow checker.
-    pub unsafe fn get_raw(&self) -> RawOCaml {
-        boxroot_get(self.boxroot)
     }
 
     /// Roots the OCaml value `val`, returning an [`OCamlRef`]`<T>`.

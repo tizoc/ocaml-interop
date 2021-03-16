@@ -199,8 +199,8 @@ macro_rules! tuple_to_ocaml {
                 unsafe {
                     let ocaml_tuple: BoxRoot<($($ot),+)> = BoxRoot::new(alloc_tuple(cr, len));
                     $(
-                        let field_val = self.$n.to_ocaml(cr);
-                        store_field(ocaml_tuple.get_raw(), $n, field_val.get_raw());
+                        let field_val = self.$n.to_ocaml(cr).get_raw();
+                        store_field(ocaml_tuple.get(cr).raw(), $n, field_val);
                     )+
 
                     cr.get(&ocaml_tuple)
