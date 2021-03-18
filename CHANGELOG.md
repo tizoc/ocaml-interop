@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2021-03-18
+
+### Changed
+
+- Bumped `ocaml-boxroot-sys` dependency to `0.2` that includes a `without-ocamlopt` feature flag.
+
 ## [0.7.0] - 2021-03-16
 
 ### Removed
@@ -153,7 +159,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/simplestaking/ocaml-interop/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/simplestaking/ocaml-interop/compare/v0.5.2...v0.5.3
