@@ -8,13 +8,9 @@ use crate::{
     value::OCaml,
 };
 use core::{cell::UnsafeCell, marker::PhantomData};
-pub use ocaml_sys::{
-    caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
-    store_field,
-};
+pub use ocaml_sys::{caml_alloc, store_field};
 use ocaml_sys::{
-    caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64,
-    string_val,
+    caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64, string_val,
 };
 
 pub struct OCamlCell<T> {

@@ -15,10 +15,10 @@ type movement =
   | RotateLeft
   | RotateRight
 
-type movement_polymorphic = [
-  | `Step of int
-  | `RotateLeft
-  | `RotateRight
+type polymorphic_enum = [
+  | `Unit
+  | `Single of float
+  | `Multiple of (int * string)
 ]
 
 let increment_bytes bytes first_n =
@@ -60,9 +60,9 @@ let stringify_variant = function
   | Step n -> Printf.sprintf "Step(%d)" n
 
 let stringify_polymorphic_variant = function
-  | `RotateLeft -> "`RotateLeft"
-  | `RotateRight -> "`RotateRight"
-  | `Step n -> Printf.sprintf "`Step(%d)" n
+  | `Single n -> Printf.sprintf "Single(%.2f)" n
+  | `Multiple (n, s) -> Printf.sprintf "Multiple(%d, %s)" n s
+  | `Unit -> "Unit"
 
 let raises_message_exception msg = failwith msg
 

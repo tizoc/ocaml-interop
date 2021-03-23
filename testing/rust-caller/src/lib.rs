@@ -6,10 +6,7 @@ extern crate ocaml_interop;
 use ocaml_interop::{OCaml, OCamlBytes, OCamlRuntime, ToOCaml};
 
 mod ocaml {
-    use ocaml_interop::{
-        impl_to_ocaml_record, impl_to_ocaml_variant, ocaml, OCamlFloat, OCamlInt, OCamlInt32,
-        OCamlInt64, OCamlList,
-    };
+    use ocaml_interop::*;
 
     pub struct TestRecord {
         pub i: i64,
@@ -24,6 +21,12 @@ mod ocaml {
         Step(i64),
         RotateLeft,
         RotateRight,
+    }
+
+    pub enum PolymorphicEnum {
+        Unit,
+        Single(f64),
+        Multiple(i64, String),
     }
 
     impl_to_ocaml_record! {
@@ -45,6 +48,14 @@ mod ocaml {
         }
     }
 
+    impl_to_ocaml_polymorphic_variant! {
+        PolymorphicEnum {
+            PolymorphicEnum::Single(i: OCamlFloat),
+            PolymorphicEnum::Multiple(i: OCamlInt, s: String),
+            PolymorphicEnum::Unit,
+        }
+    }
+
     ocaml! {
         pub fn increment_bytes(bytes: String, first_n: OCamlInt) -> String;
         pub fn increment_ints_list(ints: OCamlList<OCamlInt>) -> OCamlList<OCamlInt>;
@@ -55,6 +66,7 @@ mod ocaml {
         pub fn make_error(value: String) -> Result<OCamlInt, String>;
         pub fn stringify_record(record: TestRecord) -> String;
         pub fn stringify_variant(variant: Movement) -> String;
+        pub fn stringify_polymorphic_variant(pvariant: PolymorphicEnum) -> String;
         pub fn raises_message_exception(message: String);
         pub fn raises_nonmessage_exception(unit: ());
         pub fn raises_nonblock_exception(unit: ());
@@ -114,6 +126,12 @@ pub fn verify_record_test(cr: &mut OCamlRuntime, record: ocaml::TestRecord) -> S
 pub fn verify_variant_test(cr: &mut OCamlRuntime, variant: ocaml::Movement) -> String {
     let ocaml_variant = variant.to_boxroot(cr);
     let result = ocaml::stringify_variant(cr, &ocaml_variant);
+    result.to_rust(cr)
+}
+
+pub fn verify_polymorphic_variant_test(cr: &mut OCamlRuntime, variant: ocaml::PolymorphicEnum) -> String {
+    let ocaml_variant = variant.to_boxroot(cr);
+    let result = ocaml::stringify_polymorphic_variant(cr, &ocaml_variant);
     result.to_rust(cr)
 }
 
@@ -238,6 +256,25 @@ fn test_variant_conversion() {
     assert_eq!(
         verify_variant_test(&mut cr, ocaml::Movement::Step(10)),
         "Step(10)".to_owned()
+    );
+}
+
+#[test]
+#[serial]
+fn test_polymorphic_variant_conversion() {
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    assert_eq!(
+        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Unit),
+        "Unit".to_owned()
+    );
+    assert_eq!(
+        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Single(10.0)),
+        "Single(10.00)".to_owned()
+    );
+    assert_eq!(
+        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Multiple(10, "text".to_string())),
+        "Multiple(10, text)".to_owned()
     );
 }
 

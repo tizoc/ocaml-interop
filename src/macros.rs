@@ -854,9 +854,77 @@ macro_rules! impl_to_ocaml_variant {
     };
 }
 
-/// Implements [`FromOCaml`] for mapping an OCaml variant into a Rust enum.
+/// Implements [`ToOCaml`] for mapping a Rust enum into an OCaml polymorphic variant.
 ///
-/// It is important that the order of the fields remains the same as in the OCaml type declaration.
+/// The match in this conversion is exhaustive, and requires that every enum case is covered.
+///
+/// Although the order of the tags doesn't matter, the Rust and OCaml names must match exactly.
+/// For tags containing multiple values, it is important that the order of the fields remains the same
+/// as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement = [
+/// //        | `StepLeft
+/// //        | `StepRight
+/// //        | `Rotate of float
+/// //      ]
+/// //
+/// // NOTE: Order of tags is irrelevant but names must match exactly.
+///
+/// impl_to_ocaml_polymorphic_variant! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // RustType => OCamlType { ... }
+///     Movement {
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: OCamlFloat),
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! impl_to_ocaml_polymorphic_variant {
+    ($rust_typ:ty => $ocaml_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
+            fn to_ocaml<'a>(&self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
+                $crate::ocaml_alloc_polymorphic_variant! {
+                    cr, self => {
+                        $($t)*
+                    }
+                }
+            }
+        }
+    };
+
+    ($both_typ:ty {
+        $($t:tt)*
+    }) => {
+        $crate::impl_to_ocaml_polymorphic_variant!{
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+}
+
+/// Implements [`FromOCaml`] for mapping an OCaml polymorphic variant into a Rust enum.
+///
+/// Although the order of the tags doesn't matter, the Rust and OCaml names must match exactly.
+/// For tags containing multiple values, it is important that the order of the fields remains the same
+/// as in the OCaml type declaration.
 ///
 /// # Examples
 ///
@@ -974,6 +1042,65 @@ macro_rules! ocaml_unpack_polymorphic_variant {
 
             Err("Invalid tag value found when converting from an OCaml polymorphic variant")
         })()
+    };
+}
+
+/// Allocates an OCaml polymorphic variant, mapped from a Rust enum.
+///
+/// The match in this conversion is exhaustive, and requires that every enum case is covered.
+///
+/// Although the order of the tags doesn't matter, the Rust and OCaml names must match exactly.
+/// For tags containing multiple values, it is important that the order of the fields remains the same
+/// as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// ```
+/// # use ocaml_interop::*;
+/// # ocaml! { fn make_ocaml_movement(unit: ()) -> Movement; }
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement = [
+/// //        | `StepLeft
+/// //        | `StepRight
+/// //        | `Rotate of float
+/// //      ]
+/// //
+/// // NOTE: Order of tags is irrelevant but names must match exactly.
+///
+/// # fn alloc_variant_example(cr: &mut OCamlRuntime) {
+/// let movement = Movement::Rotate(180.0);
+/// let ocaml_movement: OCaml<Movement> = ocaml_alloc_polymorphic_variant! {
+///     cr, movement => {
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: OCamlFloat),
+///     }
+/// };
+/// // ...
+/// # }
+/// ```
+#[macro_export]
+macro_rules! ocaml_alloc_polymorphic_variant {
+    ($cr:ident, $self:ident => {
+        $($($tag:ident)::+ $(($($slot_name:ident: $slot_typ:ty),+ $(,)?))? $(,)?),+
+    }) => {
+        $crate::ocaml_alloc_polymorphic_variant_match!{
+            $cr, $self,
+
+            @units {}
+            @unit_blocks {}
+            @blocks {}
+
+            @pending $({ $($tag)::+ $(($($slot_name: $slot_typ),+))? })+
+        }
     };
 }
 
@@ -1137,6 +1264,146 @@ macro_rules! ocaml_alloc_variant_match {
             @blocks {
                 $($block_tags_accum)*
                 { $($found_tag)::+ ($($found_slot_name: $found_slot_typ),+) @ $current_block_tag }
+            }
+
+            @pending $($tail)*
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! ocaml_alloc_polymorphic_variant_match {
+    // Base case, generate `match` expression
+    ($cr:ident, $self:ident,
+
+        @units {
+            $({ $($unit_tag:ident)::+ })*
+        }
+        @unit_blocks {
+            $({ $($unit_block_tag:ident)::+ ($unit_block_slot_name:ident: $unit_block_slot_typ:ty) })*
+        }
+        @blocks {
+            $({ $($block_tag:ident)::+ ($($block_slot_name:ident: $block_slot_typ:ty),+) })*
+        }
+
+        @pending
+    ) => {
+        match &$self {
+            $(
+                $($unit_tag)::+ => {
+                    let polytag = $crate::polymorphic_variant_tag_hash!($($unit_tag)::+);
+                    unsafe { $crate::OCaml::new($cr, polytag) }
+                },
+            )*
+            $(
+                $($unit_block_tag)::+($unit_block_slot_name) => {
+                    let polytag = $crate::polymorphic_variant_tag_hash!($($unit_block_tag)::+);
+                    let $unit_block_slot_name: $crate::BoxRoot<$unit_block_slot_typ> =
+                        $crate::ToOCaml::to_boxroot($unit_block_slot_name, $cr);
+                    unsafe {
+                        let block = $crate::internal::caml_alloc(2, $crate::internal::tag::TAG_POLYMORPHIC_VARIANT);
+                        $crate::internal::store_field(block, 0, polytag);
+                        $crate::internal::store_field(block, 1, $unit_block_slot_name.get($cr).raw());
+                        $crate::OCaml::new($cr, block)
+                    }
+                },
+            )*
+            $(
+                $($block_tag)::+($($block_slot_name),+) => {
+                    let polytag = $crate::polymorphic_variant_tag_hash!($($block_tag)::+);
+                    let tuple: $crate::BoxRoot<($($block_slot_typ),+)> =
+                        $crate::BoxRoot::new(unsafe {
+                            $crate::internal::alloc_tuple($cr, $crate::count_fields!($($block_slot_name)+))
+                        });
+                    let mut n = 0;
+                    $(
+                        let $block_slot_name: $crate::OCaml<$block_slot_typ> =
+                            $crate::ToOCaml::to_ocaml($block_slot_name, $cr);
+                        let raw = unsafe { $block_slot_name.raw() };
+                        unsafe { $crate::internal::store_field(tuple.get($cr).raw(), n, raw) };
+                        n += 1;
+                    )+
+                    unsafe {
+                        let block = $crate::internal::caml_alloc(2, $crate::internal::tag::TAG_POLYMORPHIC_VARIANT);
+                        $crate::internal::store_field(block, 0, polytag);
+                        $crate::internal::store_field(block, 1, tuple.get($cr).raw());
+                        $crate::OCaml::new($cr, block)
+                    }
+                },
+            )*
+        }
+    };
+
+    // Found unit tag, add to accumulator
+    ($cr:ident, $self:ident,
+
+        @units { $($unit_tags_accum:tt)* }
+        @unit_blocks { $($unit_block_tags_accum:tt)* }
+        @blocks { $($block_tags_accum:tt)* }
+
+        @pending
+            { $($found_tag:ident)::+ }
+            $($tail:tt)*
+    ) => {
+        $crate::ocaml_alloc_polymorphic_variant_match!{
+            $cr, $self,
+
+            @units {
+                $($unit_tags_accum)*
+                { $($found_tag)::+ }
+            }
+            @unit_blocks { $($unit_block_tags_accum)* }
+            @blocks { $($block_tags_accum)* }
+
+            @pending $($tail)*
+        }
+    };
+
+    // Found unit tag with non-block value, add to accumulator
+    ($cr:ident, $self:ident,
+
+        @units { $($unit_tags_accum:tt)* }
+        @unit_blocks { $($unit_block_tags_accum:tt)* }
+        @blocks { $($block_tags_accum:tt)* }
+
+        @pending
+            { $($found_tag:ident)::+ ($found_slot_name:ident: $found_slot_typ:ty) }
+            $($tail:tt)*
+    ) => {
+        $crate::ocaml_alloc_polymorphic_variant_match!{
+            $cr, $self,
+
+            @units { $($unit_tags_accum)* }
+            @unit_blocks {
+                $($unit_block_tags_accum)*
+                { $($found_tag)::+ ($found_slot_name: $found_slot_typ) }
+            }
+            @blocks { $($block_tags_accum)* }
+
+            @pending $($tail)*
+        }
+    };
+
+    // Found block tag with a block value, add to accumulator
+    ($cr:ident, $self:ident,
+
+        @units { $($unit_tags_accum:tt)* }
+        @unit_blocks { $($unit_block_tags_accum:tt)* }
+        @blocks { $($block_tags_accum:tt)* }
+
+        @pending
+            { $($found_tag:ident)::+ ($($found_slot_name:ident: $found_slot_typ:ty),+) }
+            $($tail:tt)*
+    ) => {
+        $crate::ocaml_alloc_polymorphic_variant_match!{
+            $cr, $self,
+
+            @units { $($unit_tags_accum)* }
+            @unit_blocks { $($unit_block_tags_accum)* }
+            @blocks {
+                $($block_tags_accum)*
+                { $($found_tag)::+ ($($found_slot_name: $found_slot_typ),+) }
             }
 
             @pending $($tail)*
@@ -1350,6 +1617,11 @@ macro_rules! expand_exported_function_return {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! polymorphic_variant_tag_hash {
+    // For Path::To::Last we take just Last
+    ($prefix:ident::$($tag:ident)::+) => {
+        $crate::polymorphic_variant_tag_hash!($($tag)::+)
+    };
+
     ($tag:ident) => {{
         static mut TAG_HASH: $crate::RawOCaml = 0;
         static INIT_TAG_HASH: std::sync::Once = std::sync::Once::new();
