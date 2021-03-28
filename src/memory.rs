@@ -96,6 +96,7 @@ pub fn alloc_some<'a, 'b, A>(
     }
 }
 
+#[doc(hidden)]
 pub unsafe fn alloc_tuple<T>(cr: &mut OCamlRuntime, size: usize) -> OCaml<T> {
     let ocaml_tuple = caml_alloc_tuple(size);
     OCaml::new(cr, ocaml_tuple)
