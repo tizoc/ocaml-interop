@@ -51,6 +51,7 @@ impl OCamlRuntime {
     /// This function is unsafe because the OCaml runtime handle should be obtained once
     /// upon initialization of the OCaml runtime and then passed around. This method exists
     /// only to ease the authoring of tests.
+    #[inline(always)]
     pub unsafe fn recover_handle() -> &'static mut Self {
         static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
         &mut RUNTIME
