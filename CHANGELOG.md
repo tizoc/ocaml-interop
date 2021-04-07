@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for allocating OCaml polymorphic variants.
 - `impl_to_ocaml_polymorphic_variant!` macro.
 - `ocaml_alloc_polymorphic_variant!` macro.
+- `caml_state` feature flag that gets forwarded to `ocaml-sys`.
 
 ## [0.7.2] - 2021-03-18
 
