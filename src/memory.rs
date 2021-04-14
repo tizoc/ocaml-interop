@@ -3,7 +3,10 @@
 
 use crate::{
     conv::FromOCaml,
-    mlvalues::{tag, DynBox, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
+    mlvalues::{
+        bigarray::{Array1, BigarrayElt},
+        tag, DynBox, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+    },
     runtime::OCamlRuntime,
     value::OCaml,
 };
@@ -204,4 +207,28 @@ pub fn alloc_box<A: 'static>(cr: &mut OCamlRuntime, data: A) -> OCaml<DynBox<A>>
         std::ptr::write(box_ptr, Box::pin(data));
     }
     unsafe { OCaml::new(cr, oval) }
+}
+
+/// Create a new OCaml `Bigarray.Array1` with the given type and size
+///
+/// Memory belongs to the OCaml GC,
+/// including the data, which is in the malloc heap but will be freed on
+/// collection through a custom block
+pub fn alloc_bigarray1<'a, A: BigarrayElt>(
+    cr: &'a mut OCamlRuntime,
+    data: &[A],
+) -> OCaml<'a, Array1<A>> {
+    let len = data.len();
+    let ocaml_ba;
+    unsafe {
+        // num_dims == 1
+        // data == NULL, OCaml will allocate with malloc (outside the GC)
+        // and add the CAML_BA_MANAGED flag
+        // OCaml custom block contains a bigarray struct after the header,
+        // that points to the data array
+        ocaml_ba = ocaml_sys::bigarray::caml_ba_alloc_dims(A::KIND, 1, core::ptr::null_mut(), len);
+        let ba_meta_ptr = ocaml_sys::field(ocaml_ba, 1) as *const ocaml_sys::bigarray::Bigarray;
+        core::ptr::copy_nonoverlapping(data.as_ptr(), (*ba_meta_ptr).data as *mut A, len);
+    }
+    unsafe { OCaml::new(cr, ocaml_ba) }
 }

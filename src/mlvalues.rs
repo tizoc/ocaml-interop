@@ -12,6 +12,7 @@ pub use ocaml_sys::{
 };
 
 pub mod tag;
+pub mod bigarray;
 
 /// [`OCaml`]`<OCamlList<T>>` is a reference to an OCaml `list` containing
 /// values of type `T`.

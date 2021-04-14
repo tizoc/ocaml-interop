@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for OCaml `Bigarray.Array1` values (PR #26 by @g2p)
+
 ## [0.8.8] - 2022-03-23
 
 ### Fixed

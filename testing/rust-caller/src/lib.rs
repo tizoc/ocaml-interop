@@ -9,6 +9,9 @@ use ocaml_interop::{OCaml, OCamlBytes, OCamlRuntime, ToOCaml};
 #[cfg(test)]
 use std::borrow::Borrow;
 
+#[cfg(test)]
+use ocaml_interop::{bigarray, BoxRoot};
+
 mod ocaml {
     use ocaml_interop::*;
 
@@ -77,6 +80,7 @@ mod ocaml {
         pub fn gc_compact(unit: ());
         pub fn reverse_list_and_compact(list: OCamlList<DynBox<u16>>)
             -> OCamlList<DynBox<u16>>;
+        pub fn double_u16_array(array: bigarray::Array1<u16>);
     }
 }
 
@@ -281,6 +285,23 @@ fn test_polymorphic_variant_conversion() {
     assert_eq!(
         verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Multiple(10, "text".to_string())),
         "Multiple(10, text)".to_owned()
+    );
+}
+
+#[test]
+#[serial]
+fn test_bigarray() {
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+
+    let arr: Vec<u16> = (0..16).collect();
+
+    let crr = &mut cr;
+    let arr_ocaml: BoxRoot<bigarray::Array1<_>> = arr.as_slice().to_boxroot(crr);
+    ocaml::double_u16_array(crr, &arr_ocaml);
+    assert_eq!(
+        crr.get(&arr_ocaml).as_slice(),
+        (0..16u16).map(|i| i * 2).collect::<Vec<_>>().as_slice()
     );
 }
 
