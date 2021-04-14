@@ -7,11 +7,114 @@ use crate::{
     runtime::OCamlRuntime,
     value::OCaml,
 };
-use core::{cell::UnsafeCell, marker::PhantomData};
+use core::{
+    cell::{Cell, UnsafeCell},
+    marker::PhantomData,
+    pin::Pin,
+};
 pub use ocaml_sys::{caml_alloc, store_field};
 use ocaml_sys::{
     caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64, string_val,
 };
+
+/// A global root for keeping OCaml values alive and tracked
+///
+/// This allows keeping a value around when exiting the stack frame.
+///
+/// See [`OCaml::register_global_root`].
+pub struct OCamlGlobalRoot<T> {
+    pub(crate) cell: Pin<Box<Cell<RawOCaml>>>,
+    _marker: PhantomData<Cell<T>>,
+}
+
+impl<T> std::fmt::Debug for OCamlGlobalRoot<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OCamlGlobalRoot({:#x})", self.cell.get())
+    }
+}
+
+impl<T> OCamlGlobalRoot<T> {
+    // NOTE: we require initialisation here, unlike OCamlRoot which delays it
+    // This is because we register with the GC in the constructor,
+    // for easy pairing with Drop, and registering without initializing
+    // would break OCaml runtime invariants.
+    // Always registering with UNIT (like for GCFrame initialisation)
+    // would also work, but for OCamlGenerationalRoot that would
+    // make things slower (updating requires notifying the GC),
+    // and it's better if the API is the same for both kinds of global roots.
+    pub(crate) fn new(val: OCaml<T>) -> Self {
+        let r = Self {
+            cell: Box::pin(Cell::new(val.raw)),
+            _marker: PhantomData,
+        };
+        unsafe { ocaml_sys::caml_register_global_root(r.cell.as_ptr()) };
+        r
+    }
+
+    /// Access the rooted value
+    pub fn get_ref(&self) -> OCamlRef<T> {
+        unsafe { OCamlCell::create_ref(self.cell.as_ptr()) }
+    }
+
+    /// Replace the rooted value
+    pub fn set(&self, val: OCaml<T>) {
+        self.cell.replace(val.raw);
+    }
+}
+
+impl<T> Drop for OCamlGlobalRoot<T> {
+    fn drop(&mut self) {
+        unsafe { ocaml_sys::caml_remove_global_root(self.cell.as_ptr()) };
+    }
+}
+
+/// A global, GC-friendly root for keeping OCaml values alive and tracked
+///
+/// This allows keeping a value around when exiting the stack frame.
+///
+/// Unlike with [`OCamlGlobalRoot`], the GC doesn't have to walk
+/// referenced values on every minor collection.  This makes collection
+/// faster, except if the value is short-lived and frequently updated.
+///
+/// See [`OCaml::register_generational_root`].
+pub struct OCamlGenerationalRoot<T> {
+    pub(crate) cell: Pin<Box<Cell<RawOCaml>>>,
+    _marker: PhantomData<Cell<T>>,
+}
+
+impl<T> std::fmt::Debug for OCamlGenerationalRoot<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OCamlGenerationalRoot({:#x})", self.cell.get())
+    }
+}
+
+impl<T> OCamlGenerationalRoot<T> {
+    pub(crate) fn new(val: OCaml<T>) -> Self {
+        let r = Self {
+            cell: Box::pin(Cell::new(val.raw)),
+            _marker: PhantomData,
+        };
+        unsafe { ocaml_sys::caml_register_generational_global_root(r.cell.as_ptr()) };
+        r
+    }
+
+    /// Access the rooted value
+    pub fn get_ref(&self) -> OCamlRef<T> {
+        unsafe { OCamlCell::create_ref(self.cell.as_ptr()) }
+    }
+
+    /// Replace the rooted value
+    pub fn set(&self, val: OCaml<T>) {
+        unsafe { ocaml_sys::caml_modify_generational_global_root(self.cell.as_ptr(), val.raw) };
+        debug_assert_eq!(self.cell.get(), val.raw);
+    }
+}
+
+impl<T> Drop for OCamlGenerationalRoot<T> {
+    fn drop(&mut self) {
+        unsafe { ocaml_sys::caml_remove_generational_global_root(self.cell.as_ptr()) };
+    }
+}
 
 pub struct OCamlCell<T> {
     cell: UnsafeCell<RawOCaml>,

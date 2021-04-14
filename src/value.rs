@@ -1,6 +1,7 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
+use crate::memory::{OCamlGenerationalRoot, OCamlGlobalRoot};
 use crate::{
     boxroot::BoxRoot, error::OCamlFixnumConversionError, memory::OCamlCell, mlvalues::*, FromOCaml,
     OCamlRef, OCamlRuntime,
@@ -112,6 +113,20 @@ impl<'a, T> OCaml<'a, T> {
         RustT: FromOCaml<T>,
     {
         RustT::from_ocaml(*self)
+    }
+
+    /// Register a global root with the OCaml runtime
+    ///
+    /// If the value is seldom modified ([`OCamlGlobalRoot::set`] isn't
+    /// frequently used), [`OCaml::register_generational_root`] can be
+    /// faster.
+    pub fn register_global_root(self) -> OCamlGlobalRoot<T> {
+        OCamlGlobalRoot::new(self)
+    }
+
+    /// Register a GC-friendly global root with the OCaml runtime
+    pub fn register_generational_root(self) -> OCamlGenerationalRoot<T> {
+        OCamlGenerationalRoot::new(self)
     }
 }
 

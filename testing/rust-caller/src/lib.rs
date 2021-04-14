@@ -3,6 +3,8 @@
 
 extern crate ocaml_interop;
 
+#[cfg(test)]
+use ocaml_interop::OCamlInt64;
 use ocaml_interop::{OCaml, OCamlBytes, OCamlRuntime, ToOCaml};
 
 mod ocaml {
@@ -70,6 +72,7 @@ mod ocaml {
         pub fn raises_message_exception(message: String);
         pub fn raises_nonmessage_exception(unit: ());
         pub fn raises_nonblock_exception(unit: ());
+        pub fn gc_compact(unit: ());
     }
 }
 
@@ -141,7 +144,6 @@ pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
         let _x: OCaml<OCamlBytes> = vec.to_ocaml(cr);
         let _y: OCaml<OCamlBytes> = vec.to_ocaml(cr);
         let _z: OCaml<OCamlBytes> = vec.to_ocaml(cr);
-        ()
     }
     true
 }
@@ -329,4 +331,36 @@ fn test_exception_handling_nonblock_exception() {
             .unwrap(),
         "OCaml exception, message: None"
     );
+}
+
+#[test]
+#[serial]
+fn test_global_roots() {
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    let crr = &mut cr;
+
+    let i64: OCaml<OCamlInt64> = 5.to_ocaml(crr);
+    let root = i64.register_global_root();
+    ocaml::gc_compact(crr, &OCaml::unit());
+    root.set(6.to_ocaml(crr));
+    ocaml::gc_compact(crr, &OCaml::unit());
+    let i64_bis: i64 = crr.get(root.get_ref()).to_rust();
+    assert_eq!(i64_bis, 6);
+}
+
+#[test]
+#[serial]
+fn test_generational_roots() {
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    let crr = &mut cr;
+
+    let i64: OCaml<OCamlInt64> = 5.to_ocaml(crr);
+    let root = i64.register_generational_root();
+    ocaml::gc_compact(crr, &OCaml::unit());
+    root.set(6.to_ocaml(crr));
+    ocaml::gc_compact(crr, &OCaml::unit());
+    let i64_bis: i64 = crr.get(root.get_ref()).to_rust();
+    assert_eq!(i64_bis, 6);
 }
