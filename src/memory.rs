@@ -140,24 +140,28 @@ extern "C" fn drop_box_dyn(oval: RawOCaml) {
     }
 }
 
-/// Implementation notes: is it possible to reduce indirection?
-/// Could we also skip the finalizer?
-///
-/// While putting T immediately inside the custom block as field(1)
-/// is tempting, GC would misalign it (UB) when moving.  Put a pointer to T instead.
-/// That optimisation would only work when alignment is the same as OCaml,
-/// meaning size_of<uintnat>.  It would also need to use different types.
-///
-/// Use Any for now.  This allows safe downcasting when converting back to Rust.
-///
-/// mem::needs_drop can be used to detect drop glue.
-/// This could be used to skip the finalizer, but only when there's no box.
-/// Using a lighter finalizer won't work either, the GlobalAllocator trait needs
-/// to know the layout before freeing the referenced block.
-/// malloc won't use that info, but other allocators would.
-///
-/// Also: caml_register_custom_operations is only useful for Marshall serialization,
-/// skip it
+// Notes by @g2p:
+//
+// Implementation notes: is it possible to reduce indirection?
+// Could we also skip the finalizer?
+//
+// While putting T immediately inside the custom block as field(1)
+// is tempting, GC would misalign it (UB) when moving.  Put a pointer to T instead.
+// That optimisation would only work when alignment is the same as OCaml,
+// meaning size_of<uintnat>.  It would also need to use different types.
+//
+// Use Any for now.  This allows safe downcasting when converting back to Rust.
+//
+// mem::needs_drop can be used to detect drop glue.
+// This could be used to skip the finalizer, but only when there's no box.
+// Using a lighter finalizer won't work either, the GlobalAllocator trait needs
+// to know the layout before freeing the referenced block.
+// malloc won't use that info, but other allocators would.
+//
+// Also: caml_register_custom_operations is only useful for Marshall serialization,
+// skip it
+
+/// Allocate a `DynBox` for a value of type `A`.
 pub fn alloc_box<A: 'static>(cr: &mut OCamlRuntime, data: A) -> OCaml<DynBox<A>> {
     let oval;
     // A fatter Box, points to data then to vtable

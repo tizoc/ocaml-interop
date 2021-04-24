@@ -311,7 +311,7 @@ pub use crate::value::OCaml;
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, alloc_tuple, store_field};
+    pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
     pub use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};

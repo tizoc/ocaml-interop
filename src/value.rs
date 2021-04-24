@@ -122,6 +122,8 @@ impl<'a, T> OCaml<'a, T> {
 
     /// Meant to match Data_custom_val from mlvalues.h
     ///
+    /// **Experimental**
+    ///
     /// # Safety
     ///
     /// Casts to an arbitrary pointer type, take care before
@@ -142,6 +144,8 @@ impl<'a, T: 'static> OCaml<'a, DynBox<T>> {
     /// can provide functions using it and expose them to OCaml.
     ///
     /// It will be dropped if it stops being referenced by the GC.
+    ///
+    /// **Experimental**
     pub fn box_value(cr: &'a mut OCamlRuntime, v: T) -> Self {
         alloc_box(cr, v)
     }

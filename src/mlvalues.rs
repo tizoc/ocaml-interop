@@ -22,6 +22,8 @@ pub struct OCamlList<A> {
 /// `OCaml<DynBox<T>>` is for passing a value of type `T` to OCaml
 ///
 /// To box a Rust value, use [`OCaml::box_value`][crate::OCaml::box_value].
+///
+/// **Experimental**
 pub struct DynBox<A> {
     _marker: PhantomData<A>,
 }

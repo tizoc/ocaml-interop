@@ -339,7 +339,7 @@ fn test_exception_handling_nonblock_exception() {
 
 #[test]
 #[serial]
-fn test_ocamlbox() {
+fn test_dynbox() {
     OCamlRuntime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
 
