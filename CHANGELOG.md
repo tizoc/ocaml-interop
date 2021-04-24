@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `custom_ptr_val` method to `OCaml<T>` to obtain pointers to values embedded in OCaml custom blocks (by @g2p). Experimental API.
+- `DynBox<T>`, support for custom OCaml values that wrap Rust values (by @g2p). Experimental API.
+
 ## [0.8.0] - 2021-04-07
 
 ### Added
