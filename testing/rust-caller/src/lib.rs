@@ -3,7 +3,11 @@
 
 extern crate ocaml_interop;
 
+#[cfg(test)]
+use ocaml_interop::cons;
 use ocaml_interop::{OCaml, OCamlBytes, OCamlRuntime, ToOCaml};
+#[cfg(test)]
+use std::borrow::Borrow;
 
 mod ocaml {
     use ocaml_interop::*;
@@ -70,6 +74,9 @@ mod ocaml {
         pub fn raises_message_exception(message: String);
         pub fn raises_nonmessage_exception(unit: ());
         pub fn raises_nonblock_exception(unit: ());
+        pub fn gc_compact(unit: ());
+        pub fn reverse_list_and_compact(list: OCamlList<DynBox<u16>>)
+            -> OCamlList<DynBox<u16>>;
     }
 }
 
@@ -141,7 +148,6 @@ pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
         let _x: OCaml<OCamlBytes> = vec.to_ocaml(cr);
         let _y: OCaml<OCamlBytes> = vec.to_ocaml(cr);
         let _z: OCaml<OCamlBytes> = vec.to_ocaml(cr);
-        ()
     }
     true
 }
@@ -329,4 +335,28 @@ fn test_exception_handling_nonblock_exception() {
             .unwrap(),
         "OCaml exception, message: None"
     );
+}
+
+#[test]
+#[serial]
+fn test_dynbox() {
+    OCamlRuntime::init_persistent();
+    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+
+    let mut list = OCaml::nil().root();
+    let mut l2;
+    // Note: building a list with cons will build it in reverse order
+    for e in (0u16..4).rev() {
+        let boxed = OCaml::box_value(&mut cr, e).root();
+        list = cons(&mut cr, &boxed, &list).root();
+    }
+    l2 = ocaml::reverse_list_and_compact(&mut cr, &list);
+    let mut vec2: Vec<u16> = vec![];
+    while let Some((hd, tl)) = cr.get(&l2).uncons() {
+        l2 = tl.root();
+        vec2.push(*hd.borrow());
+    }
+    // The next call will drop the boxes through the OCaml finalizer
+    ocaml::gc_compact(&mut cr, OCaml::unit().as_ref());
+    assert_eq!(vec2, vec![3, 2, 1, 0]);
 }

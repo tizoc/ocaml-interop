@@ -3,14 +3,18 @@
 
 use crate::{
     conv::FromOCaml,
-    mlvalues::{tag, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
+    mlvalues::{tag, DynBox, OCamlBytes, OCamlFloat, OCamlInt32, OCamlInt64, OCamlList, RawOCaml},
     runtime::OCamlRuntime,
     value::OCaml,
 };
-use core::{cell::UnsafeCell, marker::PhantomData};
-pub use ocaml_sys::{caml_alloc, store_field};
+use core::{any::Any, cell::UnsafeCell, marker::PhantomData, mem, pin::Pin, ptr};
+pub use ocaml_sys::{
+    caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
+    store_field,
+};
 use ocaml_sys::{
-    caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64, string_val,
+    caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64,
+    custom_operations, string_val,
 };
 
 pub struct OCamlCell<T> {
@@ -102,6 +106,9 @@ pub unsafe fn alloc_tuple<T>(cr: &mut OCamlRuntime, size: usize) -> OCaml<T> {
     OCaml::new(cr, ocaml_tuple)
 }
 
+/// List constructor
+///
+/// Build a new list from a head and a tail list.
 pub fn alloc_cons<'a, 'b, A>(
     cr: &'a mut OCamlRuntime,
     head: OCamlRef<'b, A>,
@@ -113,4 +120,56 @@ pub fn alloc_cons<'a, 'b, A>(
         store_field(ocaml_cons, 1, tail.get_raw());
         OCaml::new(cr, ocaml_cons)
     }
+}
+
+const BOX_OPS_DYN_DROP: custom_operations = custom_operations {
+    identifier: "_rust_box_dyn_drop\0".as_ptr() as *const i8,
+    finalize: Some(drop_box_dyn),
+    compare: None,
+    hash: None,
+    serialize: None,
+    deserialize: None,
+    compare_ext: None,
+    fixed_length: ptr::null(),
+};
+
+extern "C" fn drop_box_dyn(oval: RawOCaml) {
+    unsafe {
+        let box_ptr = ocaml_sys::field(oval, 1) as *mut Pin<Box<dyn Any>>;
+        ptr::drop_in_place(box_ptr);
+    }
+}
+
+// Notes by @g2p:
+//
+// Implementation notes: is it possible to reduce indirection?
+// Could we also skip the finalizer?
+//
+// While putting T immediately inside the custom block as field(1)
+// is tempting, GC would misalign it (UB) when moving.  Put a pointer to T instead.
+// That optimisation would only work when alignment is the same as OCaml,
+// meaning size_of<uintnat>.  It would also need to use different types.
+//
+// Use Any for now.  This allows safe downcasting when converting back to Rust.
+//
+// mem::needs_drop can be used to detect drop glue.
+// This could be used to skip the finalizer, but only when there's no box.
+// Using a lighter finalizer won't work either, the GlobalAllocator trait needs
+// to know the layout before freeing the referenced block.
+// malloc won't use that info, but other allocators would.
+//
+// Also: caml_register_custom_operations is only useful for Marshall serialization,
+// skip it
+
+/// Allocate a `DynBox` for a value of type `A`.
+pub fn alloc_box<A: 'static>(cr: &mut OCamlRuntime, data: A) -> OCaml<DynBox<A>> {
+    let oval;
+    // A fatter Box, points to data then to vtable
+    type B = Pin<Box<dyn Any>>;
+    unsafe {
+        oval = ocaml_sys::caml_alloc_custom(&BOX_OPS_DYN_DROP, mem::size_of::<B>(), 0, 1);
+        let box_ptr = ocaml_sys::field(oval, 1) as *mut B;
+        std::ptr::write(box_ptr, Box::pin(data));
+    }
+    unsafe { OCaml::new(cr, oval) }
 }

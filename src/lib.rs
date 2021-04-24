@@ -300,9 +300,10 @@ pub use crate::boxroot::BoxRoot;
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5};
 pub use crate::conv::{FromOCaml, ToOCaml};
 pub use crate::error::OCamlException;
+pub use crate::memory::alloc_cons as cons;
 pub use crate::memory::OCamlRef;
 pub use crate::mlvalues::{
-    OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+    DynBox, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
 };
 pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;
@@ -310,7 +311,7 @@ pub use crate::value::OCaml;
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
-    pub use crate::memory::{caml_alloc, alloc_tuple, store_field};
+    pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
     pub use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
