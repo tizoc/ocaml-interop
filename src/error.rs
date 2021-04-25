@@ -1,4 +1,4 @@
-// Copyright (c) SimpleStaking and Tezedge Contributors
+// Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
 use crate::mlvalues::{is_block, string_val, tag_val, RawOCaml};

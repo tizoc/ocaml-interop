@@ -1,4 +1,4 @@
-(* Copyright (c) SimpleStaking and Tezedge Contributors
+(* Copyright (c) Viable Systems and TezEdge Contributors
    SPDX-License-Identifier: MIT *)
 
 (* Unknown/UnknownBlock are not defined on Rust side to test the failure case *)
