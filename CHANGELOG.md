@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2021-04-25
+
 ### Added
 
 - `custom_ptr_val` method to `OCaml<T>` to obtain pointers to values embedded in OCaml custom blocks (by @g2p). Experimental API.
@@ -183,7 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/simplestaking/ocaml-interop/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/simplestaking/ocaml-interop/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/simplestaking/ocaml-interop/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/simplestaking/ocaml-interop/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/simplestaking/ocaml-interop/compare/v0.7.0...v0.7.1
