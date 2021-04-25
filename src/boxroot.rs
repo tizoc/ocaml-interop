@@ -1,10 +1,10 @@
 // Copyright (c) SimpleStaking and Tezedge Contributors
 // SPDX-License-Identifier: MIT
 
-use std::{marker::PhantomData, ops::Deref};
+use std::{marker::PhantomData, ops::Deref, sync::Once};
 
 use ocaml_boxroot_sys::{
-    boxroot_create, boxroot_delete, boxroot_get, boxroot_get_ref, boxroot_modify,
+    boxroot_create, boxroot_delete, boxroot_get, boxroot_get_ref, boxroot_modify, boxroot_setup,
     BoxRoot as PrimitiveBoxRoot,
 };
 
@@ -19,6 +19,12 @@ pub struct BoxRoot<T: 'static> {
 impl<T> BoxRoot<T> {
     /// Creates a new root from an [`OCaml`]`<T>` value.
     pub fn new(val: OCaml<T>) -> BoxRoot<T> {
+        static INIT: Once = Once::new();
+
+        INIT.call_once(|| unsafe {
+            boxroot_setup();
+        });
+
         BoxRoot {
             boxroot: unsafe { boxroot_create(val.raw) },
             _marker: PhantomData,

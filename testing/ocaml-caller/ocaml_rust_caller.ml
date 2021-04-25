@@ -20,9 +20,6 @@ type movement_polymorphic =
   | `UnkownBlock of int ]
 
 module Rust = struct
-  (* Must be called first *)
-  external tests_setup : unit -> unit = "ocaml_interop_setup"
-
   external tests_teardown : unit -> unit = "ocaml_interop_teardown"
 
   external twice : int -> int = "rust_twice"
@@ -175,7 +172,6 @@ let test_regular_section () =
   Alcotest.check testable "Acquires the runtime lock" () ()
 
 let () =
-  Rust.tests_setup ();
   let open Alcotest in
   run "Tests"
     [
