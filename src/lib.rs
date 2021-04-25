@@ -123,7 +123,6 @@
 //! To be able to call these from Rust, there are a few things that need to be done:
 //!
 //! - Rust-driven programs must initialize the OCaml runtime.
-//! - OCaml-driven programs must call the `ocaml_interop_setup` function.
 //! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the [`ocaml!`] macro.
 //!
 //! ### Example
@@ -227,8 +226,6 @@
 //! ### Calling into Rust from OCaml
 //!
 //! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the [`ocaml_export!`] macro.
-//!
-//! If the program is OCaml-driven, the `ocaml_interop_setup` function must be called from OCaml first, and the `ocaml_interop_teardown` function must be called at the end of the OCaml program.
 //!
 //! #### Example
 //!

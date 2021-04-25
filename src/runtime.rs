@@ -37,7 +37,6 @@ impl OCamlRuntime {
             let c_args = vec![arg0, core::ptr::null()];
             unsafe {
                 caml_startup(c_args.as_ptr());
-                boxroot_setup();
             }
         })
     }
