@@ -33,7 +33,7 @@ impl OCamlRuntime {
         static INIT: Once = Once::new();
 
         INIT.call_once(|| {
-            let arg0 = "ocaml\0".as_ptr() as *const i8;
+            let arg0 = "ocaml\0".as_ptr() as *const ocaml_sys::Char;
             let c_args = vec![arg0, core::ptr::null()];
             unsafe {
                 caml_startup(c_args.as_ptr());
