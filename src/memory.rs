@@ -123,7 +123,7 @@ pub fn alloc_cons<'a, 'b, A>(
 }
 
 const BOX_OPS_DYN_DROP: custom_operations = custom_operations {
-    identifier: "_rust_box_dyn_drop\0".as_ptr() as *const i8,
+    identifier: "_rust_box_dyn_drop\0".as_ptr() as *const ocaml_sys::Char,
     finalize: Some(drop_box_dyn),
     compare: None,
     hash: None,
