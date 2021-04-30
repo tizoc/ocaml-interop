@@ -35,6 +35,12 @@ unsafe impl<'root, T> ToOCaml<T> for OCamlRef<'root, T> {
     }
 }
 
+unsafe impl ToOCaml<()> for () {
+    fn to_ocaml(&self, _cr: &mut OCamlRuntime) -> OCaml<'static, ()> {
+        OCaml::unit()
+    }
+}
+
 unsafe impl ToOCaml<OCamlInt> for i64 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlInt> {
         unsafe { OCaml::new(cr, ((self << 1) | 1) as RawOCaml) }

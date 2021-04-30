@@ -12,6 +12,12 @@ pub unsafe trait FromOCaml<T> {
     fn from_ocaml(v: OCaml<T>) -> Self;
 }
 
+unsafe impl FromOCaml<()> for () {
+    fn from_ocaml(_v: OCaml<()>) -> Self {
+        ()
+    }
+}
+
 unsafe impl FromOCaml<OCamlInt> for i64 {
     fn from_ocaml(v: OCaml<OCamlInt>) -> Self {
         v.to_i64()
