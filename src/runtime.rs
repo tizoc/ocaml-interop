@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
-use ocaml_sys::{caml_shutdown, caml_startup};
-use std::{marker::PhantomData, sync::Once};
+use ocaml_sys::{caml_shutdown};
+use std::{marker::PhantomData};
 
 use crate::{memory::OCamlRef, value::OCaml};
 
@@ -18,30 +18,21 @@ pub struct OCamlRuntime {
 }
 
 impl OCamlRuntime {
-    /// Initializes the OCaml runtime and returns an OCaml runtime handle.
-    ///
-    /// Once the handle is dropped, the OCaml runtime will be shutdown.
-    pub fn init() -> Self {
-        Self::init_persistent();
-        Self { _private: () }
-    }
-
-    /// Initializes the OCaml runtime.
-    ///
-    /// After the first invocation, this method does nothing.
-    pub fn init_persistent() {
-        static INIT: Once = Once::new();
-
-        INIT.call_once(|| {
-            let arg0 = "ocaml\0".as_ptr() as *const ocaml_sys::Char;
-            let c_args = vec![arg0, core::ptr::null()];
-            unsafe {
-                caml_startup(c_args.as_ptr());
-            }
-        })
-    }
-
     /// Recover the runtime handle.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because the OCaml runtime handle should be obtained once
+    /// upon initialization of the OCaml runtime and then passed around. This method exists
+    /// to allow the capture of the runtime when it is already known to have been
+    /// initialized.
+    #[inline(always)]
+    pub unsafe fn recover_handle() -> &'static mut Self {
+        static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
+        &mut RUNTIME
+    }
+
+    /// Create a new runtime handle.
     ///
     /// This method is used internally, do not use directly in code, only when writing tests.
     ///
@@ -49,11 +40,12 @@ impl OCamlRuntime {
     ///
     /// This function is unsafe because the OCaml runtime handle should be obtained once
     /// upon initialization of the OCaml runtime and then passed around. This method exists
-    /// only to ease the authoring of tests.
+    /// to allow the creation of a runtime after `caml_startup` has been called and the
+    /// runtime is initialized. The OCaml runtime will be shutdown when this value is
+    /// dropped.
     #[inline(always)]
-    pub unsafe fn recover_handle() -> &'static mut Self {
-        static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
-        &mut RUNTIME
+    pub unsafe fn create() -> Self {
+        OCamlRuntime { _private: () }
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.

@@ -205,9 +205,10 @@
 //!     result.to_rust::<i64>(cr) as usize
 //! }
 //!
-//! fn entry_point() {
+//! /* NB: Requires ocaml_interop_runtime as a dependency */
+//! /*fn entry_point() {
 //!     // IMPORTANT: the OCaml runtime has to be initialized first.
-//!     let mut cr = OCamlRuntime::init();
+//!     let mut cr = ocaml_interop_runtime::init();
 //!     // `cr` is the OCaml runtime handle, must be passed to any function
 //!     // that interacts with the OCaml runtime.
 //!     let first_n = twice(&mut cr, 5);
@@ -220,7 +221,7 @@
 //!     println!("Bytes2 after: {}", result2);
 //!     // `OCamlRuntime`'s `Drop` implementation will pefrorm the necessary cleanup
 //!     // to shutdown the OCaml runtime.
-//! }
+//! }*/
 //! ```
 //!
 //! ### Calling into Rust from OCaml

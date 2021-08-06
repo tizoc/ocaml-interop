@@ -7,5 +7,8 @@ edition = "2018"
 [dependencies.ocaml-interop]
 path = "../.."
 
+[dependencies.ocaml-interop-runtime]
+path = "../../runtime"
+
 [dev-dependencies]
 serial_test = "*"

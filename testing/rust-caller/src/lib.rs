@@ -161,7 +161,7 @@ use serial_test::serial;
 #[test]
 #[serial]
 fn test_twice() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(twice(&mut cr, 10), 20);
 }
@@ -169,7 +169,7 @@ fn test_twice() {
 #[test]
 #[serial]
 fn test_increment_bytes() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         increment_bytes(&mut cr, "0000000000000000", 10),
@@ -180,7 +180,7 @@ fn test_increment_bytes() {
 #[test]
 #[serial]
 fn test_increment_ints_list() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -190,7 +190,7 @@ fn test_increment_ints_list() {
 #[test]
 #[serial]
 fn test_make_tuple() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         make_tuple(&mut cr, "fst".to_owned(), 9),
@@ -201,7 +201,7 @@ fn test_make_tuple() {
 #[test]
 #[serial]
 fn test_make_some() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         make_some(&mut cr, "some".to_owned()),
@@ -212,7 +212,7 @@ fn test_make_some() {
 #[test]
 #[serial]
 fn test_make_result() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(make_ok(&mut cr, 10), Ok(10));
     assert_eq!(
@@ -224,7 +224,7 @@ fn test_make_result() {
 #[test]
 #[serial]
 fn test_frame_management() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(allocate_alot(&mut cr), true);
 }
@@ -232,7 +232,7 @@ fn test_frame_management() {
 #[test]
 #[serial]
 fn test_record_conversion() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     let record = ocaml::TestRecord {
         i: 10,
@@ -249,7 +249,7 @@ fn test_record_conversion() {
 #[test]
 #[serial]
 fn test_variant_conversion() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         verify_variant_test(&mut cr, ocaml::Movement::RotateLeft),
@@ -268,7 +268,7 @@ fn test_variant_conversion() {
 #[test]
 #[serial]
 fn test_polymorphic_variant_conversion() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
     assert_eq!(
         verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Unit),
@@ -287,7 +287,7 @@ fn test_polymorphic_variant_conversion() {
 #[test]
 #[serial]
 fn test_exception_handling_with_message() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let result = std::panic::catch_unwind(move || {
         let mut cr = unsafe { OCamlRuntime::recover_handle() };
         let mcr = &mut cr;
@@ -306,7 +306,7 @@ fn test_exception_handling_with_message() {
 #[test]
 #[serial]
 fn test_exception_handling_without_message() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let result = std::panic::catch_unwind(|| {
         let cr = unsafe { OCamlRuntime::recover_handle() };
         ocaml::raises_nonmessage_exception(cr, &OCaml::unit());
@@ -323,7 +323,7 @@ fn test_exception_handling_without_message() {
 #[test]
 #[serial]
 fn test_exception_handling_nonblock_exception() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let result = std::panic::catch_unwind(|| {
         let cr = unsafe { OCamlRuntime::recover_handle() };
         ocaml::raises_nonblock_exception(cr, &OCaml::unit());
@@ -340,7 +340,7 @@ fn test_exception_handling_nonblock_exception() {
 #[test]
 #[serial]
 fn test_dynbox() {
-    OCamlRuntime::init_persistent();
+    ocaml_interop_runtime::init_persistent();
     let mut cr = unsafe { OCamlRuntime::recover_handle() };
 
     let mut list = OCaml::nil().root();
