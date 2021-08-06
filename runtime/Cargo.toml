@@ -1,25 +1,16 @@
 [package]
-name = "ocaml-interop"
+name = "ocaml-interop-runtime"
 version = "0.9.0" # remember to update html_root_url
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 license = "MIT"
-description = "Utilities for Rust and OCaml interoperability"
+description = "Runtime utilities for Rust and OCaml interoperability"
 homepage = "http://github.com/tezedge/ocaml-interop"
 repository = "http://github.com/tezedge/ocaml-interop"
 keywords = ["ocaml", "rust", "ffi", "interop"]
 edition = "2018"
-exclude = [
-    ".github/*",
-]
-
-[package.metadata.docs.rs]
-features = [ "without-ocamlopt" ]
 
 [dependencies]
+ocaml-interop = "0.9.0"
 ocaml-sys = "^0.20.1"
 ocaml-boxroot-sys = "0.2"
 static_assertions = "1.1.0"
-
-[features]
-without-ocamlopt = ["ocaml-sys/without-ocamlopt", "ocaml-boxroot-sys/without-ocamlopt"]
-caml-state = ["ocaml-sys/caml-state"]
