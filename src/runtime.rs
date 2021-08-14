@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
-use ocaml_sys::{caml_shutdown, caml_startup};
-use std::{marker::PhantomData, sync::Once};
+use std::marker::PhantomData;
 
 use crate::{memory::OCamlRef, value::OCaml};
 
@@ -30,15 +29,20 @@ impl OCamlRuntime {
     ///
     /// After the first invocation, this method does nothing.
     pub fn init_persistent() {
-        static INIT: Once = Once::new();
+        #[cfg(not(feature = "no-caml-startup"))]
+        {
+            static INIT: std::sync::Once = std::sync::Once::new();
 
-        INIT.call_once(|| {
-            let arg0 = "ocaml\0".as_ptr() as *const ocaml_sys::Char;
-            let c_args = vec![arg0, core::ptr::null()];
-            unsafe {
-                caml_startup(c_args.as_ptr());
-            }
-        })
+            INIT.call_once(|| {
+                let arg0 = "ocaml\0".as_ptr() as *const ocaml_sys::Char;
+                let c_args = vec![arg0, core::ptr::null()];
+                unsafe {
+                    ocaml_sys::caml_startup(c_args.as_ptr());
+                }
+            })
+        }
+        #[cfg(feature = "no-caml-startup")]
+        panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
     }
 
     /// Recover the runtime handle.
@@ -77,7 +81,7 @@ impl Drop for OCamlRuntime {
     fn drop(&mut self) {
         unsafe {
             boxroot_teardown();
-            caml_shutdown();
+            ocaml_sys::caml_shutdown();
         }
     }
 }
