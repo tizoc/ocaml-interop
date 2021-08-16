@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.5] - 2021-08-16
+
 ### Added
 
 - `no-caml-startup` feature flag that disables calls to `caml_startup` when initializing the runtime. This makes `OCamlRuntime::init_persistent()` a noop. It is useful for being able to load code that uses `ocaml-rs` in an utop toplevel (for example, when running `dune utop`). Will be enabled if the environment variable `OCAML_INTEROP_NO_CAML_STARTUP` is set. This is a temporary option that is likely to be removed in the future once a better solution is implemented.
@@ -211,7 +213,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/tezedge/ocaml-interop/compare/v0.8.4...HEAD
+[Unreleased]: https://github.com/tezedge/ocaml-interop/compare/v0.8.5...HEAD
+[0.8.5]: https://github.com/tezedge/ocaml-interop/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/tezedge/ocaml-interop/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/tezedge/ocaml-interop/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/tezedge/ocaml-interop/compare/v0.8.1...v0.8.2
