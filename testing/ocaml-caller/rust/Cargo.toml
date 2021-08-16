@@ -9,5 +9,5 @@ crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
 ocaml-interop = { path = "../../../../.." }
-# Above is for building with dune, bellow is for biulding from this directory
+# Above is for building with dune, bellow is for building from this directory
 # ocaml-interop = { path = "../../.." }

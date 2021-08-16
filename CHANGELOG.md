@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `no-caml-startup` feature flag that disables calls to `caml_startup` when initializing the runtime. This makes `OCamlRuntime::init_persistent()` a noop. It is useful for being able to load code that uses `ocaml-rs` in an utop toplevel (for example, when running `dune utop`). Will be enabled if the environment variable `OCAML_INTEROP_NO_CAML_STARTUP` is set. This is a temporary option that is likely to be removed in the future once a better solution is implemented.
+
 ## [0.8.4] - 2021-05-18
 
 ### Added
