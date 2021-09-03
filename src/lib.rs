@@ -295,7 +295,7 @@ mod value;
 pub use crate::boxroot::BoxRoot;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5};
-pub use crate::conv::{FromOCaml, ToOCaml};
+pub use crate::conv::{FromOCaml, OCamlFromRust, OCamlToRust, ToOCaml};
 pub use crate::error::OCamlException;
 pub use crate::memory::alloc_cons as cons;
 pub use crate::memory::OCamlRef;

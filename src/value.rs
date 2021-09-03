@@ -3,10 +3,11 @@
 
 use crate::{
     boxroot::BoxRoot,
+    conv::OCamlToRust,
     error::OCamlFixnumConversionError,
     memory::{alloc_box, OCamlCell},
     mlvalues::*,
-    FromOCaml, OCamlRef, OCamlRuntime,
+    OCamlRef, OCamlRuntime,
 };
 use core::any::Any;
 use core::borrow::Borrow;
@@ -115,9 +116,9 @@ impl<'a, T> OCaml<'a, T> {
     /// Converts this OCaml value into a Rust value.
     pub fn to_rust<RustT>(&self) -> RustT
     where
-        RustT: FromOCaml<T>,
+        T: OCamlToRust<RustT>,
     {
-        RustT::from_ocaml(*self)
+        T::ocaml_to_rust(*self)
     }
 
     /// Meant to match Data_custom_val from mlvalues.h

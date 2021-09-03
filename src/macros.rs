@@ -367,7 +367,7 @@ macro_rules! ocaml_alloc_tagged_block {
             let field_count = $crate::count_fields!($($field)*);
             let block: $crate::BoxRoot<()> = $crate::BoxRoot::new($crate::OCaml::new($cr, $crate::internal::caml_alloc(field_count, $tag)));
             $(
-                let $field: $crate::OCaml<$ocaml_typ> = $field.to_ocaml($cr);
+                let $field: $crate::OCaml<$ocaml_typ> = $crate::OCamlFromRust::ocaml_from_rust($cr, $field);
                 $crate::internal::store_field(block.get_raw(), current, $field.raw());
                 current += 1;
             )+
@@ -430,7 +430,7 @@ macro_rules! ocaml_alloc_record {
             let record: $crate::BoxRoot<()> = $crate::BoxRoot::new($crate::OCaml::new($cr, $crate::internal::caml_alloc(field_count, 0)));
             $(
                 let $field = &$crate::prepare_field_for_mapping!($self.$field $(=> $conv_expr)?);
-                let $field: $crate::OCaml<$ocaml_typ> = $field.to_ocaml($cr);
+                let $field: $crate::OCaml<$ocaml_typ> = $crate::OCamlFromRust::ocaml_from_rust($cr, $field);
                 $crate::internal::store_field(record.get_raw(), current, $field.raw());
                 current += 1;
             )+
@@ -1212,7 +1212,7 @@ macro_rules! ocaml_alloc_variant_match {
 
         @pending
     ) => {
-        match $self {
+        match &$self {
             $(
                 $($unit_tag)::+ =>
                     unsafe { $crate::OCaml::new($cr, $crate::OCaml::of_i64_unchecked($unit_tag_counter as i64).raw()) },
@@ -1300,7 +1300,7 @@ macro_rules! ocaml_alloc_polymorphic_variant_match {
                 $($unit_block_tag)::+($unit_block_slot_name) => {
                     let polytag = $crate::polymorphic_variant_tag_hash!($($unit_block_tag)::+);
                     let $unit_block_slot_name: $crate::BoxRoot<$unit_block_slot_typ> =
-                        $crate::ToOCaml::to_boxroot($unit_block_slot_name, $cr);
+                        $crate::OCamlFromRust::boxroot_from_rust($cr, $unit_block_slot_name);
                     unsafe {
                         let block = $crate::internal::caml_alloc(2, $crate::internal::tag::TAG_POLYMORPHIC_VARIANT);
                         $crate::internal::store_field(block, 0, polytag);
@@ -1319,7 +1319,7 @@ macro_rules! ocaml_alloc_polymorphic_variant_match {
                     let mut n = 0;
                     $(
                         let $block_slot_name: $crate::OCaml<$block_slot_typ> =
-                            $crate::ToOCaml::to_ocaml($block_slot_name, $cr);
+                            $crate::OCamlFromRust::ocaml_from_rust($cr, $block_slot_name);
                         let raw = unsafe { $block_slot_name.raw() };
                         unsafe { $crate::internal::store_field(tuple.get($cr).raw(), n, raw) };
                         n += 1;
