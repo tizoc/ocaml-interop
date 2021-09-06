@@ -584,6 +584,380 @@ macro_rules! impl_to_ocaml_record {
     };
 }
 
+/// Implements [`OCamlFromRust`] for mapping a Rust record/enum into an OCaml record/variant/polymorphic-variant.
+///
+/// For mapping OCaml records and regular variants (but not for polymorphic variants) it is important
+/// that the order of the fields remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// Mapping a Rust struct into an OCaml record:
+///
+/// ```
+/// # use ocaml_interop::*;
+/// struct MyStruct {
+///     int_field: u8,
+///     string_field: String,
+/// }
+///
+/// // Assuming an OCaml record declaration like:
+/// //
+/// //      type my_struct = {
+/// //          int_field: int;
+/// //          string_field: string;
+/// //      }
+/// //
+/// // NOTE: What is important is the order of the fields, not their names.
+///
+/// impl_ocaml_from_rust! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // RustType => OCamlType { ... }
+///     MyStruct {
+///         // optionally `=> expr` can be used to preprocess the field value
+///         // before the conversion into OCaml takes place.
+///         // Inside the expression, a variable with the same name as the field
+///         // is bound to a reference to the field value.
+///         int_field: OCamlInt => { *int_field as i64 },
+///         string_field: String,
+///     }
+/// }
+/// ```
+///
+/// Mapping a Rust enum into a regular OCaml variant:
+///
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement =
+/// //        | StepLeft
+/// //        | StepRight
+/// //        | Rotate of float
+/// //
+/// // NOTE: What is important is the order of the tags, not their names.
+///
+/// impl_ocaml_from_rust! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // RustType => OCamlType { ... }
+///     Movement {
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: OCamlFloat),
+///     }
+/// }
+/// ```
+///
+/// Mapping a Rust enum into an OCaml polymorphic variant:
+///
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement = [
+/// //        | `StepLeft
+/// //        | `StepRight
+/// //        | `Rotate of float
+/// //      ]
+///
+/// impl_ocaml_from_rust! {
+///     @polymorphic
+///     // Optionally, if Rust and OCaml types don't match:
+///     // RustType => OCamlType { ... }
+///     Movement {
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: OCamlFloat),
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! impl_ocaml_from_rust {
+    // Records with braces
+    ($rust_typ:ty => $ocaml_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
+    }) => {
+        unsafe impl $crate::OCamlFromRust<'_, $rust_typ> for $ocaml_typ {
+            fn ocaml_from_rust<'a>(cr: &'a mut $crate::OCamlRuntime, r: &$rust_typ) -> $crate::OCaml<'a, $ocaml_typ> {
+                $crate::ocaml_alloc_record! {
+                    cr, r {
+                        $($field : $ocaml_field_typ $(=> $conv_expr)?),+
+                    }
+                }
+            }
+        }
+    };
+
+    ($both_typ:ident {
+        $($t:tt)*
+    }) => {
+        $crate::impl_ocaml_from_rust! {
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+
+    // TODO: add support for mapping tuple-records
+
+    // Variants
+    ($rust_typ:ty => $ocaml_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::OCamlFromRust<'_, $rust_typ> for $ocaml_typ {
+            fn ocaml_from_rust<'a>(cr: &'a mut $crate::OCamlRuntime, r: &$rust_typ) -> $crate::OCaml<'a, $ocaml_typ> {
+                $crate::ocaml_alloc_variant! {
+                    cr, r => {
+                        $($t)*
+                    }
+                }
+            }
+        }
+    };
+
+    // Polymorphic variants
+    (@polymorphic $rust_typ:ty => $ocaml_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::OCamlFromRust<'_, $rust_typ> for $ocaml_typ {
+            fn ocaml_from_rust<'a>(cr: &'a mut $crate::OCamlRuntime, r: &$rust_typ) -> $crate::OCaml<'a, $ocaml_typ> {
+                $crate::ocaml_alloc_polymorphic_variant! {
+                    cr, r => {
+                        $($t)*
+                    }
+                }
+            }
+        }
+    };
+
+    (@polymorphic $both_typ:ident {
+        $($t:tt)*
+    }) => {
+        $crate::impl_ocaml_from_rust! {
+            @polymorphic $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+}
+
+/// Implements [`OCamlToRust`] for mapping an OCaml records, variants and polymorphic variants into a Rust structs and enums.
+///
+/// For mapping from OCaml records and regular variants (but not for polymorphic variants) it is important
+/// that the order of the fields remains the same as in the OCaml type declaration.
+///
+/// # Examples
+///
+/// Mapping an OCaml record into a Rust struct:
+///
+/// ```
+/// # use ocaml_interop::*;
+/// # ocaml! { fn make_mystruct(unit: ()) -> MyStruct; }
+/// struct MyStruct {
+///     int_field: i64,
+///     string_field: String,
+/// }
+///
+/// // Assuming an OCaml record declaration like:
+/// //
+/// //      type my_struct = {
+/// //          int_field: int;
+/// //          string_field: string;
+/// //      }
+/// //
+/// // NOTE: What is important is the order of the fields, not their names.
+///
+/// impl_ocaml_to_rust! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // OCamlType => RustType { ... }
+///     MyStruct {
+///         int_field: OCamlInt,
+///         string_field: String,
+///     }
+/// }
+/// ```
+///
+/// Mapping an OCaml variant into a Rust enum:
+///
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement =
+/// //        | StepLeft
+/// //        | StepRight
+/// //        | Rotate of float
+/// //
+/// // NOTE: What is important is the order of the tags, not their names.
+///
+/// impl_ocaml_to_rust! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // OCamlType => RustType { ... }
+///     Movement {
+///         // Alternative: StepLeft  => Movement::StepLeft
+///         //              <anyname> => <build-expr>
+///         Movement::StepLeft,
+///         Movement::StepRight,
+///         // Tag field names are mandatory
+///         Movement::Rotate(rotation: OCamlFloat),
+///     }
+/// }
+/// ```
+///
+/// Mapping an OCaml polymorphic variant into a Rust enum:
+///
+/// ```
+/// # use ocaml_interop::*;
+/// enum Movement {
+///     StepLeft,
+///     StepRight,
+///     Rotate(f64),
+/// }
+///
+/// // Assuming an OCaml type declaration like:
+/// //
+/// //      type movement = [
+/// //        | `StepLeft
+/// //        | `StepRight
+/// //        | `Rotate of float
+/// //      ]
+///
+/// impl_ocaml_to_rust! {
+///     // Optionally, if Rust and OCaml types don't match:
+///     // OCamlType => RustType { ... }
+///     Movement {
+///         StepLeft  => Movement::StepLeft,
+///         StepRight => Movement::StepRight,
+///         // Tag field names are mandatory
+///         Rotate(rotation: OCamlFloat)
+///                   => Movement::Rotate(rotation),
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! impl_ocaml_to_rust {
+    // Record with braces
+    ($ocaml_typ:ident => $rust_typ:ident {
+        $($field:ident : $ocaml_field_typ:ty),+ $(,)?
+    }) => {
+        unsafe impl $crate::OCamlToRust<$ocaml_typ> for $rust_typ {
+            fn ocaml_to_rust(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                $crate::ocaml_unpack_record! { v =>
+                    $rust_typ {
+                        $($field : $ocaml_field_typ),+
+                    }
+                }
+            }
+        }
+    };
+
+    ($both_typ:ident {
+        $($t:tt)*
+    }) => {
+        $crate::impl_ocaml_to_rust! {
+            $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+
+    // Record with parentheses
+    ($ocaml_typ:ident => $rust_typ:ident (
+        $($field:ident : $ocaml_field_typ:ty),+ $(,)?
+    )) => {
+        unsafe impl $crate::OCamlToRust<$ocaml_typ> for $rust_typ {
+            fn ocaml_to_rust(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                $crate::ocaml_unpack_record! { v =>
+                    $rust_typ (
+                        $($field : $ocaml_field_typ),+
+                    )
+                }
+            }
+        }
+    };
+
+    ($both_typ:ident (
+        $($t:tt)*
+    )) => {
+        $crate::impl_ocaml_to_rust! {
+            $both_typ => $both_typ (
+                $($t)*
+            )
+        }
+    };
+
+    // Variant
+    ($ocaml_typ:ty => $rust_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::OCamlToRust<$ocaml_typ> for $rust_typ {
+            fn ocaml_to_rust(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                let result = $crate::ocaml_unpack_variant! {
+                    v => {
+                        $($t)*
+                    }
+                };
+
+                let msg = concat!(
+                    "Failure when unpacking an OCaml<", stringify!($ocaml_typ), "> variant into ",
+                    stringify!($rust_typ), " (unexpected tag value)");
+
+                result.expect(msg)
+            }
+        }
+    };
+
+    // Polymorphic variant
+    (@polymorphic $ocaml_typ:ty => $rust_typ:ty {
+        $($t:tt)*
+    }) => {
+        unsafe impl $crate::OCamlToRust<$ocaml_typ> for $rust_typ {
+            fn ocaml_to_rust(v: $crate::OCaml<$ocaml_typ>) -> Self {
+                let result = $crate::ocaml_unpack_polymorphic_variant! {
+                    v => {
+                        $($t)*
+                    }
+                };
+
+                let msg = concat!(
+                    "Failure when unpacking an OCaml<", stringify!($ocaml_typ), "> variant into ",
+                    stringify!($rust_typ), " (unexpected tag value)");
+
+                result.expect(msg)
+            }
+        }
+    };
+
+    (@polymorphic $both_typ:ident {
+        $($t:tt)*
+    }) => {
+        $crate::impl_ocaml_to_rust! {
+            @polymorphic $both_typ => $both_typ {
+                $($t)*
+            }
+        }
+    };
+}
+
 /// Implements [`FromOCaml`] for mapping an OCaml variant into a Rust enum.
 ///
 /// It is important that the order of the fields remains the same as in the OCaml type declaration.
