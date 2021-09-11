@@ -4,19 +4,13 @@
 use core::str;
 use ocaml_sys::{caml_alloc, store_field};
 
-use crate::{
-    memory::{
+use crate::{BoxRoot, OCamlFromRust, memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
         alloc_tuple, OCamlRef,
-    },
-    mlvalues::{
+    }, mlvalues::{
         tag, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE,
         NONE, TRUE,
-    },
-    runtime::OCamlRuntime,
-    value::OCaml,
-    BoxRoot,
-};
+    }, runtime::OCamlRuntime, value::OCaml};
 
 /// Implements conversion from Rust values into OCaml values.
 pub unsafe trait ToOCaml<T> {
@@ -138,20 +132,20 @@ unsafe impl ToOCaml<OCamlBytes> for Vec<u8> {
 
 unsafe impl<A, OCamlA> ToOCaml<OCamlA> for Box<A>
 where
-    A: ToOCaml<OCamlA>,
+    OCamlA: OCamlFromRust<A>
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlA> {
-        self.as_ref().to_ocaml(cr)
+        OCamlFromRust::ocaml_from_rust(cr, self.as_ref())
     }
 }
 
 unsafe impl<A, OCamlA: 'static> ToOCaml<Option<OCamlA>> for Option<A>
 where
-    A: ToOCaml<OCamlA>,
+    OCamlA: OCamlFromRust<A>
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Option<OCamlA>> {
         if let Some(value) = self {
-            let ocaml_value = value.to_boxroot(cr);
+            let ocaml_value: BoxRoot<OCamlA> = OCamlFromRust::boxroot_from_rust(cr, value);
             alloc_some(cr, &ocaml_value)
         } else {
             unsafe { OCaml::new(cr, NONE) }
@@ -159,22 +153,22 @@ where
     }
 }
 
-unsafe impl<A, OCamlA, Err, OCamlErr> ToOCaml<Result<OCamlA, OCamlErr>> for Result<A, Err>
+unsafe impl<A, OCamlA: 'static, Err, OCamlErr: 'static> ToOCaml<Result<OCamlA, OCamlErr>> for Result<A, Err>
 where
-    A: ToOCaml<OCamlA>,
-    Err: ToOCaml<OCamlErr>,
+    OCamlA: OCamlFromRust<A>,
+    OCamlErr: OCamlFromRust<Err>
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Result<OCamlA, OCamlErr>> {
         match self {
             Ok(value) => {
                 let ocaml_ok = unsafe { caml_alloc(1, tag::TAG_OK) };
-                let ocaml_value = value.to_ocaml(cr);
+                let ocaml_value: BoxRoot<OCamlA> = OCamlFromRust::boxroot_from_rust(cr, value);
                 unsafe { store_field(ocaml_ok, 0, ocaml_value.get_raw()) };
                 unsafe { OCaml::new(cr, ocaml_ok) }
             }
             Err(error) => {
                 let ocaml_err = unsafe { caml_alloc(1, tag::TAG_ERROR) };
-                let ocaml_error = error.to_ocaml(cr);
+                let ocaml_error: BoxRoot<OCamlErr> = OCamlFromRust::boxroot_from_rust(cr, error);
                 unsafe { store_field(ocaml_err, 0, ocaml_error.get_raw()) };
                 unsafe { OCaml::new(cr, ocaml_err) }
             }
@@ -184,12 +178,12 @@ where
 
 unsafe impl<A, OCamlA: 'static> ToOCaml<OCamlList<OCamlA>> for Vec<A>
 where
-    A: ToOCaml<OCamlA>,
+    OCamlA: OCamlFromRust<A>,
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
         let mut result = BoxRoot::new(OCaml::nil());
         for elt in self.iter().rev() {
-            let ov = elt.to_boxroot(cr);
+            let ov = OCamlFromRust::boxroot_from_rust(cr, elt);
             let cons = alloc_cons(cr, &ov, &result);
             result.keep(cons);
         }
