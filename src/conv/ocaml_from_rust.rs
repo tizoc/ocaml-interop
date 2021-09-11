@@ -11,24 +11,24 @@ use super::ToOCaml;
 /// that have been defined in other crates.
 ///
 /// It contains a default implementation for types that implement [`ToOCaml`].
-pub unsafe trait OCamlFromRust<'gc, RustT>
+pub unsafe trait OCamlFromRust<RustT>
 where
     Self: Sized,
 {
     /// Convert from Rust value.
-    fn ocaml_from_rust(cr: &'gc mut OCamlRuntime, v: &RustT) -> OCaml<'gc, Self>;
+    fn ocaml_from_rust<'gc>(cr: &'gc mut OCamlRuntime, v: &RustT) -> OCaml<'gc, Self>;
 
     /// Convert from Rust value. Return an already rooted value as [`BoxRoot`]`<Self>`.
-    fn boxroot_from_rust(cr: &'gc mut OCamlRuntime, v: &RustT) -> BoxRoot<Self> {
+    fn boxroot_from_rust<'gc>(cr: &'gc mut OCamlRuntime, v: &RustT) -> BoxRoot<Self> {
         BoxRoot::new(Self::ocaml_from_rust(cr, v))
     }
 }
 
-unsafe impl<'gc, RustT, OCamlT> OCamlFromRust<'gc, RustT> for OCamlT
+unsafe impl<RustT, OCamlT> OCamlFromRust<RustT> for OCamlT
 where
     RustT: ToOCaml<OCamlT>,
 {
-    fn ocaml_from_rust(cr: &'gc mut OCamlRuntime, v: &RustT) -> OCaml<'gc, OCamlT> {
+    fn ocaml_from_rust<'gc>(cr: &'gc mut OCamlRuntime, v: &RustT) -> OCaml<'gc, OCamlT> {
         v.to_ocaml(cr)
     }
 }
