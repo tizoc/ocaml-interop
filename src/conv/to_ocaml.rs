@@ -197,7 +197,7 @@ macro_rules! tuple_to_ocaml {
     ($($n:tt: $t:ident => $ot:ident),+) => {
         unsafe impl<$($t),+, $($ot: 'static),+> ToOCaml<($($ot),+)> for ($($t),+)
         where
-            $($t: ToOCaml<$ot>),+
+            $($ot: $crate::OCamlFromRust<$t>),+
         {
             fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, ($($ot),+)> {
                 let len = $crate::count_fields!($($t)*);
@@ -205,7 +205,8 @@ macro_rules! tuple_to_ocaml {
                 unsafe {
                     let ocaml_tuple: BoxRoot<($($ot),+)> = BoxRoot::new(alloc_tuple(cr, len));
                     $(
-                        let field_val = self.$n.to_ocaml(cr).get_raw();
+                        let field_val: $crate::OCaml<$ot> = $crate::OCamlFromRust::ocaml_from_rust(cr, &self.$n);
+                        let field_val = field_val.get_raw();
                         store_field(ocaml_tuple.get(cr).raw(), $n, field_val);
                     )+
 
