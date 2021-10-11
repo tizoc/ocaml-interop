@@ -100,6 +100,28 @@ pub fn alloc_some<'a, 'b, A>(
     }
 }
 
+pub fn alloc_ok<'a, 'b, A, Err>(
+    cr: &'a mut OCamlRuntime,
+    value: OCamlRef<'b, A>,
+) -> OCaml<'a, Result<A, Err>> {
+    unsafe {
+        let ocaml_ok = caml_alloc(1, tag::TAG_OK);
+        store_field(ocaml_ok, 0, value.get_raw());
+        OCaml::new(cr, ocaml_ok)
+    }
+}
+
+pub fn alloc_error<'a, 'b, A, Err>(
+    cr: &'a mut OCamlRuntime,
+    err: OCamlRef<'b, Err>,
+) -> OCaml<'a, Result<A, Err>> {
+    unsafe {
+        let ocaml_err = caml_alloc(1, tag::TAG_ERROR);
+        store_field(ocaml_err, 0, err.get_raw());
+        OCaml::new(cr, ocaml_err)
+    }
+}
+
 #[doc(hidden)]
 pub unsafe fn alloc_tuple<T>(cr: &mut OCamlRuntime, size: usize) -> OCaml<T> {
     let ocaml_tuple = caml_alloc_tuple(size);
