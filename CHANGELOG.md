@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.7] - 2021-10-12
+
+### Added
+
+- Conversion for tuples of 10 elements.
+
+### Changed
+
+- Internal changes to tuple conversion handling to use a slightly safer version of `store_field` to construct the tuples.
+
 ## [0.8.6] - 2021-10-12
 
 ### Fixed
@@ -219,7 +229,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/tezedge/ocaml-interop/compare/v0.8.6...HEAD
+[Unreleased]: https://github.com/tezedge/ocaml-interop/compare/v0.8.7...HEAD
+[0.8.7]: https://github.com/tezedge/ocaml-interop/compare/v0.8.6...v0.8.7
 [0.8.6]: https://github.com/tezedge/ocaml-interop/compare/v0.8.5...v0.8.6
 [0.8.5]: https://github.com/tezedge/ocaml-interop/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/tezedge/ocaml-interop/compare/v0.8.3...v0.8.4

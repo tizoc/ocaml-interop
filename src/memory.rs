@@ -14,7 +14,7 @@ pub use ocaml_sys::{
 };
 use ocaml_sys::{
     caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64,
-    custom_operations, string_val,
+    custom_operations, string_val, Size,
 };
 
 pub struct OCamlCell<T> {
@@ -142,6 +142,16 @@ pub fn alloc_cons<'a, 'b, A>(
         store_field(ocaml_cons, 1, tail.get_raw());
         OCaml::new(cr, ocaml_cons)
     }
+}
+
+#[inline]
+pub unsafe fn store_raw_field_at<'a, 'b, A>(
+    cr: &'a mut OCamlRuntime,
+    block: OCamlRef<'b, A>,
+    offset: Size,
+    raw_value: RawOCaml,
+) {
+    store_field(cr.get(block).get_raw(), offset, raw_value);
 }
 
 const BOX_OPS_DYN_DROP: custom_operations = custom_operations {

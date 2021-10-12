@@ -2,16 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 use core::str;
-use ocaml_sys::{caml_alloc, store_field};
 
 use crate::{
     memory::{
         alloc_bytes, alloc_cons, alloc_double, alloc_error, alloc_int32, alloc_int64, alloc_ok,
-        alloc_some, alloc_string, alloc_tuple, OCamlRef,
+        alloc_some, alloc_string, alloc_tuple, store_raw_field_at, OCamlRef,
     },
     mlvalues::{
-        tag, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE,
-        NONE, TRUE,
+        OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE,
+        TRUE,
     },
     runtime::OCamlRuntime,
     value::OCaml,
@@ -205,15 +204,15 @@ macro_rules! tuple_to_ocaml {
             fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, ($($ot),+)> {
                 let len = $crate::count_fields!($($t)*);
 
-                unsafe {
-                    let ocaml_tuple: BoxRoot<($($ot),+)> = BoxRoot::new(alloc_tuple(cr, len));
+                    let ocaml_tuple: BoxRoot<($($ot),+)> = BoxRoot::new(unsafe { alloc_tuple(cr, len) });
                     $(
-                        let field_val = self.$n.to_ocaml(cr).get_raw();
-                        store_field(ocaml_tuple.get(cr).raw(), $n, field_val);
+                        unsafe {
+                            let field_val = self.$n.to_ocaml(cr).get_raw();
+                            store_raw_field_at(cr, &ocaml_tuple, $n, field_val);
+                        }
                     )+
 
                     cr.get(&ocaml_tuple)
-                }
             }
         }
     };
@@ -271,3 +270,14 @@ tuple_to_ocaml!(
     6: G => OCamlG,
     7: H => OCamlH,
     8: I => OCamlI);
+tuple_to_ocaml!(
+    0: A => OCamlA,
+    1: B => OCamlB,
+    2: C => OCamlC,
+    3: D => OCamlD,
+    4: E => OCamlE,
+    5: F => OCamlF,
+    6: G => OCamlG,
+    7: H => OCamlH,
+    8: I => OCamlI,
+    9: J => OCamlJ);
