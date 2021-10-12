@@ -14,7 +14,7 @@ pub unsafe trait FromOCaml<T> {
 
 unsafe impl FromOCaml<()> for () {
     fn from_ocaml(_v: OCaml<()>) -> Self {
-        ()
+        // Nothing, just unit
     }
 }
 

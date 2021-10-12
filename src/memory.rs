@@ -145,9 +145,9 @@ pub fn alloc_cons<'a, 'b, A>(
 }
 
 #[inline]
-pub unsafe fn store_raw_field_at<'a, 'b, A>(
-    cr: &'a mut OCamlRuntime,
-    block: OCamlRef<'b, A>,
+pub unsafe fn store_raw_field_at<A>(
+    cr: &mut OCamlRuntime,
+    block: OCamlRef<A>,
     offset: Size,
     raw_value: RawOCaml,
 ) {
