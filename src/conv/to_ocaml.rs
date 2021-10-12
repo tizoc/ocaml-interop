@@ -6,8 +6,8 @@ use ocaml_sys::{caml_alloc, store_field};
 
 use crate::{
     memory::{
-        alloc_bytes, alloc_cons, alloc_double, alloc_int32, alloc_int64, alloc_some, alloc_string,
-        alloc_tuple, OCamlRef,
+        alloc_bytes, alloc_cons, alloc_double, alloc_error, alloc_int32, alloc_int64, alloc_ok,
+        alloc_some, alloc_string, alloc_tuple, OCamlRef,
     },
     mlvalues::{
         tag, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE,
@@ -159,7 +159,8 @@ where
     }
 }
 
-unsafe impl<A, OCamlA, Err, OCamlErr> ToOCaml<Result<OCamlA, OCamlErr>> for Result<A, Err>
+unsafe impl<A, OCamlA: 'static, Err, OCamlErr: 'static> ToOCaml<Result<OCamlA, OCamlErr>>
+    for Result<A, Err>
 where
     A: ToOCaml<OCamlA>,
     Err: ToOCaml<OCamlErr>,
@@ -167,16 +168,12 @@ where
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Result<OCamlA, OCamlErr>> {
         match self {
             Ok(value) => {
-                let ocaml_ok = unsafe { caml_alloc(1, tag::TAG_OK) };
-                let ocaml_value = value.to_ocaml(cr);
-                unsafe { store_field(ocaml_ok, 0, ocaml_value.get_raw()) };
-                unsafe { OCaml::new(cr, ocaml_ok) }
+                let ocaml_value = value.to_boxroot(cr);
+                alloc_ok(cr, &ocaml_value)
             }
             Err(error) => {
-                let ocaml_err = unsafe { caml_alloc(1, tag::TAG_ERROR) };
-                let ocaml_error = error.to_ocaml(cr);
-                unsafe { store_field(ocaml_err, 0, ocaml_error.get_raw()) };
-                unsafe { OCaml::new(cr, ocaml_err) }
+                let ocaml_error = error.to_boxroot(cr);
+                alloc_error(cr, &ocaml_error)
             }
         }
     }
