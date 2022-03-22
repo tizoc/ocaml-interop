@@ -48,7 +48,7 @@ unsafe impl ToOCaml<()> for () {
 
 unsafe impl ToOCaml<OCamlInt> for i64 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlInt> {
-        unsafe { OCaml::new(cr, ((self << 1) | 1) as RawOCaml) }
+        unsafe { OCaml::new(cr, ((self << 1) | 1i64) as RawOCaml) }
     }
 }
 
