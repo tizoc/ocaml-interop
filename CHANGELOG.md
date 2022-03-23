@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.8] - 2022-03-23
+
+### Fixed
+
+- Fixed compilation issue in some environments (PR #43 by @c-cube)
+
 ## [0.8.7] - 2021-10-12
 
 ### Added
@@ -229,7 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/tezedge/ocaml-interop/compare/v0.8.7...HEAD
+[Unreleased]: https://github.com/tezedge/ocaml-interop/compare/v0.8.8...HEAD
+[0.8.8]: https://github.com/tezedge/ocaml-interop/compare/v0.8.7...v0.8.8
 [0.8.7]: https://github.com/tezedge/ocaml-interop/compare/v0.8.6...v0.8.7
 [0.8.6]: https://github.com/tezedge/ocaml-interop/compare/v0.8.5...v0.8.6
 [0.8.5]: https://github.com/tezedge/ocaml-interop/compare/v0.8.4...v0.8.5
