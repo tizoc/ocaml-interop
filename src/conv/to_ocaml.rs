@@ -1,14 +1,15 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use core::str;
+use core::{str, borrow::Borrow};
 
 use crate::{
     memory::{
-        alloc_bytes, alloc_cons, alloc_double, alloc_error, alloc_int32, alloc_int64, alloc_ok,
-        alloc_some, alloc_string, alloc_tuple, store_raw_field_at, OCamlRef,
+        alloc_bigarray1, alloc_bytes, alloc_cons, alloc_double, alloc_error, alloc_int32,
+        alloc_int64, alloc_ok, alloc_some, alloc_string, alloc_tuple, store_raw_field_at, OCamlRef,
     },
     mlvalues::{
+        bigarray::{Array1, BigarrayElt},
         OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml, FALSE, NONE,
         TRUE,
     },
@@ -281,3 +282,22 @@ tuple_to_ocaml!(
     7: H => OCamlH,
     8: I => OCamlI,
     9: J => OCamlJ);
+
+// This copies
+unsafe impl<A: BigarrayElt> ToOCaml<Array1<A>> for &[A] {
+    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Array1<A>> {
+        alloc_bigarray1(cr, self)
+    }
+}
+
+// Note: we deliberately don't implement FromOCaml<Array1<A>>,
+// because this trait doesn't have a lifetime parameter
+// and implementing would force a copy.
+impl<'a, A: BigarrayElt> Borrow<[A]> for OCaml<'a, Array1<A>> {
+    fn borrow(&self) -> &[A] {
+        unsafe {
+            let ba = self.custom_ptr_val::<ocaml_sys::bigarray::Bigarray>();
+            core::slice::from_raw_parts((*ba).data as *const A, self.len())
+        }
+    }
+}

@@ -30,12 +30,12 @@ let increment_bytes bytes first_n =
   bytes
 
 let decrement_bytes bytes first_n =
-    let limit = (min (Bytes.length bytes) first_n) - 1 in
-    for i = 0 to limit do
-      let value = (Bytes.get_uint8 bytes i) - 1 in
-      Bytes.set_uint8 bytes i value
-    done;
-    bytes
+  let limit = (min (Bytes.length bytes) first_n) - 1 in
+  for i = 0 to limit do
+    let value = (Bytes.get_uint8 bytes i) - 1 in
+    Bytes.set_uint8 bytes i value
+  done;
+  bytes
 
 let increment_ints_list ints =
   List.map ((+) 1) ints
@@ -77,6 +77,14 @@ let reverse_list_and_compact l =
  Gc.compact ();
  r
 
+let double_u16_array arr =
+  let open Bigarray in
+  let n = Array1.dim arr in
+  for i = 0 to pred n do
+    Array1.(set arr i ((get arr i) * 2))
+  done
+
+
 let () =
   Callback.register "increment_bytes" increment_bytes;
   Callback.register "decrement_bytes" decrement_bytes;
@@ -94,3 +102,4 @@ let () =
   Callback.register "raises_nonblock_exception" raises_nonblock_exception;
   Callback.register "gc_compact" Gc.compact;
   Callback.register "reverse_list_and_compact" reverse_list_and_compact;
+  Callback.register "double_u16_array" double_u16_array;

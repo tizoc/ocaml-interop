@@ -480,3 +480,24 @@ impl_tuple!(
     6: tuple_7 -> G,
     7: tuple_8 -> H,
     8: tuple_9 -> I);
+
+impl<'a, A: bigarray::BigarrayElt> OCaml<'a, bigarray::Array1<A>> {
+    /// Returns the number of items in `self`
+    pub fn len(&self) -> usize {
+        let ba = unsafe { self.custom_ptr_val::<ocaml_sys::bigarray::Bigarray>() };
+        unsafe { *((*ba).dim.as_ptr() as *const usize) }
+    }
+
+    /// Returns true when `self.len() == 0`
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Get underlying data as Rust slice
+    pub fn as_slice(&self) -> &[A] {
+        unsafe {
+            let ba = self.custom_ptr_val::<ocaml_sys::bigarray::Bigarray>();
+            slice::from_raw_parts((*ba).data as *const A, self.len())
+        }
+    }
+}
