@@ -11,8 +11,8 @@ pub use ocaml_sys::{
     MAX_FIXNUM, MIN_FIXNUM, NONE, TRUE, UNIT,
 };
 
-pub mod tag;
 pub mod bigarray;
+pub mod tag;
 
 /// [`OCaml`]`<OCamlList<T>>` is a reference to an OCaml `list` containing
 /// values of type `T`.

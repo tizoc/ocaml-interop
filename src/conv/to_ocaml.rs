@@ -1,7 +1,7 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use core::{str, borrow::Borrow};
+use core::{borrow::Borrow, str};
 
 use crate::{
     memory::{
