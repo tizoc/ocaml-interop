@@ -507,103 +507,112 @@ impl<'a, A: bigarray::BigarrayElt> OCaml<'a, bigarray::Array1<A>> {
 
 // Functions
 
-macro_rules! impl_closure_try_call {
-    (($($argname:ident: $rt:ident -> $ot:ident),+) -> $ret:ident) => {
-        /// Calls the OCaml closure with the passed arguments, automatically converting Rust
-        /// values into OCaml values and rooting them as necessary.
-        #[allow(clippy::too_many_arguments)]
-        pub fn try_call<$($rt: crate::ToOCaml<$ot>),+>(
-            &self,
-            cr: &'a mut OCamlRuntime,
-            $(
-                $argname: &$rt
-            ),+
-        ) -> Result<OCaml<'a, $ret>, OCamlException> {
-            $(
-                let $argname = $argname.to_boxroot(cr);
-            )+
-            self.try_call_rooted(cr, $(&$argname),+)
+pub enum RefOrRooted<'a, 'b, T: 'static> {
+    Ref(&'a OCamlRef<'b, T>),
+    Root(BoxRoot<T>),
+}
+
+impl<'a, 'b, T: 'static> RefOrRooted<'a, 'b, T> {
+    unsafe fn get_raw(&self) -> RawOCaml {
+        match self {
+            RefOrRooted::Ref(a) => a.get_raw(),
+            RefOrRooted::Root(a) => a.get_raw(),
         }
     }
 }
 
-macro_rules! impl_closure_try_call_rooted {
-    (caml_callbackN_exn, ($($argname:ident: $ot:ident),+) -> $ret:ident) => {
-        /// Calls the OCaml closure passing the already converted values.
-        #[allow(clippy::too_many_arguments)]
-        pub fn try_call_rooted(
-            &self,
-            cr: &'a mut OCamlRuntime,
-            $(
-                $argname: OCamlRef<$ot>
-            ),+
-        ) -> Result<OCaml<'a, RetT>, OCamlException> {
-            let mut args = unsafe {
-                [$($argname.get_raw()),+]
-            };
-            let result = unsafe { caml_callbackN_exn(self.get_raw(), args.len(), args.as_mut_ptr()) };
-            if is_exception_result(result) {
-                let ex = unsafe { OCamlException::of(extract_exception(result)) };
-                Err(ex)
-            } else {
-                Ok(unsafe { OCaml::new(cr, result) })
+pub trait OCamlParam<'a, 'b, RustValue, OCamlValue> {
+    fn to_rooted(self, cr: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue>;
+}
+
+impl<'a, 'b, OCamlValue> OCamlParam<'a, 'b, (), OCamlValue> for &'a OCamlRef<'b, OCamlValue> {
+    fn to_rooted(self, _: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue> {
+        RefOrRooted::Ref(self)
+    }
+}
+
+impl<'a, 'b, RustValue, OCamlValue> OCamlParam<'a, 'b, RustValue, OCamlValue> for &RustValue
+where
+    RustValue: crate::ToOCaml<OCamlValue>,
+{
+    fn to_rooted(self, cr: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue> {
+        let boxroot = self.to_boxroot(cr);
+        RefOrRooted::Root(boxroot)
+    }
+}
+
+macro_rules! try_call_impl {
+    (
+        $( { $method:ident, ($( ($argname:ident: $ot:ident $rt:ident) ),*) } ),*,
+        NPARAMS:
+        $( { $( ($argname2:ident: $ot2:ident $rt2:ident) ),* } ),*,
+    ) => {
+        $(
+            #[allow(non_camel_case_types)]
+            impl<'c, $($ot),+, RetT> BoxRoot<fn($($ot,)+) -> RetT> {
+                /// Calls the OCaml closure, converting the arguments to OCaml if necessary
+                pub fn try_call<'a, 'b: 'a, $($argname),* $(,$rt)* >(
+                    &self,
+                    cr: &'c mut OCamlRuntime,
+                    $($argname: $argname),+
+                ) -> Result<OCaml<'c, RetT>, OCamlException>
+                where
+                    $($argname: OCamlParam<'a, 'b, $rt, $ot>),+
+                {
+                    $(let $argname = $argname.to_rooted(cr);)*
+
+                    let result = unsafe { $method(self.get_raw(), $($argname.get_raw()),+) };
+                    if is_exception_result(result) {
+                        let ex = unsafe { OCamlException::of(extract_exception(result)) };
+                        Err(ex)
+                    } else {
+                        Ok(unsafe { OCaml::new(cr, result) })
+                    }
+                }
             }
-        }
-    };
+        )*
+        $(
+            #[allow(clippy::too_many_arguments)]
+            #[allow(non_camel_case_types)]
+            impl<'c, $($ot2,)* RetT> BoxRoot<fn($($ot2,)*) -> RetT> {
+                /// Calls the OCaml closure, converting the arguments to OCaml if necessary
+                pub fn try_call<'a, 'b: 'a, $($argname2),* $(,$rt2)* >(
+                    &self,
+                    cr: &'c mut OCamlRuntime,
+                    $($argname2: $argname2),*
+                ) -> Result<OCaml<'c, RetT>, OCamlException>
+                where
+                    $($argname2: OCamlParam<'a, 'b, $rt2, $ot2>),*
+                {
+                    $(let $argname2 = $argname2.to_rooted(cr);)*
 
-    ($caller:ident, ($($argname:ident: $ot:ident),+) -> $ret:ident) => {
-        /// Calls the OCaml closure passing the already converted values.
-        pub fn try_call_rooted(
-            &self,
-            cr: &'a mut OCamlRuntime,
-            $(
-                $argname: OCamlRef<$ot>
-            ),+
-        ) -> Result<OCaml<'a, RetT>, OCamlException> {
-            let result = unsafe { $caller(self.get_raw(), $($argname.get_raw()),+) };
-            if is_exception_result(result) {
-                let ex = unsafe { OCamlException::of(extract_exception(result)) };
-                Err(ex)
-            } else {
-                Ok(unsafe { OCaml::new(cr, result) })
+                    let mut args = unsafe {
+                        [$($argname2.get_raw()),*]
+                    };
+
+                    let result = unsafe { caml_callbackN_exn(self.get_raw(), args.len(), args.as_mut_ptr()) };
+                    if is_exception_result(result) {
+                        let ex = unsafe { OCamlException::of(extract_exception(result)) };
+                        Err(ex)
+                    } else {
+                        Ok(unsafe { OCaml::new(cr, result) })
+                    }
+                }
             }
-        }
+        )*
     }
 }
 
-macro_rules! impl_closure {
-    (caml_callbackN_exn, ($($argname:ident: $rt:ident -> $ot:ident),+) -> $ret:ident) => {
-        impl<'a, $($ot),+, $ret> BoxRoot<fn($($ot,)+) -> $ret> {
-            impl_closure_try_call_rooted!{caml_callbackN_exn, ($($argname: $ot),+) -> $ret}
-
-            impl_closure_try_call!{($($argname: $rt -> $ot),+) -> $ret}
-        }
-    };
-
-    ($caller:ident, ($($argname:ident: $rt:ident -> $ot:ident),+) -> $ret:ident) => {
-        impl<'a, $($ot),+, $ret> BoxRoot<fn($($ot,)+) -> $ret> {
-            impl_closure_try_call_rooted!{$caller, ($($argname: $ot),+) -> $ret}
-
-            impl_closure_try_call!{($($argname: $rt -> $ot),+) -> $ret}
-        }
-    }
+try_call_impl! {
+    { caml_callback_exn, ((arg1: OCaml1 Rust1)) },
+    { caml_callback2_exn, ((arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2)) },
+    { caml_callback3_exn, ((arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3)) },
+    NPARAMS:
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4) },
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4),
+       (arg5: OCaml5 Rust5) },
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4),
+       (arg5: OCaml5 Rust5), (arg6: OCaml6 Rust6) },
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4),
+       (arg5: OCaml5 Rust5), (arg6: OCaml6 Rust6), (arg7: OCaml7 Rust7) },
 }
-
-impl_closure!(
-    caml_callback_exn,
-    (arg1: O1T->R1T) -> RetT);
-impl_closure!(
-    caml_callback2_exn,
-    (arg1: O1T->R1T, arg2: O2T->R2T) -> RetT);
-impl_closure!(
-    caml_callback3_exn,
-    (arg1: O1T->R1T, arg2: O2T->R2T, arg3: O3T->R3T) -> RetT);
-impl_closure!(
-    caml_callbackN_exn,
-    (arg1: O1T->R1T, arg2: O2T->R2T, arg3: O3T->R3T, arg4: O4T->R4T) -> RetT);
-impl_closure!(
-    caml_callbackN_exn,
-    (arg1: O1T->R1T, arg2: O2T->R2T, arg3: O3T->R3T, arg4: O4T->R4T, arg5: O5T->R5T) -> RetT);
-impl_closure!(
-    caml_callbackN_exn,
-    (arg1: O1T->R1T, arg2: O2T->R2T, arg3: O3T->R3T, arg4: O4T->R4T, arg5: O5T->R5T, arg6: O6T->R6T) -> RetT);
