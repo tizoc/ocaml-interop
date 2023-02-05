@@ -1,7 +1,7 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
+use ocaml_boxroot_sys::boxroot_teardown;
 use std::marker::PhantomData;
 
 use crate::{memory::OCamlRef, value::OCaml};
@@ -112,7 +112,6 @@ impl Drop for OCamlBlockingSection {
 
 #[no_mangle]
 extern "C" fn ocaml_interop_setup(_unit: crate::RawOCaml) -> crate::RawOCaml {
-    unsafe { boxroot_setup() };
     ocaml_sys::UNIT
 }
 

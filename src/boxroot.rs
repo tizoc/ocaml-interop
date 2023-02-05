@@ -1,11 +1,11 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use std::{marker::PhantomData, ops::Deref, sync::Once};
+use std::{marker::PhantomData, ops::Deref};
 
 use ocaml_boxroot_sys::{
-    boxroot_create, boxroot_delete, boxroot_get, boxroot_get_ref, boxroot_modify, boxroot_setup,
-    BoxRoot as PrimitiveBoxRoot,
+    boxroot_create, boxroot_delete, boxroot_get, boxroot_get_ref, boxroot_modify, boxroot_status,
+    BoxRoot as PrimitiveBoxRoot, Status,
 };
 
 use crate::{memory::OCamlCell, OCaml, OCamlRef, OCamlRuntime};
@@ -19,15 +19,21 @@ pub struct BoxRoot<T: 'static> {
 impl<T> BoxRoot<T> {
     /// Creates a new root from an [`OCaml`]`<T>` value.
     pub fn new(val: OCaml<T>) -> BoxRoot<T> {
-        static INIT: Once = Once::new();
-
-        INIT.call_once(|| unsafe {
-            boxroot_setup();
-        });
-
-        BoxRoot {
-            boxroot: unsafe { boxroot_create(val.raw) },
-            _marker: PhantomData,
+        if let Some(boxroot) = unsafe { boxroot_create(val.raw) } {
+            BoxRoot {
+                boxroot,
+                _marker: PhantomData,
+            }
+        } else {
+            let status = unsafe { boxroot_status() };
+            let reason = match status {
+                Status::NotSetup => "NotSetup",
+                Status::Running => "Running",
+                Status::ToreDown => "ToreDown",
+                Status::Invalid => "Invalid",
+                _ => "Unknown",
+            };
+            panic!("Failed to allocate boxroot, boxroot_status() -> {}", reason,)
         }
     }
 
@@ -39,7 +45,9 @@ impl<T> BoxRoot<T> {
     /// Roots the OCaml value `val`, returning an [`OCamlRef`]`<T>`.
     pub fn keep<'tmp>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
         unsafe {
-            boxroot_modify(&mut self.boxroot, val.raw);
+            if !boxroot_modify(&mut self.boxroot, val.raw) {
+                panic!("boxrooot_modify failed");
+            }
             &*(boxroot_get_ref(self.boxroot) as *const OCamlCell<T>)
         }
     }

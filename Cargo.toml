@@ -17,10 +17,10 @@ features = [ "without-ocamlopt" ]
 
 [dependencies]
 ocaml-sys = "0.23"
-ocaml-boxroot-sys = "0.2"
+ocaml-boxroot-sys = "0.3.0-rc.1"
 static_assertions = "1.1.0"
 
 [features]
-without-ocamlopt = ["ocaml-sys/without-ocamlopt", "ocaml-boxroot-sys/without-ocamlopt"]
+without-ocamlopt = ["ocaml-sys/without-ocamlopt"]
 caml-state = ["ocaml-sys/caml-state"]
 no-caml-startup = []

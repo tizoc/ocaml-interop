@@ -312,7 +312,7 @@ pub mod internal {
     pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
-    pub use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
+    pub use ocaml_boxroot_sys::boxroot_teardown;
     pub use ocaml_sys::caml_hash_variant;
 
     // To bypass ocaml_sys::int_val unsafe declaration
