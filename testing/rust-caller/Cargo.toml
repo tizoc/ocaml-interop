@@ -4,8 +4,9 @@ version = "0.1.0"
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 edition = "2018"
 
-[dependencies.ocaml-interop]
-path = "../.."
+[dependencies]
+ocaml-interop = { path = "../.." }
+ocaml-sys = "*"
 
 [dev-dependencies]
 serial_test = "*"
