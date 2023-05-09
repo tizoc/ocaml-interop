@@ -80,6 +80,13 @@ unsafe impl FromOCaml<OCamlBytes> for Vec<u8> {
     }
 }
 
+unsafe impl FromOCaml<OCamlBytes> for Box<[u8]> {
+    fn from_ocaml(v: OCaml<OCamlBytes>) -> Self {
+        let raw_bytes = v.as_bytes();
+        Box::from(raw_bytes)
+    }
+}
+
 unsafe impl FromOCaml<OCamlBytes> for String {
     fn from_ocaml(v: OCaml<OCamlBytes>) -> Self {
         unsafe { v.as_str_unchecked() }.to_owned()

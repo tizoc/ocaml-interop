@@ -136,6 +136,13 @@ unsafe impl ToOCaml<OCamlBytes> for Vec<u8> {
     }
 }
 
+unsafe impl ToOCaml<OCamlBytes> for Box<[u8]> {
+    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlBytes> {
+        let slice: &[u8] = self;
+        slice.to_ocaml(cr)
+    }
+}
+
 unsafe impl<A, OCamlA> ToOCaml<OCamlA> for Box<A>
 where
     A: ToOCaml<OCamlA>,
