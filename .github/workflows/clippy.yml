@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ocaml-version: ["4.09.1"]
+        ocaml-version: ["4.14.1"]
     steps:
       - uses: actions/checkout@v2
       - name: OCaml/Opam cache
@@ -22,11 +22,11 @@ jobs:
           path: "~/.opam"
           key: ${{ matrix.os }}-${{ matrix.ocaml-version }}
       - name: Setup OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-version }}
       - name: Set Opam env
-        run: opam env >> $GITHUB_ENV
+        run: opam env | tr '\n' ' ' >> $GITHUB_ENV
       - name: Add Opam switch to PATH
         run: opam var bin >> $GITHUB_PATH
       - name: Setup Rust
