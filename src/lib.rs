@@ -7,7 +7,7 @@
 //!
 //! **API IS CONSIDERED UNSTABLE AT THE MOMENT AND IS LIKELY TO CHANGE IN THE FUTURE**
 //!
-//! [ocaml-interop](https://github.com/tezedge/ocaml-interop) is an OCaml<->Rust FFI with an emphasis
+//! [ocaml-interop](https://github.com/tizoc/ocaml-interop) is an OCaml<->Rust FFI with an emphasis
 //! on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide),
 //! [ocaml-rs](https://github.com/zshipko/ocaml-rs) and [CAMLroot](https://arxiv.org/abs/1812.04905).
 //!

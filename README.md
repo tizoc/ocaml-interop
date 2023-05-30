@@ -1,19 +1,19 @@
 # ocaml-interop
 
-![build](https://github.com/tezedge/ocaml-interop/workflows/build/badge.svg)
+![build](https://github.com/tizoc/ocaml-interop/workflows/build/badge.svg)
 [![crate](https://img.shields.io/crates/v/ocaml-interop.svg)](https://crates.io/crates/ocaml-interop)
 [![documentation](https://docs.rs/ocaml-interop/badge.svg)](https://docs.rs/ocaml-interop)
-[![license](https://img.shields.io/crates/l/ocaml-interop.svg)](https://github.com/tezedge/ocaml-interop/blob/master/LICENSE)
+[![license](https://img.shields.io/crates/l/ocaml-interop.svg)](https://github.com/tizoc/ocaml-interop/blob/master/LICENSE)
 
 _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 
 **API IS CONSIDERED UNSTABLE AT THE MOMENT AND IS LIKELY TO CHANGE IN THE FUTURE**
 
-[ocaml-interop](https://github.com/tezedge/ocaml-interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide), [ocaml-rs](https://github.com/zshipko/ocaml-rs) and [CAMLroot](https://arxiv.org/abs/1812.04905).
+[ocaml-interop](https://github.com/tizoc/ocaml-interop) is an OCaml<->Rust FFI with an emphasis on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide), [ocaml-rs](https://github.com/zshipko/ocaml-rs) and [CAMLroot](https://arxiv.org/abs/1812.04905).
 
 Read the full documentation [here](https://docs.rs/ocaml-interop/).
 
-Report issues on [Github](https://github.com/tezedge/ocaml-interop/issues).
+Report issues on [Github](https://github.com/tizoc/ocaml-interop/issues).
 
 ## A quick taste
 
