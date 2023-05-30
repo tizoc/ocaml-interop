@@ -6,12 +6,15 @@ use crate::{
     error::OCamlFixnumConversionError,
     memory::{alloc_box, OCamlCell},
     mlvalues::*,
-    FromOCaml, OCamlRef, OCamlRuntime,
+    FromOCaml, OCamlException, OCamlRef, OCamlRuntime,
 };
 use core::any::Any;
 use core::borrow::Borrow;
 use core::{marker::PhantomData, ops::Deref, slice, str};
-use ocaml_sys::{caml_string_length, int_val, val_int};
+use ocaml_sys::{
+    caml_callback2_exn, caml_callback3_exn, caml_callbackN_exn, caml_callback_exn,
+    caml_string_length, int_val, val_int,
+};
 use std::pin::Pin;
 
 /// Representation of OCaml values.
@@ -500,4 +503,116 @@ impl<'a, A: bigarray::BigarrayElt> OCaml<'a, bigarray::Array1<A>> {
             slice::from_raw_parts((*ba).data as *const A, self.len())
         }
     }
+}
+
+// Functions
+
+pub enum RefOrRooted<'a, 'b, T: 'static> {
+    Ref(&'a OCamlRef<'b, T>),
+    Root(BoxRoot<T>),
+}
+
+impl<'a, 'b, T: 'static> RefOrRooted<'a, 'b, T> {
+    unsafe fn get_raw(&self) -> RawOCaml {
+        match self {
+            RefOrRooted::Ref(a) => a.get_raw(),
+            RefOrRooted::Root(a) => a.get_raw(),
+        }
+    }
+}
+
+pub trait OCamlParam<'a, 'b, RustValue, OCamlValue> {
+    fn to_rooted(self, cr: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue>;
+}
+
+impl<'a, 'b, OCamlValue> OCamlParam<'a, 'b, (), OCamlValue> for &'a OCamlRef<'b, OCamlValue> {
+    fn to_rooted(self, _: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue> {
+        RefOrRooted::Ref(self)
+    }
+}
+
+impl<'a, 'b, RustValue, OCamlValue> OCamlParam<'a, 'b, RustValue, OCamlValue> for &RustValue
+where
+    RustValue: crate::ToOCaml<OCamlValue>,
+{
+    fn to_rooted(self, cr: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue> {
+        let boxroot = self.to_boxroot(cr);
+        RefOrRooted::Root(boxroot)
+    }
+}
+
+macro_rules! try_call_impl {
+    (
+        $( { $method:ident, ($( ($argname:ident: $ot:ident $rt:ident) ),*) } ),*,
+        NPARAMS:
+        $( { $( ($argname2:ident: $ot2:ident $rt2:ident) ),* } ),*,
+    ) => {
+        $(
+            #[allow(non_camel_case_types)]
+            impl<'c, $($ot),+, RetT> BoxRoot<fn($($ot,)+) -> RetT> {
+                /// Calls the OCaml closure, converting the arguments to OCaml if necessary
+                pub fn try_call<'a, 'b: 'a, $($argname),* $(,$rt)* >(
+                    &self,
+                    cr: &'c mut OCamlRuntime,
+                    $($argname: $argname),+
+                ) -> Result<OCaml<'c, RetT>, OCamlException>
+                where
+                    $($argname: OCamlParam<'a, 'b, $rt, $ot>),+
+                {
+                    $(let $argname = $argname.to_rooted(cr);)*
+
+                    let result = unsafe { $method(self.get_raw(), $($argname.get_raw()),+) };
+                    if is_exception_result(result) {
+                        let ex = unsafe { OCamlException::of(extract_exception(result)) };
+                        Err(ex)
+                    } else {
+                        Ok(unsafe { OCaml::new(cr, result) })
+                    }
+                }
+            }
+        )*
+        $(
+            #[allow(clippy::too_many_arguments)]
+            #[allow(non_camel_case_types)]
+            impl<'c, $($ot2,)* RetT> BoxRoot<fn($($ot2,)*) -> RetT> {
+                /// Calls the OCaml closure, converting the arguments to OCaml if necessary
+                pub fn try_call<'a, 'b: 'a, $($argname2),* $(,$rt2)* >(
+                    &self,
+                    cr: &'c mut OCamlRuntime,
+                    $($argname2: $argname2),*
+                ) -> Result<OCaml<'c, RetT>, OCamlException>
+                where
+                    $($argname2: OCamlParam<'a, 'b, $rt2, $ot2>),*
+                {
+                    $(let $argname2 = $argname2.to_rooted(cr);)*
+
+                    let mut args = unsafe {
+                        [$($argname2.get_raw()),*]
+                    };
+
+                    let result = unsafe { caml_callbackN_exn(self.get_raw(), args.len(), args.as_mut_ptr()) };
+                    if is_exception_result(result) {
+                        let ex = unsafe { OCamlException::of(extract_exception(result)) };
+                        Err(ex)
+                    } else {
+                        Ok(unsafe { OCaml::new(cr, result) })
+                    }
+                }
+            }
+        )*
+    }
+}
+
+try_call_impl! {
+    { caml_callback_exn, ((arg1: OCaml1 Rust1)) },
+    { caml_callback2_exn, ((arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2)) },
+    { caml_callback3_exn, ((arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3)) },
+    NPARAMS:
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4) },
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4),
+       (arg5: OCaml5 Rust5) },
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4),
+       (arg5: OCaml5 Rust5), (arg6: OCaml6 Rust6) },
+    { (arg1: OCaml1 Rust1), (arg2: OCaml2 Rust2), (arg3: OCaml3 Rust3), (arg4: OCaml4 Rust4),
+       (arg5: OCaml5 Rust5), (arg6: OCaml6 Rust6), (arg7: OCaml7 Rust7) },
 }
