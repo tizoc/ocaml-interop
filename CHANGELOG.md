@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support for OCaml `Bigarray.Array1` values (PR #26 by @g2p)
+- Support for callable closure values with more automatic conversion between Rust and OCaml values (PR #44 and PR #45 by @sebastiencs)
+- Conversions for `<Box<[u8]>` (PR #47 by @sebastiencs)
+- Support for defining bytecode-callable wrappers for functions with `ocaml_export!` macro (PR #50)
 
 ## [0.8.8] - 2022-03-23
 
