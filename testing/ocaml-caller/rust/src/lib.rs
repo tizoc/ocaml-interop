@@ -145,4 +145,24 @@ ocaml_export! {
         };
         s.to_ocaml(cr)
     }
+
+    fn rust_rust_add_7ints|rust_rust_add_7ints_byte(
+        cr,
+        int1: OCamlRef<OCamlInt>,
+        int2: OCamlRef<OCamlInt>,
+        int3: OCamlRef<OCamlInt>,
+        int4: OCamlRef<OCamlInt>,
+        int5: OCamlRef<OCamlInt>,
+        int6: OCamlRef<OCamlInt>,
+        int7: OCamlRef<OCamlInt>,
+    ) -> OCaml<OCamlInt> {
+        let int1: i64 = int1.to_rust(cr);
+        let int2: i64 = int2.to_rust(cr);
+        let int3: i64 = int3.to_rust(cr);
+        let int4: i64 = int4.to_rust(cr);
+        let int5: i64 = int5.to_rust(cr);
+        let int6: i64 = int6.to_rust(cr);
+        let int7: i64 = int7.to_rust(cr);
+        unsafe { OCaml::of_i64_unchecked(int1 + int2 + int3 + int4 + int5 + int6 + int7) }
+    }
 }

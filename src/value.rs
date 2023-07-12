@@ -25,10 +25,7 @@ pub struct OCaml<'a, T: 'a> {
 
 impl<'a, T> Clone for OCaml<'a, T> {
     fn clone(&self) -> Self {
-        OCaml {
-            _marker: PhantomData,
-            raw: self.raw,
-        }
+        *self
     }
 }
 
