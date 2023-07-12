@@ -60,7 +60,7 @@ module Rust = struct
     = "rust_string_of_polymorphic_movement"
 
   external rust_rust_add_7ints : int -> int -> int -> int -> int -> int -> int -> int
-    = "rust_rust_add_7ints" "rust_rust_add_7ints_byte"
+    = "rust_rust_add_7ints_byte" "rust_rust_add_7ints"
 end
 
 let test_twice () = Alcotest.(check int) "Multiply by 2" 20 (Rust.twice 10)
