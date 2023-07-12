@@ -58,6 +58,9 @@ module Rust = struct
 
   external string_of_polymorphic_movement : movement_polymorphic -> string
     = "rust_string_of_polymorphic_movement"
+
+  external rust_rust_add_7ints : int -> int -> int -> int -> int -> int -> int -> int
+    = "rust_rust_add_7ints" "rust_rust_add_7ints_byte"
 end
 
 let test_twice () = Alcotest.(check int) "Multiply by 2" 20 (Rust.twice 10)
@@ -144,6 +147,11 @@ let test_interpret_polymorphic_movement () =
   Alcotest.(check (list string))
     "Interpret a polymorphic variant" expected result
 
+let test_byte_function () =
+  let expected = 1 + 2 + 3 + 4 + 5 + 6 + 7 in
+  let result = Rust.rust_rust_add_7ints 1 2 3 4 5 6 7 in
+  Alcotest.(check int) "Call a bytecode function" expected result
+
 (* Sleeps on the Rust thread releasing the OCaml runtime lock *)
 let test_blocking_section () =
   let before = Unix.gettimeofday () in
@@ -193,6 +201,7 @@ let () =
           test_case "Rust.string_of_movement" `Quick test_interpret_movement;
           test_case "Rust.string_of_polymorphic_movement" `Quick
             test_interpret_polymorphic_movement;
+          test_case "Rust.rust_rust_add_7ints" `Quick test_byte_function
         ] );
     ];
   Rust.tests_teardown ()

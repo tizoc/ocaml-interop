@@ -111,6 +111,9 @@ macro_rules! ocaml {
 ///
 /// The return type defaults to [`OCaml`]`<()>` when omitted.
 ///
+/// To generate a bytecode-callable version of the function (needed when the function has 6 or more arguments),
+/// add a second name to the function separated by `|` (see last example).
+///
 /// # Examples
 ///
 /// ```
@@ -153,6 +156,26 @@ macro_rules! ocaml {
 ///         let tuple = (fst, snd);
 ///         tuple.to_ocaml(cr)
 ///     }
+///
+///    fn rust_rust_add_7ints|rust_rust_add_7ints_byte(
+///        cr,
+///        int1: OCamlRef<OCamlInt>,
+///        int2: OCamlRef<OCamlInt>,
+///        int3: OCamlRef<OCamlInt>,
+///        int4: OCamlRef<OCamlInt>,
+///        int5: OCamlRef<OCamlInt>,
+///        int6: OCamlRef<OCamlInt>,
+///        int7: OCamlRef<OCamlInt>,
+///    ) -> OCaml<OCamlInt> {
+///        let int1: i64 = int1.to_rust(cr);
+///        let int2: i64 = int2.to_rust(cr);
+///        let int3: i64 = int3.to_rust(cr);
+///        let int4: i64 = int4.to_rust(cr);
+///        let int5: i64 = int5.to_rust(cr);
+///        let int6: i64 = int6.to_rust(cr);
+///        let int7: i64 = int7.to_rust(cr);
+///        unsafe { OCaml::of_i64_unchecked(int1 + int2 + int3 + int4 + int5 + int6 + int7) }
+///    }
 /// }
 /// ```
 #[macro_export]
@@ -161,13 +184,14 @@ macro_rules! ocaml_export {
 
     // Unboxed float return
     {
-        fn $name:ident( $cr:ident, $($args:tt)*) -> f64
+        fn $name:ident$(|$byte_name:ident)?( $cr:ident, $($args:tt)*) -> f64
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
+            @byte_name $($byte_name)?
             @cr $cr
             @final_args { }
             @proc_args { $($args)*, }
@@ -181,13 +205,14 @@ macro_rules! ocaml_export {
 
     // Other (or empty) return value type
     {
-        fn $name:ident( $cr:ident, $($args:tt)*) $(-> $rtyp:ty)?
+        fn $name:ident$(|$byte_name:ident)?( $cr:ident, $($args:tt)*) $(-> $rtyp:ty)?
            $body:block
 
         $($t:tt)*
     } => {
         $crate::expand_exported_function!(
             @name $name
+            @byte_name $($byte_name)?
             @cr $cr
             @final_args { }
             @proc_args { $($args)*, }
@@ -202,7 +227,7 @@ macro_rules! ocaml_export {
     // Invalid arguments
 
     {
-        fn $name:ident( $($invalid_args:tt)* ) $(-> $rtyp:ty)?
+        fn $name:ident$(|$byte_name:ident)?( $($invalid_args:tt)* ) $(-> $rtyp:ty)?
            $body:block
 
         $($t:tt)*
@@ -1507,11 +1532,35 @@ macro_rules! expand_rooted_args_init {
 
 #[doc(hidden)]
 #[macro_export]
+macro_rules! expand_exported_byte_function {
+    {
+        @name $name:ident
+        @byte_name $byte_name:ident
+        @final_args { $($arg:ident : $typ:ty),+ }
+        @return { $($rtyp:tt)* }
+    } => {
+        #[no_mangle]
+        pub extern "C" fn $byte_name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
+            $name($($arg),*)
+        }
+    };
+
+    {
+        @name $name:ident
+        @byte_name
+        @final_args { $($arg:ident : $typ:ty),+ }
+        @return { $($rtyp:tt)* }
+    } => {};
+}
+
+#[doc(hidden)]
+#[macro_export]
 macro_rules! expand_exported_function {
     // Final expansions, with all argument types converted
 
     {
         @name $name:ident
+        @byte_name $($byte_name:ident)?
         @cr $cr:ident
         @final_args { $($arg:ident : $typ:ty,)+ }
         @proc_args { $(,)? }
@@ -1528,6 +1577,12 @@ macro_rules! expand_exported_function {
                 @return $($rtyp)*
             )
         }
+
+        $crate::expand_exported_byte_function!(
+            @name $name
+            @byte_name $($byte_name)?
+            @final_args { $($arg: $typ),* }
+            @return { $($rtyp)* });
     };
 
     // Args processing
@@ -1536,6 +1591,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
+        @byte_name $($byte_name:ident)?
         @cr $cr:ident
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : f64, $($proc_args:tt)* }
@@ -1545,6 +1601,7 @@ macro_rules! expand_exported_function {
     } => {
         $crate::expand_exported_function!{
             @name $name
+            @byte_name $($byte_name)?
             @cr $cr
             @final_args { $($final_args)* $next_arg : f64, }
             @proc_args { $($proc_args)* }
@@ -1558,6 +1615,7 @@ macro_rules! expand_exported_function {
 
     {
         @name $name:ident
+        @byte_name $($byte_name:ident)?
         @cr $cr:ident
         @final_args { $($final_args:tt)* }
         @proc_args { $next_arg:ident : $typ:ty, $($proc_args:tt)* }
@@ -1567,6 +1625,7 @@ macro_rules! expand_exported_function {
     } => {
         $crate::expand_exported_function!{
             @name $name
+            @byte_name $($byte_name)?
             @cr $cr
             @final_args { $($final_args)* $next_arg : $crate::RawOCaml, }
             @proc_args { $($proc_args)* }
