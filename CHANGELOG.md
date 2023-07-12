@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2023-07-12
+
 ### Added
 
 - Support for OCaml `Bigarray.Array1` values (PR #26 by @g2p)
@@ -242,7 +244,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/tizoc/ocaml-interop/compare/v0.8.8...HEAD
+[Unreleased]: https://github.com/tizoc/ocaml-interop/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/tizoc/ocaml-interop/compare/v0.8.8...v0.9.0
 [0.8.8]: https://github.com/tizoc/ocaml-interop/compare/v0.8.7...v0.8.8
 [0.8.7]: https://github.com/tizoc/ocaml-interop/compare/v0.8.6...v0.8.7
 [0.8.6]: https://github.com/tizoc/ocaml-interop/compare/v0.8.5...v0.8.6
