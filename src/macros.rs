@@ -1536,11 +1536,17 @@ macro_rules! expand_exported_byte_function {
     {
         @name $name:ident
         @byte_name $byte_name:ident
-        @final_args { $($arg:ident : $typ:ty),+ }
+        @final_args { $($arg:ident),+ }
         @return { $($rtyp:tt)* }
     } => {
         #[no_mangle]
-        pub extern "C" fn $byte_name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
+        pub extern "C" fn $byte_name(argv: &[$crate::RawOCaml], argn: isize) -> $crate::expand_exported_function_return!($($rtyp)*) {
+            let mut i = 0usize;
+            $(
+                let $arg = argv[i];
+                i += 1;
+            )+
+            debug_assert!(i == argn as usize);
             $name($($arg),*)
         }
     };
@@ -1548,7 +1554,7 @@ macro_rules! expand_exported_byte_function {
     {
         @name $name:ident
         @byte_name
-        @final_args { $($arg:ident : $typ:ty),+ }
+        @final_args { $($arg:ident),+ }
         @return { $($rtyp:tt)* }
     } => {};
 }
@@ -1581,7 +1587,7 @@ macro_rules! expand_exported_function {
         $crate::expand_exported_byte_function!(
             @name $name
             @byte_name $($byte_name)?
-            @final_args { $($arg: $typ),* }
+            @final_args { $($arg),+ }
             @return { $($rtyp)* });
     };
 
