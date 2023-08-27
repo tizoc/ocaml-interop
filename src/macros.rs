@@ -1543,6 +1543,7 @@ macro_rules! expand_exported_byte_function {
         pub extern "C" fn $byte_name(argv: *mut $crate::RawOCaml, argn: std::os::raw::c_int) -> $crate::expand_exported_function_return!($($rtyp)*) {
             let mut i = 0usize;
             $(
+                #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 let $arg = unsafe { core::ptr::read(argv.add(i)) };
                 i += 1;
             )+
