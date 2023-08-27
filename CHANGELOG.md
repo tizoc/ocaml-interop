@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Expansion of bytecode-callable functions (PR #53, reported and debugged by @mt-caret in #52).
+
 ## [0.9.1] - 2023-07-12
 
 ### Fixed

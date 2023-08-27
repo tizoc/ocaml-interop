@@ -1540,13 +1540,14 @@ macro_rules! expand_exported_byte_function {
         @return { $($rtyp:tt)* }
     } => {
         #[no_mangle]
-        pub extern "C" fn $byte_name(argv: &[$crate::RawOCaml], argn: isize) -> $crate::expand_exported_function_return!($($rtyp)*) {
+        pub extern "C" fn $byte_name(argv: *mut $crate::RawOCaml, argn: std::os::raw::c_int) -> $crate::expand_exported_function_return!($($rtyp)*) {
             let mut i = 0usize;
             $(
-                let $arg = argv[i];
+                #[allow(clippy::not_unsafe_ptr_arg_deref)]
+                let $arg = unsafe { core::ptr::read(argv.add(i)) };
                 i += 1;
             )+
-            debug_assert!(i == argn as usize);
+            debug_assert_eq!(i, argn as usize, "count of arguments read from argv matches argn");
             $name($($arg),*)
         }
     };
