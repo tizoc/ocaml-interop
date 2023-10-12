@@ -307,6 +307,25 @@ macro_rules! tuple_to_ocaml {
                     cr.get(&ocaml_tuple)
             }
         }
+
+        unsafe impl<$($t),+, $($ot: 'static),+> ToOCaml<($($ot),+)> for &($($t),+)
+        where
+            $(for<'a> &'a $t: ToOCaml<$ot>),+
+        {
+            fn to_ocaml<'a>(self, cr: &'a mut OCamlRuntime) -> OCaml<'a, ($($ot),+)> {
+                let len = $crate::count_fields!($($t)*);
+
+                    let ocaml_tuple: BoxRoot<($($ot),+)> = BoxRoot::new(unsafe { alloc_tuple(cr, len) });
+                    $(
+                        unsafe {
+                            let field_val = self.$n.to_ocaml(cr).get_raw();
+                            store_raw_field_at(cr, &ocaml_tuple, $n, field_val);
+                        }
+                    )+
+
+                    cr.get(&ocaml_tuple)
+            }
+        }
     };
 }
 
