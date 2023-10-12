@@ -276,6 +276,15 @@ where
     }
 }
 
+unsafe impl<T, OCamlT: 'static> ToOCaml<OCamlT> for &&T
+where
+    for<'a> &'a T: ToOCaml<OCamlT>,
+{
+    fn to_ocaml<'a>(self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlT> {
+        (*self).to_ocaml(cr)
+    }
+}
+
 // Tuples
 
 macro_rules! tuple_to_ocaml {
