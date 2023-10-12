@@ -207,11 +207,45 @@ where
     }
 }
 
+unsafe impl<A, OCamlA: 'static> ToOCaml<Option<OCamlA>> for &Option<A>
+where
+    for<'a> &'a A: ToOCaml<OCamlA>,
+{
+    fn to_ocaml<'a>(self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Option<OCamlA>> {
+        if let Some(value) = self {
+            let ocaml_value = value.to_boxroot(cr);
+            alloc_some(cr, &ocaml_value)
+        } else {
+            unsafe { OCaml::new(cr, NONE) }
+        }
+    }
+}
+
 unsafe impl<A, OCamlA: 'static, Err, OCamlErr: 'static> ToOCaml<Result<OCamlA, OCamlErr>>
     for Result<A, Err>
 where
     A: ToOCaml<OCamlA>,
     Err: ToOCaml<OCamlErr>,
+{
+    fn to_ocaml<'a>(self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Result<OCamlA, OCamlErr>> {
+        match self {
+            Ok(value) => {
+                let ocaml_value = value.to_boxroot(cr);
+                alloc_ok(cr, &ocaml_value)
+            }
+            Err(error) => {
+                let ocaml_error = error.to_boxroot(cr);
+                alloc_error(cr, &ocaml_error)
+            }
+        }
+    }
+}
+
+unsafe impl<A, OCamlA: 'static, Err, OCamlErr: 'static> ToOCaml<Result<OCamlA, OCamlErr>>
+    for &Result<A, Err>
+where
+    for<'a> &'a A: ToOCaml<OCamlA>,
+    for<'a> &'a Err: ToOCaml<OCamlErr>,
 {
     fn to_ocaml<'a>(self, cr: &'a mut OCamlRuntime) -> OCaml<'a, Result<OCamlA, OCamlErr>> {
         match self {
