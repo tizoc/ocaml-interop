@@ -276,6 +276,21 @@ where
     }
 }
 
+unsafe impl<A, OCamlA: 'static> ToOCaml<OCamlList<OCamlA>> for &Vec<A>
+where
+    for<'a> &'a A: ToOCaml<OCamlA>,
+{
+    fn to_ocaml<'a>(self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
+        let mut result = BoxRoot::new(OCaml::nil());
+        for elt in self.iter().rev() {
+            let ov = elt.to_boxroot(cr);
+            let cons = alloc_cons(cr, &ov, &result);
+            result.keep(cons);
+        }
+        cr.get(&result)
+    }
+}
+
 unsafe impl<A, OCamlA: 'static> ToOCaml<OCamlList<OCamlA>> for Vec<A>
 where
     A: ToOCaml<OCamlA>,
