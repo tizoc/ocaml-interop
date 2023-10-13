@@ -587,8 +587,8 @@ macro_rules! impl_to_ocaml_record {
     ($rust_typ:ty => $ocaml_typ:ident {
         $($field:ident : $ocaml_field_typ:ty $(=> $conv_expr:expr)?),+ $(,)?
     }) => {
-        unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
-            fn to_ocaml<'a>(&self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
+        unsafe impl $crate::ToOCaml<$ocaml_typ> for &$rust_typ {
+            fn to_ocaml<'a>(self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
                 $crate::ocaml_alloc_record! {
                     cr, self {
                         $($field : $ocaml_field_typ $(=> $conv_expr)?),+
@@ -858,7 +858,7 @@ macro_rules! impl_to_ocaml_variant {
         $($t:tt)*
     }) => {
         unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
-            fn to_ocaml<'a>(&self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
+            fn to_ocaml<'a>(self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
                 $crate::ocaml_alloc_variant! {
                     cr, self => {
                         $($t)*
@@ -923,8 +923,8 @@ macro_rules! impl_to_ocaml_polymorphic_variant {
     ($rust_typ:ty => $ocaml_typ:ty {
         $($t:tt)*
     }) => {
-        unsafe impl $crate::ToOCaml<$ocaml_typ> for $rust_typ {
-            fn to_ocaml<'a>(&self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
+        unsafe impl $crate::ToOCaml<$ocaml_typ> for &$rust_typ {
+            fn to_ocaml<'a>(self, cr: &'a mut $crate::OCamlRuntime) -> $crate::OCaml<'a, $ocaml_typ> {
                 $crate::ocaml_alloc_polymorphic_variant! {
                     cr, self => {
                         $($t)*

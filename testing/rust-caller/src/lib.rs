@@ -149,9 +149,9 @@ pub fn verify_polymorphic_variant_test(cr: &mut OCamlRuntime, variant: ocaml::Po
 pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
     let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     for _n in 1..50000 {
-        let _x: OCaml<OCamlBytes> = vec.to_ocaml(cr);
-        let _y: OCaml<OCamlBytes> = vec.to_ocaml(cr);
-        let _z: OCaml<OCamlBytes> = vec.to_ocaml(cr);
+        let _x: OCaml<OCamlBytes> = vec.as_slice().to_ocaml(cr);
+        let _y: OCaml<OCamlBytes> = vec.as_slice().to_ocaml(cr);
+        let _z: OCaml<OCamlBytes> = vec.as_slice().to_ocaml(cr);
     }
     true
 }

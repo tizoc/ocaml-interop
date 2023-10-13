@@ -530,10 +530,10 @@ impl<'a, 'b, OCamlValue> OCamlParam<'a, 'b, (), OCamlValue> for &'a OCamlRef<'b,
 
 impl<'a, 'b, RustValue, OCamlValue> OCamlParam<'a, 'b, RustValue, OCamlValue> for &RustValue
 where
-    RustValue: crate::ToOCaml<OCamlValue>,
+    for<'c> &'c RustValue: crate::ToOCaml<OCamlValue>,
 {
     fn to_rooted(self, cr: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue> {
-        let boxroot = self.to_boxroot(cr);
+        let boxroot = crate::ToOCaml::to_boxroot(self, cr);
         RefOrRooted::Root(boxroot)
     }
 }
