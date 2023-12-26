@@ -9,4 +9,4 @@ ocaml-interop = { path = "../.." }
 ocaml-sys = "*"
 
 [dev-dependencies]
-serial_test = "*"
+once_cell = "*"

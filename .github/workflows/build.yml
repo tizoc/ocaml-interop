@@ -30,7 +30,7 @@ jobs:
       - name: Add Opam switch to PATH
         run: opam var bin >> $GITHUB_PATH
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
       - name: Setttings for cargo in OSX

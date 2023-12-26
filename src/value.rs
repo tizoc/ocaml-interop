@@ -374,7 +374,7 @@ impl<'a, A, Err> OCaml<'a, Result<A, Err>> {
 
 impl<'a, A> OCaml<'a, OCamlList<A>> {
     /// Returns an OCaml nil (empty list) value.
-    pub fn nil() -> Self {
+    pub fn nil(_: &'a mut OCamlRuntime) -> Self {
         OCaml {
             _marker: PhantomData,
             raw: EMPTY_LIST,

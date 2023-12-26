@@ -217,7 +217,7 @@ where
     A: ToOCaml<OCamlA>,
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
-        let mut result = BoxRoot::new(OCaml::nil());
+        let mut result = BoxRoot::new(OCaml::nil(cr));
         for elt in self.iter().rev() {
             let ov = elt.to_boxroot(cr);
             let cons = alloc_cons(cr, &ov, &result);

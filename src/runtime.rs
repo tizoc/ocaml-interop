@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_boxroot_sys::boxroot_teardown;
-use std::marker::PhantomData;
+use std::{
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{memory::OCamlRef, value::OCaml};
 
@@ -38,6 +41,7 @@ impl OCamlRuntime {
                 let c_args = [arg0, core::ptr::null()];
                 unsafe {
                     ocaml_sys::caml_startup(c_args.as_ptr());
+                    ocaml_boxroot_sys::boxroot_setup_systhreads();
                 }
             })
         }
@@ -75,6 +79,10 @@ impl OCamlRuntime {
             raw: unsafe { reference.get_raw() },
         }
     }
+
+    pub fn acquire_lock() -> OCamlDomainLock {
+        OCamlDomainLock::new()
+    }
 }
 
 impl Drop for OCamlRuntime {
@@ -105,6 +113,64 @@ impl OCamlBlockingSection {
 impl Drop for OCamlBlockingSection {
     fn drop(&mut self) {
         unsafe { ocaml_sys::caml_leave_blocking_section() };
+    }
+}
+
+pub struct OCamlDomainLock {
+    _private: (),
+}
+
+extern "C" {
+    pub fn caml_c_thread_register() -> isize;
+    pub fn caml_c_thread_unregister() -> isize;
+}
+
+impl OCamlDomainLock {
+    #[inline(always)]
+    fn new() -> Self {
+        unsafe {
+            caml_c_thread_register();
+            ocaml_sys::caml_leave_blocking_section();
+        };
+        Self { _private: () }
+    }
+
+    #[inline(always)]
+    pub fn perform<T, F>(self, f: F) -> T
+    where
+        F: FnOnce(&mut OCamlRuntime) -> T,
+    {
+        let cr = unsafe { OCamlRuntime::recover_handle() };
+        f(cr)
+    }
+
+    // FIXME: immutable reference but gets mut runtime
+    #[inline(always)]
+    pub fn recover_handle<'a>(&self) -> &'a mut OCamlRuntime {
+        unsafe { OCamlRuntime::recover_handle() }
+    }
+}
+
+impl Drop for OCamlDomainLock {
+    fn drop(&mut self) {
+        unsafe {
+            ocaml_sys::caml_enter_blocking_section();
+            caml_c_thread_unregister();
+        };
+    }
+}
+
+impl Deref for OCamlDomainLock {
+    type Target = OCamlRuntime;
+
+    fn deref(&self) -> &OCamlRuntime {
+        self.recover_handle()
+    }
+}
+
+impl DerefMut for OCamlDomainLock {
+    fn deref_mut(&mut self) -> &mut OCamlRuntime {
+        self.recover_handle()
     }
 }
 

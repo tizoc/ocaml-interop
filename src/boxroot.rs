@@ -46,7 +46,15 @@ impl<T> BoxRoot<T> {
     pub fn keep<'tmp>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
         unsafe {
             if !boxroot_modify(&mut self.boxroot, val.raw) {
-                panic!("boxrooot_modify failed");
+                let status = boxroot_status();
+                let reason = match status {
+                    Status::NotSetup => "NotSetup",
+                    Status::Running => "Running",
+                    Status::ToreDown => "ToreDown",
+                    Status::Invalid => "Invalid",
+                    _ => "Unknown",
+                };
+                panic!("Failed to modify boxroot, boxroot_status() -> {}", reason,)
             }
             &*(boxroot_get_ref(self.boxroot) as *const OCamlCell<T>)
         }

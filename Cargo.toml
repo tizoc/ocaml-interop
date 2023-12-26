@@ -13,11 +13,11 @@ exclude = [
 ]
 
 [package.metadata.docs.rs]
-features = [ "without-ocamlopt" ]
+features = [ "without-ocamlopt", "caml-state" ]
 
 [dependencies]
 ocaml-sys = "0.23"
-ocaml-boxroot-sys = "0.3.0"
+ocaml-boxroot-sys = { git = "https://gitlab.com/ocaml-rust/ocaml-boxroot.git", rev="652d92b1" }
 static_assertions = "1.1.0"
 
 [features]
