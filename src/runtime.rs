@@ -49,14 +49,15 @@ impl OCamlRuntime {
         panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
     }
 
+    #[doc(hidden)]
     #[inline(always)]
-    pub(crate) unsafe fn recover_handle_mut() -> &'static mut Self {
+    pub unsafe fn recover_handle_mut() -> &'static mut Self {
         static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
         &mut RUNTIME
     }
 
     #[inline(always)]
-    pub(crate) unsafe fn recover_handle() -> &'static Self {
+    unsafe fn recover_handle() -> &'static Self {
         Self::recover_handle_mut()
     }
 
@@ -132,12 +133,12 @@ impl OCamlDomainLock {
     }
 
     #[inline(always)]
-    pub(crate) fn recover_handle<'a>(&self) -> &'a OCamlRuntime {
+    fn recover_handle<'a>(&self) -> &'a OCamlRuntime {
         unsafe { OCamlRuntime::recover_handle() }
     }
 
     #[inline(always)]
-    pub(crate) fn recover_handle_mut<'a>(&self) -> &'a mut OCamlRuntime {
+    fn recover_handle_mut<'a>(&self) -> &'a mut OCamlRuntime {
         unsafe { OCamlRuntime::recover_handle_mut() }
     }
 }
