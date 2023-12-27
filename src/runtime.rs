@@ -49,19 +49,15 @@ impl OCamlRuntime {
         panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
     }
 
-    /// Recover the runtime handle.
-    ///
-    /// This method is used internally, do not use directly in code, only when writing tests.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because the OCaml runtime handle should be obtained once
-    /// upon initialization of the OCaml runtime and then passed around. This method exists
-    /// only to ease the authoring of tests.
     #[inline(always)]
-    pub unsafe fn recover_handle() -> &'static mut Self {
+    pub(crate) unsafe fn recover_handle_mut() -> &'static mut Self {
         static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
         &mut RUNTIME
+    }
+
+    #[inline(always)]
+    pub(crate) unsafe fn recover_handle() -> &'static Self {
+        Self::recover_handle_mut()
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
@@ -136,18 +132,13 @@ impl OCamlDomainLock {
     }
 
     #[inline(always)]
-    pub fn perform<T, F>(self, f: F) -> T
-    where
-        F: FnOnce(&mut OCamlRuntime) -> T,
-    {
-        let cr = unsafe { OCamlRuntime::recover_handle() };
-        f(cr)
+    pub(crate) fn recover_handle<'a>(&self) -> &'a OCamlRuntime {
+        unsafe { OCamlRuntime::recover_handle() }
     }
 
-    // FIXME: immutable reference but gets mut runtime
     #[inline(always)]
-    pub fn recover_handle<'a>(&self) -> &'a mut OCamlRuntime {
-        unsafe { OCamlRuntime::recover_handle() }
+    pub(crate) fn recover_handle_mut<'a>(&self) -> &'a mut OCamlRuntime {
+        unsafe { OCamlRuntime::recover_handle_mut() }
     }
 }
 
@@ -170,7 +161,7 @@ impl Deref for OCamlDomainLock {
 
 impl DerefMut for OCamlDomainLock {
     fn deref_mut(&mut self) -> &mut OCamlRuntime {
-        self.recover_handle()
+        self.recover_handle_mut()
     }
 }
 
