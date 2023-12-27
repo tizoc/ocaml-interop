@@ -147,7 +147,8 @@ impl Drop for OCamlDomainLock {
     fn drop(&mut self) {
         unsafe {
             ocaml_sys::caml_enter_blocking_section();
-            caml_c_thread_unregister();
+            // FIXME: breaks with OCaml 5
+            // caml_c_thread_unregister();
         };
     }
 }
