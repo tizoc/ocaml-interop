@@ -22,6 +22,22 @@ use crate::{
 };
 
 /// Implements conversion from Rust values into OCaml values.
+///
+/// # Safety
+///
+/// Implementing this trait involves unsafe code that interacts with the OCaml runtime.
+/// Implementors must ensure the following to uphold Rust's safety guarantees:
+///
+/// - **Memory Safety**: Returned OCaml values must be valid and correctly represent
+///   the memory layout expected by the OCaml runtime. Any misrepresentation can lead
+///   to undefined behavior, potentially causing segmentation faults or data corruption.
+///
+/// - **Handling of OCaml Exceptions**: If the OCaml code can raise exceptions, the implementor
+///   must ensure these are appropriately handled. Uncaught OCaml exceptions should not be allowed
+///   to propagate into the Rust code, as they are not compatible with Rust's error handling mechanisms.
+///
+/// Implementors of this trait must have a deep understanding of both Rust's and OCaml's
+/// memory models, garbage collection, and runtime behaviors to ensure safe interoperability.
 pub unsafe trait ToOCaml<T> {
     /// Convert to OCaml value. Return an already rooted value as [`BoxRoot`]`<T>`.
     fn to_boxroot(&self, cr: &mut OCamlRuntime) -> BoxRoot<T> {
