@@ -2,9 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    mlvalues::{field_val, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList},
+    mlvalues::{
+        field_val, tag, OCamlBytes, OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32, OCamlInt64,
+        OCamlList, OCamlUniformArray,
+    },
     value::OCaml,
 };
+use ocaml_sys::{caml_alloc, caml_sys_double_field};
 
 /// Implements conversion from OCaml values into Rust values.
 pub unsafe trait FromOCaml<T> {
@@ -132,6 +136,43 @@ where
         while let Some((hd, tl)) = current.uncons() {
             current = tl;
             vec.push(A::from_ocaml(hd));
+        }
+        vec
+    }
+}
+
+unsafe impl<A, OCamlA> FromOCaml<OCamlUniformArray<OCamlA>> for Vec<A>
+where
+    A: FromOCaml<OCamlA>,
+{
+    fn from_ocaml(v: OCaml<OCamlUniformArray<OCamlA>>) -> Self {
+        assert!(
+            v.tag_value() != tag::DOUBLE_ARRAY,
+            "unboxed float arrays are not supported"
+        );
+
+        let size = unsafe { v.size() };
+        let mut vec = Vec::with_capacity(size);
+        for i in 0..size {
+            vec.push(A::from_ocaml(unsafe { v.field(i) }));
+        }
+        vec
+    }
+}
+
+unsafe impl FromOCaml<OCamlFloatArray> for Vec<f64> {
+    fn from_ocaml(v: OCaml<OCamlFloatArray>) -> Self {
+        let size = unsafe { v.size() };
+
+        // an empty floatarray doesn't have the double array tag, but otherwise
+        // we always expect an unboxed float array.
+        if size > 0 {
+            assert_eq!(v.tag_value(), tag::DOUBLE_ARRAY)
+        };
+
+        let mut vec = Vec::with_capacity(size);
+        for i in 0..size {
+            vec.push(unsafe { caml_sys_double_field(v.raw(), i) });
         }
         vec
     }

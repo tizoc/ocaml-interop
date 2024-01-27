@@ -49,13 +49,18 @@ impl<'a, T> OCaml<'a, T> {
     }
 
     #[doc(hidden)]
+    pub unsafe fn size(&self) -> UIntnat {
+        wosize_val(self.raw)
+    }
+
+    #[doc(hidden)]
     pub unsafe fn field<F>(&self, i: UIntnat) -> OCaml<'a, F> {
         assert!(
             tag_val(self.raw) < tag::NO_SCAN,
             "unexpected OCaml value tag >= NO_SCAN"
         );
         assert!(
-            i < wosize_val(self.raw),
+            i < self.size(),
             "trying to access a field bigger than the OCaml block value"
         );
         OCaml {
@@ -71,7 +76,7 @@ impl<'a, T> OCaml<'a, T> {
 
     #[doc(hidden)]
     pub fn is_block_sized(&self, size: usize) -> bool {
-        self.is_block() && unsafe { wosize_val(self.raw) == size }
+        self.is_block() && unsafe { self.size() == size }
     }
 
     #[doc(hidden)]
