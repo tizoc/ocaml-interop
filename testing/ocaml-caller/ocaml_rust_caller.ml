@@ -63,6 +63,9 @@ module Rust = struct
   external call_ocaml_closure : (int -> int) -> (int, string) result
     = "rust_call_ocaml_closure"
 
+  external call_ocaml_closure_and_return_exn : (int -> int) -> (int, exn) result
+    = "rust_call_ocaml_closure_and_return_exn"
+
   external rust_rust_add_7ints :
     int -> int -> int -> int -> int -> int -> int -> int
     = "rust_rust_add_7ints_byte" "rust_rust_add_7ints"
@@ -192,6 +195,22 @@ let test_call_ocaml_closure () =
   in
   Alcotest.(check (list (result int string))) "Call a closure" expected result
 
+let test_call_ocaml_closure_and_return_exn () =
+  let expected =
+    [ Ok 1; Error (Failure "some error message"); Error Not_found ]
+  in
+  let result =
+    [
+      Rust.call_ocaml_closure_and_return_exn (fun x -> x + 1);
+      Rust.call_ocaml_closure_and_return_exn (fun _ ->
+          failwith "some error message");
+      Rust.call_ocaml_closure_and_return_exn (fun _ -> raise Not_found);
+    ]
+  in
+  let exn = Alcotest.of_pp Base.Exn.pp in
+  Alcotest.(check (list (result int exn)))
+    "Call a closure and return exn" expected result
+
 let test_byte_function () =
   let expected = 1 + 2 + 3 + 4 + 5 + 6 + 7 in
   let result = Rust.rust_rust_add_7ints 1 2 3 4 5 6 7 in
@@ -253,6 +272,8 @@ let () =
           test_case "Rust.string_of_polymorphic_movement" `Quick
             test_interpret_polymorphic_movement;
           test_case "Rust.call_ocaml_closure" `Quick test_call_ocaml_closure;
+          test_case "Rust.call_ocaml_closure_and_return_exn" `Quick
+            test_call_ocaml_closure_and_return_exn;
           test_case "Rust.rust_rust_add_7ints" `Quick test_byte_function;
         ] );
     ];

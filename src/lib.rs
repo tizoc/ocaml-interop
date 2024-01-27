@@ -296,12 +296,12 @@ pub use crate::boxroot::BoxRoot;
 
 pub use crate::closure::{OCamlFn1, OCamlFn2, OCamlFn3, OCamlFn4, OCamlFn5};
 pub use crate::conv::{FromOCaml, ToOCaml};
-pub use crate::error::OCamlException;
 pub use crate::memory::alloc_cons as cons;
 pub use crate::memory::OCamlRef;
+pub use crate::memory::{alloc_error, alloc_ok};
 pub use crate::mlvalues::{
-    bigarray, DynBox, OCamlBytes, OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32, OCamlInt64,
-    OCamlList, OCamlUniformArray, RawOCaml,
+    bigarray, DynBox, OCamlBytes, OCamlException, OCamlFloat, OCamlFloatArray, OCamlInt,
+    OCamlInt32, OCamlInt64, OCamlList, OCamlUniformArray, RawOCaml,
 };
 pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;

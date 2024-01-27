@@ -6,7 +6,7 @@ use crate::{
     error::OCamlFixnumConversionError,
     memory::{alloc_box, OCamlCell},
     mlvalues::*,
-    FromOCaml, OCamlException, OCamlRef, OCamlRuntime,
+    FromOCaml, OCamlRef, OCamlRuntime,
 };
 use core::any::Any;
 use core::borrow::Borrow;
@@ -507,6 +507,37 @@ impl<'a, A: bigarray::BigarrayElt> OCaml<'a, bigarray::Array1<A>> {
     }
 }
 
+impl<'a> OCaml<'a, OCamlException> {
+    #[doc(hidden)]
+    pub unsafe fn of_exception_result(
+        cr: &'a OCamlRuntime,
+        exception_result: RawOCaml,
+    ) -> Option<OCaml<'a, OCamlException>> {
+        if is_exception_result(exception_result) {
+            Some(OCaml::new(cr, extract_exception(exception_result)))
+        } else {
+            None
+        }
+    }
+
+    /// If the exception has a single argument of type string, extracts and
+    /// returns it. Examples of such exceptions are `Failure of string`
+    /// (raised via the `failwith` OCaml function, or the
+    /// `caml_raise_with_string` C function) or `Invalid_argument of string`.
+    pub fn message(&self) -> Option<String> {
+        if self.is_block_sized(2) && self.tag_value() == tag::TAG_EXCEPTION {
+            let exn_argument: OCaml<String> = unsafe { self.field(1) };
+            if exn_argument.is_block() && exn_argument.tag_value() == tag::STRING {
+                Some(exn_argument.to_rust())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
 // Functions
 
 pub enum RefOrRooted<'a, 'b, T: 'static> {
@@ -557,18 +588,16 @@ macro_rules! try_call_impl {
                     &self,
                     cr: &'c mut OCamlRuntime,
                     $($argname: $argname),+
-                ) -> Result<OCaml<'c, RetT>, OCamlException>
+                ) -> Result<OCaml<'c, RetT>, OCaml<'c, OCamlException>>
                 where
                     $($argname: OCamlParam<'a, 'b, $rt, $ot>),+
                 {
                     $(let $argname = $argname.to_rooted(cr);)*
 
                     let result = unsafe { $method(self.get_raw(), $($argname.get_raw()),+) };
-                    if is_exception_result(result) {
-                        let ex = unsafe { OCamlException::of(extract_exception(result)) };
-                        Err(ex)
-                    } else {
-                        Ok(unsafe { OCaml::new(cr, result) })
+                    match unsafe { OCaml::of_exception_result(cr, result) } {
+                        Some(ex) => Err(ex),
+                        None => Ok(unsafe { OCaml::new(cr, result) })
                     }
                 }
             }
@@ -582,7 +611,7 @@ macro_rules! try_call_impl {
                     &self,
                     cr: &'c mut OCamlRuntime,
                     $($argname2: $argname2),*
-                ) -> Result<OCaml<'c, RetT>, OCamlException>
+                ) -> Result<OCaml<'c, RetT>, OCaml<'c, OCamlException>>
                 where
                     $($argname2: OCamlParam<'a, 'b, $rt2, $ot2>),*
                 {
@@ -593,11 +622,9 @@ macro_rules! try_call_impl {
                     };
 
                     let result = unsafe { caml_callbackN_exn(self.get_raw(), args.len(), args.as_mut_ptr()) };
-                    if is_exception_result(result) {
-                        let ex = unsafe { OCamlException::of(extract_exception(result)) };
-                        Err(ex)
-                    } else {
-                        Ok(unsafe { OCaml::new(cr, result) })
+                    match unsafe { OCaml::of_exception_result(cr, result) } {
+                        Some(ex) => Err(ex),
+                        None => Ok(unsafe { OCaml::new(cr, result) })
                     }
                 }
             }

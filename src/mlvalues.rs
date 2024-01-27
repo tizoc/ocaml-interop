@@ -63,5 +63,5 @@ pub struct OCamlInt64 {}
 /// [`OCaml`]`<OCamlFloat>` is a reference to an OCaml `float` (boxed `float`) value.
 pub struct OCamlFloat {}
 
-/// [`OCaml`]`<OCamlException2>` is a reference to an OCaml `exn` value.
-pub struct OCamlException2 {}
+/// [`OCaml`]`<OCamlException>` is a reference to an OCaml `exn` value.
+pub struct OCamlException {}
