@@ -177,6 +177,17 @@ ocaml_export! {
         s.to_ocaml(cr)
     }
 
+    fn rust_call_ocaml_closure(cr, ocaml_function: OCamlRef<fn(OCamlInt) -> OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
+        let ocaml_function = ocaml_function.to_boxroot(cr);
+
+        let call_result: Result<i64, String> =
+            ocaml_function
+            .try_call(cr, &0i64)
+            .map(|call_result| call_result.to_rust())
+            .map_err(|exception| exception.message().unwrap_or("no message".to_string()));
+        call_result.to_ocaml(cr)
+    }
+
     fn rust_rust_add_7ints|rust_rust_add_7ints_byte(
         cr,
         int1: OCamlRef<OCamlInt>,
