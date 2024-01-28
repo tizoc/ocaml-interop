@@ -46,7 +46,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-      - run: opam install dune alcotest
+      - run: opam install dune alcotest base
       - name: Rust caller test
         run: cd testing/rust-caller; cargo test
       - name: Build OCaml caller
