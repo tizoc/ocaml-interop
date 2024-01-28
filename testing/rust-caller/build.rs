@@ -8,29 +8,29 @@ fn main() {
     let ocaml_callable_dir = "./ocaml";
     let dune_dir = "../../_build/default/testing/rust-caller/ocaml";
     Command::new("opam")
-        .args(&["exec", "--", "dune", "build", &format!("{}/callable.exe.o", ocaml_callable_dir)])
+        .args(["exec", "--", "dune", "build", &format!("{}/callable.exe.o", ocaml_callable_dir)])
         .status()
         .expect("Dune failed");
     Command::new("rm")
-        .args(&["-f", &format!("{}/libcallable.a", out_dir)])
+        .args(["-f", &format!("{}/libcallable.a", out_dir)])
         .status()
         .expect("rm failed");
     Command::new("rm")
-        .args(&["-f", &format!("{}/libcallable.o", out_dir)])
+        .args(["-f", &format!("{}/libcallable.o", out_dir)])
         .status()
         .expect("rm failed");
     Command::new("cp")
-        .args(&[
+        .args([
             &format!("{}/callable.exe.o", dune_dir),
-            &format!("{}/libcallable.o", out_dir),
+            &format!("{}/callable.o", out_dir),
         ])
         .status()
         .expect("File copy failed.");
     Command::new("ar")
-        .args(&[
+        .args([
             "qs",
             &format!("{}/libcallable.a", out_dir),
-            &format!("{}/libcallable.o", out_dir),
+            &format!("{}/callable.o", out_dir),
         ])
         .status()
         .expect("ar failed");

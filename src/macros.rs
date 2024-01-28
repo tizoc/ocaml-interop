@@ -1577,7 +1577,7 @@ macro_rules! expand_exported_function {
     } => {
         #[no_mangle]
         pub extern "C" fn $name( $($arg: $typ),* ) -> $crate::expand_exported_function_return!($($rtyp)*) {
-            let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle() };
+            let $cr = unsafe { &mut $crate::OCamlRuntime::recover_handle_mut() };
             $crate::expand_rooted_args_init!($cr, $($original_args)*);
             $crate::expand_exported_function_body!(
                 @body $body

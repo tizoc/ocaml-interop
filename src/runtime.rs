@@ -1,8 +1,11 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
-use std::marker::PhantomData;
+use ocaml_boxroot_sys::boxroot_teardown;
+use std::{
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{memory::OCamlRef, value::OCaml};
 
@@ -38,6 +41,7 @@ impl OCamlRuntime {
                 let c_args = [arg0, core::ptr::null()];
                 unsafe {
                     ocaml_sys::caml_startup(c_args.as_ptr());
+                    ocaml_boxroot_sys::boxroot_setup_systhreads();
                 }
             })
         }
@@ -45,19 +49,16 @@ impl OCamlRuntime {
         panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
     }
 
-    /// Recover the runtime handle.
-    ///
-    /// This method is used internally, do not use directly in code, only when writing tests.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because the OCaml runtime handle should be obtained once
-    /// upon initialization of the OCaml runtime and then passed around. This method exists
-    /// only to ease the authoring of tests.
+    #[doc(hidden)]
     #[inline(always)]
-    pub unsafe fn recover_handle() -> &'static mut Self {
+    pub unsafe fn recover_handle_mut() -> &'static mut Self {
         static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
         &mut RUNTIME
+    }
+
+    #[inline(always)]
+    unsafe fn recover_handle() -> &'static Self {
+        Self::recover_handle_mut()
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
@@ -74,6 +75,10 @@ impl OCamlRuntime {
             _marker: PhantomData,
             raw: unsafe { reference.get_raw() },
         }
+    }
+
+    pub fn acquire_lock() -> OCamlDomainLock {
+        OCamlDomainLock::new()
     }
 }
 
@@ -108,11 +113,64 @@ impl Drop for OCamlBlockingSection {
     }
 }
 
+pub struct OCamlDomainLock {
+    _private: (),
+}
+
+extern "C" {
+    pub fn caml_c_thread_register() -> isize;
+    pub fn caml_c_thread_unregister() -> isize;
+}
+
+impl OCamlDomainLock {
+    #[inline(always)]
+    fn new() -> Self {
+        unsafe {
+            caml_c_thread_register();
+            ocaml_sys::caml_leave_blocking_section();
+        };
+        Self { _private: () }
+    }
+
+    #[inline(always)]
+    fn recover_handle<'a>(&self) -> &'a OCamlRuntime {
+        unsafe { OCamlRuntime::recover_handle() }
+    }
+
+    #[inline(always)]
+    fn recover_handle_mut<'a>(&self) -> &'a mut OCamlRuntime {
+        unsafe { OCamlRuntime::recover_handle_mut() }
+    }
+}
+
+impl Drop for OCamlDomainLock {
+    fn drop(&mut self) {
+        unsafe {
+            ocaml_sys::caml_enter_blocking_section();
+            // FIXME: breaks with OCaml 5
+            // caml_c_thread_unregister();
+        };
+    }
+}
+
+impl Deref for OCamlDomainLock {
+    type Target = OCamlRuntime;
+
+    fn deref(&self) -> &OCamlRuntime {
+        self.recover_handle()
+    }
+}
+
+impl DerefMut for OCamlDomainLock {
+    fn deref_mut(&mut self) -> &mut OCamlRuntime {
+        self.recover_handle_mut()
+    }
+}
+
 // For initializing from an OCaml-driven program
 
 #[no_mangle]
 extern "C" fn ocaml_interop_setup(_unit: crate::RawOCaml) -> crate::RawOCaml {
-    unsafe { boxroot_setup() };
     ocaml_sys::UNIT
 }
 

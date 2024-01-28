@@ -303,7 +303,7 @@ pub use crate::mlvalues::{
     bigarray, DynBox, OCamlBytes, OCamlException, OCamlFloat, OCamlFloatArray, OCamlInt,
     OCamlInt32, OCamlInt64, OCamlList, OCamlUniformArray, RawOCaml,
 };
-pub use crate::runtime::OCamlRuntime;
+pub use crate::runtime::{OCamlRuntime, OCamlDomainLock};
 pub use crate::value::OCaml;
 
 #[doc(hidden)]
@@ -312,7 +312,7 @@ pub mod internal {
     pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
-    pub use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
+    pub use ocaml_boxroot_sys::boxroot_teardown;
     pub use ocaml_sys::caml_hash_variant;
 
     // To bypass ocaml_sys::int_val unsafe declaration
