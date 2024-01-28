@@ -3,7 +3,8 @@
 
 use ocaml_interop::{
     ocaml_export, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant, OCaml, OCamlBytes,
-    OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, OCamlRef, ToOCaml,
+    OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, OCamlRef,
+    OCamlUniformArray, ToOCaml,
 };
 use std::{thread, time};
 
@@ -68,6 +69,36 @@ ocaml_export! {
 
         for i in 0..vec.len() {
             vec[i] += 1;
+        }
+
+        vec.to_ocaml(cr)
+    }
+
+    fn rust_increment_ints_uniform_array(cr, ints: OCamlRef<OCamlUniformArray<OCamlInt>>) -> OCaml<OCamlUniformArray<OCamlInt>> {
+        let mut vec: Vec<i64> = ints.to_rust(cr);
+
+        for i in 0..vec.len() {
+            vec[i] += 1;
+        }
+
+        vec.to_ocaml(cr)
+    }
+
+    fn rust_increment_floats_uniform_array(cr, ints: OCamlRef<OCamlUniformArray<OCamlFloat>>) -> OCaml<OCamlUniformArray<OCamlFloat>> {
+        let mut vec: Vec<f64> = ints.to_rust(cr);
+
+        for i in 0..vec.len() {
+            vec[i] += 1.;
+        }
+
+        vec.to_ocaml(cr)
+    }
+
+    fn rust_increment_floats_float_array(cr, ints: OCamlRef<OCamlFloatArray>) -> OCaml<OCamlFloatArray> {
+        let mut vec: Vec<f64> = ints.to_rust(cr);
+
+        for i in 0..vec.len() {
+            vec[i] += 1.;
         }
 
         vec.to_ocaml(cr)

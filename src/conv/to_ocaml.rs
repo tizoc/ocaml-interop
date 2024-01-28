@@ -3,7 +3,10 @@
 
 use core::{borrow::Borrow, str};
 
+use ocaml_sys::{caml_alloc_float_array, caml_sys_store_double_field};
+
 use crate::{
+    internal::{caml_alloc, store_field},
     memory::{
         alloc_bigarray1, alloc_bytes, alloc_cons, alloc_double, alloc_error, alloc_int32,
         alloc_int64, alloc_ok, alloc_some, alloc_string, alloc_tuple, store_raw_field_at, OCamlRef,
@@ -15,7 +18,7 @@ use crate::{
     },
     runtime::OCamlRuntime,
     value::OCaml,
-    BoxRoot,
+    BoxRoot, OCamlFloatArray, OCamlUniformArray,
 };
 
 /// Implements conversion from Rust values into OCaml values.
@@ -205,6 +208,34 @@ where
             result.keep(cons);
         }
         cr.get(&result)
+    }
+}
+
+unsafe impl<A, OCamlA: 'static> ToOCaml<OCamlUniformArray<OCamlA>> for Vec<A>
+where
+    A: ToOCaml<OCamlA>,
+{
+    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlUniformArray<OCamlA>> {
+        let result = BoxRoot::new(unsafe { OCaml::new(cr, caml_alloc(self.len(), 0)) });
+
+        for (i, elt) in self.iter().enumerate() {
+            let ov = elt.to_ocaml(cr);
+            unsafe { store_field(result.get_raw(), i, ov.raw()) };
+        }
+
+        result.get(cr)
+    }
+}
+
+unsafe impl ToOCaml<OCamlFloatArray> for Vec<f64> {
+    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlFloatArray> {
+        let result = unsafe { OCaml::new(cr, caml_alloc_float_array(self.len())) };
+
+        for (i, elt) in self.iter().enumerate() {
+            unsafe { caml_sys_store_double_field(result.raw(), i, *elt) };
+        }
+
+        result
     }
 }
 

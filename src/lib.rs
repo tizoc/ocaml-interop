@@ -300,7 +300,8 @@ pub use crate::error::OCamlException;
 pub use crate::memory::alloc_cons as cons;
 pub use crate::memory::OCamlRef;
 pub use crate::mlvalues::{
-    bigarray, DynBox, OCamlBytes, OCamlFloat, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, RawOCaml,
+    bigarray, DynBox, OCamlBytes, OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32, OCamlInt64,
+    OCamlList, OCamlUniformArray, RawOCaml,
 };
 pub use crate::runtime::OCamlRuntime;
 pub use crate::value::OCaml;

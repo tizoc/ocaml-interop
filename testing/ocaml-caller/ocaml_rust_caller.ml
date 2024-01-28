@@ -21,13 +21,9 @@ type movement_polymorphic =
 
 module Rust = struct
   external tests_teardown : unit -> unit = "ocaml_interop_teardown"
-
   external twice : int -> int = "rust_twice"
-
   external twice_boxed_i64 : int64 -> int64 = "rust_twice_boxed_i64"
-
   external twice_boxed_i32 : int32 -> int32 = "rust_twice_boxed_i32"
-
   external twice_boxed_float : float -> float = "rust_twice_boxed_float"
 
   external twice_unboxed_float : (float[@unboxed]) -> (float[@unboxed])
@@ -35,31 +31,37 @@ module Rust = struct
 
   external add_unboxed_floats_noalloc : float -> float -> float
     = "" "rust_add_unboxed_floats_noalloc"
-    [@@unboxed] [@@noalloc]
+  [@@unboxed] [@@noalloc]
 
   external increment_bytes : bytes -> int -> bytes = "rust_increment_bytes"
 
   external increment_ints_list : int list -> int list
     = "rust_increment_ints_list"
 
+  external increment_ints_uniform_array :
+    int Base.Uniform_array.t -> int Base.Uniform_array.t
+    = "rust_increment_ints_uniform_array"
+
+  external increment_floats_uniform_array :
+    float Base.Uniform_array.t -> float Base.Uniform_array.t
+    = "rust_increment_floats_uniform_array"
+
+  external increment_floats_float_array : floatarray -> floatarray
+    = "rust_increment_floats_float_array"
+
   external make_tuple : string -> int -> string * int = "rust_make_tuple"
-
   external make_some : string -> string option = "rust_make_some"
-
   external make_ok : int -> (int, string) result = "rust_make_ok"
-
   external make_error : string -> (int, string) result = "rust_make_error"
-
   external sleep_releasing : int -> unit = "rust_sleep_releasing"
-
   external sleep : int -> unit = "rust_sleep"
-
   external string_of_movement : movement -> string = "rust_string_of_movement"
 
   external string_of_polymorphic_movement : movement_polymorphic -> string
     = "rust_string_of_polymorphic_movement"
 
-  external rust_rust_add_7ints : int -> int -> int -> int -> int -> int -> int -> int
+  external rust_rust_add_7ints :
+    int -> int -> int -> int -> int -> int -> int -> int
     = "rust_rust_add_7ints_byte" "rust_rust_add_7ints"
 end
 
@@ -97,6 +99,35 @@ let test_increment_ints_list () =
   let expected = [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10 ] in
   let result = Rust.increment_ints_list [ 0; 1; 2; 3; 4; 5; 6; 7; 8; 9 ] in
   Alcotest.(check (list int)) "Increment ints in list" expected result
+
+let test_increment_ints_uniform_array () =
+  let expected = [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10 ] in
+  let result =
+    Base.Uniform_array.to_list
+      (Rust.increment_ints_uniform_array
+         (Base.Uniform_array.of_list [ 0; 1; 2; 3; 4; 5; 6; 7; 8; 9 ]))
+  in
+  Alcotest.(check (list int)) "Increment ints in uniform array" expected result
+
+let test_increment_floats_uniform_array () =
+  let expected = [ 1.; 2.; 3.; 4.; 5.; 6.; 7.; 8.; 9.; 10. ] in
+  let result =
+    Base.Uniform_array.to_list
+      (Rust.increment_floats_uniform_array
+         (Base.Uniform_array.of_list [ 0.; 1.; 2.; 3.; 4.; 5.; 6.; 7.; 8.; 9. ]))
+  in
+  Alcotest.(check (list (float 0.)))
+    "Increment ints in uniform array" expected result
+
+let test_increment_floats_float_array () =
+  let expected = [ 1.; 2.; 3.; 4.; 5.; 6.; 7.; 8.; 9.; 10. ] in
+  let result =
+    Float.Array.to_list
+      (Rust.increment_floats_float_array
+         (Float.Array.of_list [ 0.; 1.; 2.; 3.; 4.; 5.; 6.; 7.; 8.; 9. ]))
+  in
+  Alcotest.(check (list (float 0.)))
+    "Increment ints in uniform array" expected result
 
 let test_make_tuple () =
   let expected = ("fst", 9) in
@@ -192,6 +223,12 @@ let () =
           test_case "Rust.twice_unboxed_float" `Quick test_twice_unboxed_float;
           test_case "Rust.increment_bytes" `Quick test_increment_bytes;
           test_case "Rust.increment_ints_list" `Quick test_increment_ints_list;
+          test_case "Rust.increment_ints_uniform_array" `Quick
+            test_increment_ints_uniform_array;
+          test_case "Rust.increment_floats_uniform_array" `Quick
+            test_increment_floats_uniform_array;
+          test_case "Rust.increment_floats_float_array" `Quick
+            test_increment_floats_float_array;
           test_case "Rust.make_tuple" `Quick test_make_tuple;
           test_case "Rust.make_some" `Quick test_make_some;
           test_case "Rust.make_ok" `Quick test_make_ok;
@@ -201,7 +238,7 @@ let () =
           test_case "Rust.string_of_movement" `Quick test_interpret_movement;
           test_case "Rust.string_of_polymorphic_movement" `Quick
             test_interpret_polymorphic_movement;
-          test_case "Rust.rust_rust_add_7ints" `Quick test_byte_function
+          test_case "Rust.rust_rust_add_7ints" `Quick test_byte_function;
         ] );
     ];
   Rust.tests_teardown ()
