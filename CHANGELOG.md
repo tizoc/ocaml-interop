@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for OCaml arrays (PR #61 by @mt-caret).
+- Support for OCaml float arrays (PR #61 by @mt-caret).
+
+### Changed
+
+- OCaml exceptions are now represented by `OCaml<OCamlException>` values instead of custom `OCamlException` values. This makes them first-class and safer to use because the fact that executing the garbage collector can invalidate references is now encoded in the type (PR #60 by @mt-caret)
+
 ## [0.9.2] - 2023-07-27
 
 ### Fixed
