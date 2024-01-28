@@ -29,7 +29,7 @@ mod test_immediate_ocamlrefs {
 
     #[test]
     fn test_immediate_ocamlrefs() {
-        let mut cr = unsafe { OCamlRuntime::recover_handle() };
-        assert!(test_immediate_ocamlref(&mut cr));
+        let cr = unsafe { OCamlRuntime::recover_handle() };
+        assert!(test_immediate_ocamlref(cr));
     }
 }

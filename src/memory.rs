@@ -92,9 +92,9 @@ pub fn alloc_double(cr: &mut OCamlRuntime, d: f64) -> OCaml<OCamlFloat> {
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<'a, 'b, A>(
+pub fn alloc_some<'a, A>(
     cr: &'a mut OCamlRuntime,
-    value: OCamlRef<'b, A>,
+    value: OCamlRef<'_, A>,
 ) -> OCaml<'a, Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
@@ -103,9 +103,9 @@ pub fn alloc_some<'a, 'b, A>(
     }
 }
 
-pub fn alloc_ok<'a, 'b, A, Err>(
+pub fn alloc_ok<'a, A, Err>(
     cr: &'a mut OCamlRuntime,
-    value: OCamlRef<'b, A>,
+    value: OCamlRef<'_, A>,
 ) -> OCaml<'a, Result<A, Err>> {
     unsafe {
         let ocaml_ok = caml_alloc(1, tag::TAG_OK);
@@ -114,9 +114,9 @@ pub fn alloc_ok<'a, 'b, A, Err>(
     }
 }
 
-pub fn alloc_error<'a, 'b, A, Err>(
+pub fn alloc_error<'a, A, Err>(
     cr: &'a mut OCamlRuntime,
-    err: OCamlRef<'b, Err>,
+    err: OCamlRef<'_, Err>,
 ) -> OCaml<'a, Result<A, Err>> {
     unsafe {
         let ocaml_err = caml_alloc(1, tag::TAG_ERROR);
