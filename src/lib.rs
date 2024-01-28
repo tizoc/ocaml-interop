@@ -1,7 +1,7 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-#![doc(html_root_url = "https://docs.rs/ocaml-interop/0.9.2")]
+#![doc(html_root_url = "https://docs.rs/ocaml-interop/0.10.0")]
 
 //! _Zinc-iron alloy coating is used in parts that need very good corrosion protection._
 //!
