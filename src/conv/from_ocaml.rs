@@ -8,7 +8,7 @@ use crate::{
     },
     value::OCaml,
 };
-use ocaml_sys::{caml_alloc, caml_sys_double_field};
+use ocaml_sys::caml_sys_double_field;
 
 /// Implements conversion from OCaml values into Rust values.
 pub unsafe trait FromOCaml<T> {
