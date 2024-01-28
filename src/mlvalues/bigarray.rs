@@ -5,7 +5,7 @@ use core::marker::PhantomData;
 /// # Safety
 ///
 /// This is unsafe to implement, because it allows casts
-/// to the implementing type (through OCaml<Array1<T>>::as_slice()).
+/// to the implementing type (through `OCaml<Array1<T>>::as_slice()`).
 ///
 /// To make this safe, the type implementing this trait must be
 /// safe to transmute from OCaml data with the relevant KIND.

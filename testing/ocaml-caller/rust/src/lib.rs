@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_interop::{
-    ocaml_export, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant, OCaml, OCamlBytes,
-    OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, OCamlRef,
-    OCamlUniformArray, ToOCaml,
+    alloc_error, alloc_ok, ocaml_export, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant,
+    OCaml, OCamlBytes, OCamlException, OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32,
+    OCamlInt64, OCamlList, OCamlRef, OCamlUniformArray, ToOCaml,
 };
 use std::{thread, time};
 
@@ -175,6 +175,36 @@ ocaml_export! {
             Ok(PolymorphicMovement::RotateRight) => "`RotateRight".to_owned(),
         };
         s.to_ocaml(cr)
+    }
+
+    fn rust_call_ocaml_closure(cr, ocaml_function: OCamlRef<fn(OCamlInt) -> OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
+        let ocaml_function = ocaml_function.to_boxroot(cr);
+
+        let call_result: Result<i64, String> =
+            ocaml_function
+            .try_call(cr, &0i64)
+            .map(|call_result| call_result.to_rust())
+            .map_err(|exception| exception.message().unwrap_or("no message".to_string()));
+        call_result.to_ocaml(cr)
+    }
+
+    fn rust_call_ocaml_closure_and_return_exn(cr, ocaml_function: OCamlRef<fn(OCamlInt) -> OCamlInt>) -> OCaml<Result<OCamlInt, OCamlException>> {
+        let ocaml_function = ocaml_function.to_boxroot(cr);
+
+        let call_result: Result<OCaml<OCamlInt>, OCaml<OCamlException>> =
+            ocaml_function
+            .try_call(cr, &0i64);
+
+        match call_result {
+            Ok(value) => {
+                let ocaml_value = value.root();
+                alloc_ok(cr, &ocaml_value)
+            },
+            Err(error) => {
+                let ocaml_error = error.root();
+                alloc_error(cr, &ocaml_error)
+            }
+        }
     }
 
     fn rust_rust_add_7ints|rust_rust_add_7ints_byte(

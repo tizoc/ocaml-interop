@@ -1,9 +1,8 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use crate::error::OCamlException;
 use crate::mlvalues::tag;
-use crate::mlvalues::{extract_exception, is_exception_result, tag_val, RawOCaml};
+use crate::mlvalues::{tag_val, RawOCaml};
 use crate::value::OCaml;
 use crate::{OCamlRef, OCamlRuntime};
 use ocaml_sys::{
@@ -70,11 +69,9 @@ impl OCamlClosure {
         cr: &'a mut OCamlRuntime,
         result: RawOCaml,
     ) -> OCaml<'a, R> {
-        if is_exception_result(result) {
-            let ex = unsafe { OCamlException::of(extract_exception(result)) };
-            panic!("OCaml exception, message: {:?}", ex.message())
-        } else {
-            unsafe { OCaml::new(cr, result) }
+        match unsafe { OCaml::of_exception_result(cr, result) } {
+            Some(ex) => panic!("OCaml exception, message: {:?}", ex.message()),
+            None => unsafe { OCaml::new(cr, result) },
         }
     }
 }
