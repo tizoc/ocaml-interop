@@ -312,6 +312,7 @@ pub mod internal {
     pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
+    pub use crate::runtime::internal::recover_runtime_handle_mut;
     pub use ocaml_boxroot_sys::boxroot_teardown;
     pub use ocaml_sys::caml_hash_variant;
 

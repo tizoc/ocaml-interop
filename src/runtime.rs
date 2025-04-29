@@ -62,27 +62,6 @@ impl OCamlRuntime {
         panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
     }
 
-    #[doc(hidden)]
-    #[inline(always)]
-    pub unsafe fn recover_handle_ptr_mut() -> *mut Self {
-        static mut RUNTIME: OCamlRuntime = OCamlRuntime {
-            _not_send_sync: PhantomData,
-        };
-        std::ptr::addr_of_mut!(RUNTIME)
-    }
-
-    #[doc(hidden)]
-    #[inline(always)]
-    pub unsafe fn recover_handle_mut() -> &'static mut Self {
-        &mut *Self::recover_handle_ptr_mut()
-    }
-
-    #[doc(hidden)]
-    #[inline(always)]
-    unsafe fn recover_handle() -> &'static Self {
-        Self::recover_handle_mut()
-    }
-
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
     pub fn releasing_runtime<T, F>(&mut self, f: F) -> T
     where
@@ -180,16 +159,6 @@ impl OCamlDomainLock {
             _not_send_sync: PhantomData,
         }
     }
-
-    #[inline(always)]
-    fn recover_handle<'a>(&self) -> &'a OCamlRuntime {
-        unsafe { OCamlRuntime::recover_handle() }
-    }
-
-    #[inline(always)]
-    fn recover_handle_mut<'a>(&mut self) -> &'a mut OCamlRuntime {
-        unsafe { OCamlRuntime::recover_handle_mut() }
-    }
 }
 
 impl Drop for OCamlDomainLock {
@@ -204,13 +173,13 @@ impl Deref for OCamlDomainLock {
     type Target = OCamlRuntime;
 
     fn deref(&self) -> &OCamlRuntime {
-        self.recover_handle()
+        unsafe { internal::recover_runtime_handle() }
     }
 }
 
 impl DerefMut for OCamlDomainLock {
     fn deref_mut(&mut self) -> &mut OCamlRuntime {
-        self.recover_handle_mut()
+        unsafe { internal::recover_runtime_handle_mut() }
     }
 }
 
@@ -272,4 +241,29 @@ extern "C" fn ocaml_interop_setup(_unit: crate::RawOCaml) -> crate::RawOCaml {
 extern "C" fn ocaml_interop_teardown(_unit: crate::RawOCaml) -> crate::RawOCaml {
     unsafe { boxroot_teardown() };
     ocaml_sys::UNIT
+}
+
+#[doc(hidden)]
+pub mod internal {
+    use std::marker::PhantomData;
+
+    use super::OCamlRuntime;
+
+    #[inline(always)]
+    unsafe fn recover_handle_ptr_mut() -> *mut OCamlRuntime {
+        static mut RUNTIME: OCamlRuntime = OCamlRuntime {
+            _not_send_sync: PhantomData,
+        };
+        std::ptr::addr_of_mut!(RUNTIME)
+    }
+
+    #[inline(always)]
+    pub unsafe fn recover_runtime_handle_mut() -> &'static mut OCamlRuntime {
+        &mut *recover_handle_ptr_mut()
+    }
+
+    #[inline(always)]
+    pub(super) unsafe fn recover_runtime_handle() -> &'static OCamlRuntime {
+        recover_runtime_handle_mut()
+    }
 }
