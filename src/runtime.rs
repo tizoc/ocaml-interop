@@ -5,6 +5,7 @@ use ocaml_boxroot_sys::boxroot_teardown;
 use std::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
+    rc::Rc,
 };
 
 use crate::{memory::OCamlRef, value::OCaml};
@@ -16,22 +17,31 @@ use crate::{memory::OCamlRef, value::OCaml};
 ///
 /// Once the handle is dropped, the OCaml runtime will be shutdown.
 pub struct OCamlRuntime {
-    _private: (),
+    _not_send_sync: PhantomData<Rc<()>>,
 }
 
 impl OCamlRuntime {
     /// Initializes the OCaml runtime and returns an OCaml runtime handle.
     ///
+    /// Should not be called more than once.
+    ///
     /// Once the handle is dropped, the OCaml runtime will be shutdown.
     pub fn init() -> Self {
-        Self::init_persistent();
-        Self { _private: () }
+        if !Self::init_persistent() {
+            panic!("OCaml runtime already initialized");
+        }
+        Self {
+            _not_send_sync: PhantomData,
+        }
     }
 
     /// Initializes the OCaml runtime.
     ///
     /// After the first invocation, this method does nothing.
-    pub fn init_persistent() {
+    ///
+    /// Returns `true` if the OCaml runtime was initialized, `false` otherwise.
+    pub fn init_persistent() -> bool {
+        let mut initialized = false;
         #[cfg(not(feature = "no-caml-startup"))]
         {
             static INIT: std::sync::Once = std::sync::Once::new();
@@ -42,8 +52,11 @@ impl OCamlRuntime {
                 unsafe {
                     ocaml_sys::caml_startup(c_args.as_ptr());
                     ocaml_boxroot_sys::boxroot_setup();
-                }
-            })
+                };
+                initialized = true;
+            });
+
+            initialized
         }
         #[cfg(feature = "no-caml-startup")]
         panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
@@ -52,7 +65,9 @@ impl OCamlRuntime {
     #[doc(hidden)]
     #[inline(always)]
     pub unsafe fn recover_handle_ptr_mut() -> *mut Self {
-        static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
+        static mut RUNTIME: OCamlRuntime = OCamlRuntime {
+            _not_send_sync: PhantomData,
+        };
         std::ptr::addr_of_mut!(RUNTIME)
     }
 
@@ -102,11 +117,11 @@ impl Drop for OCamlRuntime {
     }
 }
 
-struct OCamlBlockingSection {}
+struct OCamlBlockingSection;
 
 impl OCamlBlockingSection {
     fn new() -> Self {
-        Self {}
+        Self
     }
 
     fn perform<T, F>(self, f: F) -> T
@@ -202,7 +217,7 @@ impl OCamlThreadRegistrationGuard {
     /// **Call this at the start of any function that may touch the OCaml runtime.**
     ///
     /// After the first invocation in the thread it’s just a cheap TLS lookup.
-    #[inline]
+    #[inline(always)]
     pub fn ensure() {
         OCAML_THREAD_REGISTRATION_GUARD.with(|_| {}); // create or access the guard
     }
