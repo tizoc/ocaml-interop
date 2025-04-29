@@ -12,17 +12,17 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ocaml-version: ["4.14.1"]
+        ocaml-version: ["4.14.2"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: OCaml/Opam cache
         id: ocaml-interop-opam-cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: "~/.opam"
           key: ${{ matrix.os }}-${{ matrix.ocaml-version }}
       - name: Setup OCaml ${{ matrix.ocaml-version }}
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
       - name: Set Opam env
