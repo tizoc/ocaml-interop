@@ -165,7 +165,7 @@ impl Drop for OCamlBlockingSection {
 ///
 /// Consequently this type is **!Send + !Sync** and must remain on the thread
 /// where it was constructed.
-pub struct OCamlDomainLock {
+struct OCamlDomainLock {
     _not_send_sync: PhantomData<Rc<()>>,
 }
 
