@@ -139,8 +139,31 @@ impl Drop for OCamlBlockingSection {
     }
 }
 
+/// In OCaml 5 each **domain** has its own minor-heap and GC state.  Entering
+/// OCaml from C requires the thread to *leave* the “blocking section”, thereby
+/// resuming normal allocation/GC activity for **this domain**.  This guard
+/// performs that transition in `new()` and restores the blocking section in
+/// `Drop`.
+///
+/// While the guard is alive the current OS thread is the **only** thread that
+/// can run OCaml code *inside this domain*.  That exclusivity makes it sound
+/// to hand out **one** mutable reference to the process-wide
+/// [`OCamlRuntime`] but only for the guard’s lifetime.
+///
+/// # Safety invariant
+///
+/// *Each* live `OCamlDomainLock` owns the “entered” state of the current
+/// domain.  Creating a second guard simultaneously (nesting) would yield two
+/// overlapping `&mut OCamlRuntime` borrows (that is undefined behaviour in
+/// Rust) and would also violate the enter/leave protocol required by the OCaml
+/// C API.  Likewise, leaking a guard with `mem::forget` keeps the domain
+/// permanently *entered* and the mutable reference alive beyond its intended
+/// scope; both are unsound.
+///
+/// Consequently this type is **!Send + !Sync** and must remain on the thread
+/// where it was constructed.
 pub struct OCamlDomainLock {
-    _private: (),
+    _not_send_sync: PhantomData<Rc<()>>,
 }
 
 impl OCamlDomainLock {
@@ -150,7 +173,9 @@ impl OCamlDomainLock {
         unsafe {
             ocaml_sys::caml_leave_blocking_section();
         };
-        Self { _private: () }
+        Self {
+            _not_send_sync: PhantomData,
+        }
     }
 
     #[inline(always)]
@@ -159,7 +184,7 @@ impl OCamlDomainLock {
     }
 
     #[inline(always)]
-    fn recover_handle_mut<'a>(&self) -> &'a mut OCamlRuntime {
+    fn recover_handle_mut<'a>(&mut self) -> &'a mut OCamlRuntime {
         unsafe { OCamlRuntime::recover_handle_mut() }
     }
 }
