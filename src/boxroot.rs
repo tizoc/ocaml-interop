@@ -63,3 +63,14 @@ impl<T> Deref for BoxRoot<T> {
         unsafe { &*(boxroot_get_ref(self.boxroot) as *const OCamlCell<T>) }
     }
 }
+
+#[cfg(test)]
+mod boxroot_assertions {
+    use super::*;
+    use static_assertions::assert_not_impl_any;
+
+    // Assert that BoxRoot<T> does not implement Send or Sync for some concrete T.
+    // Using a simple type like () or i32 is sufficient.
+    assert_not_impl_any!(BoxRoot<()>: Send, Sync);
+    assert_not_impl_any!(BoxRoot<i32>: Send, Sync);
+}
