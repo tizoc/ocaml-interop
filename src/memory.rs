@@ -11,10 +11,7 @@ use crate::{
     value::OCaml,
 };
 use core::{any::Any, cell::UnsafeCell, marker::PhantomData, mem, pin::Pin, ptr};
-pub use ocaml_sys::{
-    caml_alloc, local_roots as ocaml_sys_local_roots, set_local_roots as ocaml_sys_set_local_roots,
-    store_field,
-};
+pub use ocaml_sys::{caml_alloc, store_field};
 use ocaml_sys::{
     caml_alloc_string, caml_alloc_tuple, caml_copy_double, caml_copy_int32, caml_copy_int64,
     custom_operations, string_val, Size,
@@ -92,10 +89,7 @@ pub fn alloc_double(cr: &mut OCamlRuntime, d: f64) -> OCaml<OCamlFloat> {
 // small values (like tuples and conses are) without going through `caml_modify` to get
 // a little bit of extra performance.
 
-pub fn alloc_some<'a, A>(
-    cr: &'a mut OCamlRuntime,
-    value: OCamlRef<'_, A>,
-) -> OCaml<'a, Option<A>> {
+pub fn alloc_some<'a, A>(cr: &'a mut OCamlRuntime, value: OCamlRef<'_, A>) -> OCaml<'a, Option<A>> {
     unsafe {
         let ocaml_some = caml_alloc(1, tag::SOME);
         store_field(ocaml_some, 0, value.get_raw());

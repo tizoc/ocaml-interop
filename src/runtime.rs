@@ -41,7 +41,7 @@ impl OCamlRuntime {
                 let c_args = [arg0, core::ptr::null()];
                 unsafe {
                     ocaml_sys::caml_startup(c_args.as_ptr());
-                    ocaml_boxroot_sys::boxroot_setup_systhreads();
+                    ocaml_boxroot_sys::boxroot_setup();
                 }
             })
         }
@@ -51,11 +51,18 @@ impl OCamlRuntime {
 
     #[doc(hidden)]
     #[inline(always)]
-    pub unsafe fn recover_handle_mut() -> &'static mut Self {
+    pub unsafe fn recover_handle_ptr_mut() -> *mut Self {
         static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
-        &mut RUNTIME
+        std::ptr::addr_of_mut!(RUNTIME)
     }
 
+    #[doc(hidden)]
+    #[inline(always)]
+    pub unsafe fn recover_handle_mut() -> &'static mut Self {
+        &mut *Self::recover_handle_ptr_mut()
+    }
+
+    #[doc(hidden)]
     #[inline(always)]
     unsafe fn recover_handle() -> &'static Self {
         Self::recover_handle_mut()
@@ -77,6 +84,10 @@ impl OCamlRuntime {
         }
     }
 
+    /// Acquires a lock on the OCaml runtime.
+    ///
+    /// This is a blocking call that will wait until the OCaml runtime is available.
+    /// The lock is released when the `OCamlDomainLock` is dropped.
     pub fn acquire_lock() -> OCamlDomainLock {
         OCamlDomainLock::new()
     }
@@ -117,16 +128,11 @@ pub struct OCamlDomainLock {
     _private: (),
 }
 
-extern "C" {
-    pub fn caml_c_thread_register() -> isize;
-    pub fn caml_c_thread_unregister() -> isize;
-}
-
 impl OCamlDomainLock {
     #[inline(always)]
     fn new() -> Self {
+        OCamlThreadRegistrationGuard::ensure();
         unsafe {
-            caml_c_thread_register();
             ocaml_sys::caml_leave_blocking_section();
         };
         Self { _private: () }
@@ -147,8 +153,6 @@ impl Drop for OCamlDomainLock {
     fn drop(&mut self) {
         unsafe {
             ocaml_sys::caml_enter_blocking_section();
-            // FIXME: breaks with OCaml 5
-            // caml_c_thread_unregister();
         };
     }
 }
@@ -164,6 +168,53 @@ impl Deref for OCamlDomainLock {
 impl DerefMut for OCamlDomainLock {
     fn deref_mut(&mut self) -> &mut OCamlRuntime {
         self.recover_handle_mut()
+    }
+}
+
+// Thread registration handling
+
+extern "C" {
+    pub fn caml_c_thread_register() -> isize;
+    pub fn caml_c_thread_unregister() -> isize;
+}
+
+/// RAII guard for per-thread OCaml runtime registration.
+///
+/// This struct is instantiated once per thread (via the `thread_local!`
+/// `OCAML_THREAD`) to ensure that the OCaml runtime is registered
+/// before any FFI calls into OCaml. The `registered` field is set to `true`
+/// **only** if the initial call to `caml_c_thread_register()` returns `1`
+/// (indicating success). When the thread exits, the guard’s `Drop`
+/// implementation will call `caml_c_thread_unregister()` exactly once
+/// if and only if `registered` is `true`.
+struct OCamlThreadRegistrationGuard {
+    registered: bool,
+}
+
+thread_local! {
+    static OCAML_THREAD_REGISTRATION_GUARD: OCamlThreadRegistrationGuard = {
+        let ok = unsafe { caml_c_thread_register() } == 1;
+        OCamlThreadRegistrationGuard { registered: ok }
+    };
+}
+
+impl OCamlThreadRegistrationGuard {
+    /// **Call this at the start of any function that may touch the OCaml runtime.**
+    ///
+    /// After the first invocation in the thread it’s just a cheap TLS lookup.
+    #[inline]
+    pub fn ensure() {
+        OCAML_THREAD_REGISTRATION_GUARD.with(|_| {}); // create or access the guard
+    }
+}
+
+impl Drop for OCamlThreadRegistrationGuard {
+    fn drop(&mut self) {
+        if self.registered {
+            unsafe {
+                caml_c_thread_unregister();
+            }
+        }
     }
 }
 

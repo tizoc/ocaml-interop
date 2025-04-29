@@ -4,7 +4,13 @@
  (action
   (no-infer
    (progn
-    (run cargo build)
+    ;; macOS requires these flags because undefined symbols are not allowed by default
+    (run sh -c "
+        if [ \"$(uname -s)\" = \"Darwin\" ]; then
+          export RUSTFLAGS='-C link-args=-Wl,-undefined,dynamic_lookup'
+        fi
+        cargo build
+      ")
     (run sh -c
       "cp target/debug/libcallable_rust.so ./dllcallable_rust.so 2> /dev/null || \
        cp target/debug/libcallable_rust.dylib ./dllcallable_rust.so")
