@@ -6,9 +6,12 @@ use std::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
     rc::Rc,
+    sync::OnceLock,
 };
 
 use crate::{memory::OCamlRef, value::OCaml};
+
+static OCAML_STARTUP_PERFORMED: OnceLock<()> = OnceLock::new();
 
 /// OCaml runtime handle.
 ///
@@ -41,22 +44,19 @@ impl OCamlRuntime {
     ///
     /// Returns `true` if the OCaml runtime was initialized, `false` otherwise.
     pub fn init_persistent() -> bool {
-        let mut initialized = false;
         #[cfg(not(feature = "no-caml-startup"))]
         {
-            static INIT: std::sync::Once = std::sync::Once::new();
-
-            INIT.call_once(|| {
-                let arg0 = "ocaml\0".as_ptr() as *const ocaml_sys::Char;
-                let c_args = [arg0, core::ptr::null()];
+            if OCAML_STARTUP_PERFORMED.set(()).is_ok() {
                 unsafe {
-                    ocaml_sys::caml_startup(c_args.as_ptr());
+                    let arg0 = b"ocaml\0".as_ptr() as *const ocaml_sys::Char;
+                    let args = [arg0, core::ptr::null()];
+                    ocaml_sys::caml_startup(args.as_ptr());
                     ocaml_boxroot_sys::boxroot_setup();
-                };
-                initialized = true;
-            });
-
-            initialized
+                }
+                true
+            } else {
+                false
+            }
         }
         #[cfg(feature = "no-caml-startup")]
         panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
