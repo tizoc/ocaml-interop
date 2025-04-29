@@ -1,7 +1,4 @@
 (executables
  (names callable)
- ;; OCaml 5
  (libraries unix threads)
- ;; OCaml 4
- ;(flags (:standard -noautolink -cclib -lunix -cclib -lthreadsnat))
  (modes object))
