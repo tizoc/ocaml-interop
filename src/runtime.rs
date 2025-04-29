@@ -99,12 +99,15 @@ impl OCamlRuntime {
         }
     }
 
-    /// Acquires a lock on the OCaml runtime.
+    /// Run f with the OCaml lock held (enter / leave automatically).
     ///
     /// This is a blocking call that will wait until the OCaml runtime is available.
-    /// The lock is released when the `OCamlDomainLock` is dropped.
-    pub fn acquire_lock() -> OCamlDomainLock {
-        OCamlDomainLock::new()
+    pub fn with_domain_lock<F, T>(f: F) -> T
+    where
+        F: FnOnce(&mut Self) -> T,
+    {
+        let mut lock = OCamlDomainLock::new();
+        f(&mut *lock)
     }
 }
 

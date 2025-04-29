@@ -4,7 +4,7 @@
 extern crate ocaml_interop;
 
 #[cfg(test)]
-use ocaml_interop::{cons, OCamlDomainLock};
+use ocaml_interop::cons;
 use ocaml_interop::{OCaml, OCamlBytes, OCamlRuntime, ToOCaml};
 #[cfg(test)]
 use std::borrow::Borrow;
@@ -162,7 +162,10 @@ pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
 // Tests
 
 #[cfg(test)]
-fn acquire_domain_lock() -> OCamlDomainLock {
+fn with_domain_lock<F, T>(f: F) -> T
+where
+    F: FnOnce(&mut OCamlRuntime) -> T,
+{
     static INIT: std::sync::Once = std::sync::Once::new();
 
     INIT.call_once(|| {
@@ -170,197 +173,205 @@ fn acquire_domain_lock() -> OCamlDomainLock {
         unsafe { ocaml_sys::caml_enter_blocking_section() };
     });
 
-    OCamlRuntime::acquire_lock()
+    OCamlRuntime::with_domain_lock(f)
 }
 
 #[test]
 fn test_twice() {
-    let mut cr = acquire_domain_lock();
-    assert_eq!(twice(&mut cr, 10), 20);
+    with_domain_lock(|cr| {
+        assert_eq!(twice(cr, 10), 20);
+    });
 }
 
 #[test]
 fn test_increment_bytes() {
-    let mut cr = acquire_domain_lock();
-    assert_eq!(
-        increment_bytes(&mut cr, "0000000000000000", 10),
-        "1111111111000000"
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(
+            increment_bytes(cr, "0000000000000000", 10),
+            "1111111111000000"
+        );
+    });
 }
 
 #[test]
 fn test_increment_ints_list() {
-    let mut cr = acquire_domain_lock();
-    let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(increment_ints_list(&mut cr, &ints), expected);
+    with_domain_lock(|cr| {
+        let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(increment_ints_list(cr, &ints), expected);
+    });
 }
 
 #[test]
 fn test_make_tuple() {
-    let mut cr = acquire_domain_lock();
-    assert_eq!(
-        make_tuple(&mut cr, "fst".to_owned(), 9),
-        ("fst".to_owned(), 9)
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(make_tuple(cr, "fst".to_owned(), 9), ("fst".to_owned(), 9));
+    });
 }
 
 #[test]
 fn test_make_some() {
-    let mut cr = acquire_domain_lock();
-    assert_eq!(
-        make_some(&mut cr, "some".to_owned()),
-        Some("some".to_owned())
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(make_some(cr, "some".to_owned()), Some("some".to_owned()));
+    });
 }
 
 #[test]
 fn test_make_result() {
-    let mut cr = acquire_domain_lock();
-    assert_eq!(make_ok(&mut cr, 10), Ok(10));
-    assert_eq!(
-        make_error(&mut cr, "error".to_owned()),
-        Err("error".to_owned())
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(make_ok(cr, 10), Ok(10));
+        assert_eq!(make_error(cr, "error".to_owned()), Err("error".to_owned()));
+    });
 }
 
 #[test]
 fn test_frame_management() {
-    let mut cr = acquire_domain_lock();
-    assert!(allocate_alot(&mut cr));
+    with_domain_lock(|cr| {
+        assert!(allocate_alot(cr));
+    });
 }
 
 #[test]
 fn test_record_conversion() {
-    let mut cr = acquire_domain_lock();
-    let record = ocaml::TestRecord {
-        i: 10,
-        f: 5.0,
-        i32: 10,
-        i64: Box::new(10),
-        s: "string".to_owned(),
-        t: (10, 5.0),
-    };
-    let expected = "{ i=10; f=5.00; i32=10; i64=10; s=string; t=(10, 5.00) }".to_owned();
-    assert_eq!(verify_record_test(&mut cr, record), expected);
+    with_domain_lock(|cr| {
+        let record = ocaml::TestRecord {
+            i: 10,
+            f: 5.0,
+            i32: 10,
+            i64: Box::new(10),
+            s: "string".to_owned(),
+            t: (10, 5.0),
+        };
+        let expected = "{ i=10; f=5.00; i32=10; i64=10; s=string; t=(10, 5.00) }".to_owned();
+        assert_eq!(verify_record_test(cr, record), expected);
+    });
 }
 
 #[test]
 fn test_variant_conversion() {
-    let mut cr = acquire_domain_lock();
-    assert_eq!(
-        verify_variant_test(&mut cr, ocaml::Movement::RotateLeft),
-        "RotateLeft".to_owned()
-    );
-    assert_eq!(
-        verify_variant_test(&mut cr, ocaml::Movement::RotateRight),
-        "RotateRight".to_owned()
-    );
-    assert_eq!(
-        verify_variant_test(&mut cr, ocaml::Movement::Step(10)),
-        "Step(10)".to_owned()
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(
+            verify_variant_test(cr, ocaml::Movement::RotateLeft),
+            "RotateLeft".to_owned()
+        );
+        assert_eq!(
+            verify_variant_test(cr, ocaml::Movement::RotateRight),
+            "RotateRight".to_owned()
+        );
+        assert_eq!(
+            verify_variant_test(cr, ocaml::Movement::Step(10)),
+            "Step(10)".to_owned()
+        );
+    });
 }
 
 #[test]
 fn test_polymorphic_variant_conversion() {
-    let mut cr = acquire_domain_lock();
-    assert_eq!(
-        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Unit),
-        "Unit".to_owned()
-    );
-    assert_eq!(
-        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Single(10.0)),
-        "Single(10.00)".to_owned()
-    );
-    assert_eq!(
-        verify_polymorphic_variant_test(
-            &mut cr,
-            ocaml::PolymorphicEnum::Multiple(10, "text".to_string())
-        ),
-        "Multiple(10, text)".to_owned()
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(
+            verify_polymorphic_variant_test(cr, ocaml::PolymorphicEnum::Unit),
+            "Unit".to_owned()
+        );
+        assert_eq!(
+            verify_polymorphic_variant_test(cr, ocaml::PolymorphicEnum::Single(10.0)),
+            "Single(10.00)".to_owned()
+        );
+        assert_eq!(
+            verify_polymorphic_variant_test(
+                cr,
+                ocaml::PolymorphicEnum::Multiple(10, "text".to_string())
+            ),
+            "Multiple(10, text)".to_owned()
+        );
+    });
 }
 
 #[test]
 fn test_bigarray() {
-    let mut cr = acquire_domain_lock();
-    let arr: Vec<u16> = (0..16).collect();
+    with_domain_lock(|cr| {
+        let arr: Vec<u16> = (0..16).collect();
 
-    let arr_ocaml: BoxRoot<bigarray::Array1<_>> = arr.as_slice().to_boxroot(&mut cr);
-    ocaml::double_u16_array(&mut cr, &arr_ocaml);
-    assert_eq!(
-        cr.get(&arr_ocaml).as_slice(),
-        (0..16u16).map(|i| i * 2).collect::<Vec<_>>().as_slice()
-    );
+        let arr_ocaml: BoxRoot<bigarray::Array1<_>> = arr.as_slice().to_boxroot(cr);
+        ocaml::double_u16_array(cr, &arr_ocaml);
+        assert_eq!(
+            cr.get(&arr_ocaml).as_slice(),
+            (0..16u16).map(|i| i * 2).collect::<Vec<_>>().as_slice()
+        );
+    });
 }
 
 #[test]
 fn test_exception_handling_with_message() {
-    let mut cr = acquire_domain_lock();
-    let result = std::panic::catch_unwind(move || {
-        let message = "my-error-message".to_boxroot(&mut cr);
-        ocaml::raises_message_exception(&mut cr, &message);
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    with_domain_lock(|cr| {
+        let result = catch_unwind(AssertUnwindSafe(move || {
+            let message = "my-error-message".to_boxroot(cr);
+            ocaml::raises_message_exception(cr, &message);
+        }));
+        assert_eq!(
+            result
+                .err()
+                .map(|err| err.downcast_ref::<String>().unwrap().clone())
+                .unwrap(),
+            "OCaml exception, message: Some(\"my-error-message\")"
+        );
     });
-    assert_eq!(
-        result
-            .err()
-            .map(|err| err.downcast_ref::<String>().unwrap().clone())
-            .unwrap(),
-        "OCaml exception, message: Some(\"my-error-message\")"
-    );
 }
 
 #[test]
 fn test_exception_handling_without_message() {
-    let mut cr = acquire_domain_lock();
-    let result = std::panic::catch_unwind(move || {
-        ocaml::raises_nonmessage_exception(&mut cr, &OCaml::unit());
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    with_domain_lock(|cr| {
+        let result = catch_unwind(AssertUnwindSafe(move || {
+            ocaml::raises_nonmessage_exception(cr, &OCaml::unit());
+        }));
+        assert_eq!(
+            result
+                .err()
+                .map(|err| err.downcast_ref::<String>().unwrap().clone())
+                .unwrap(),
+            "OCaml exception, message: None"
+        );
     });
-    assert_eq!(
-        result
-            .err()
-            .map(|err| err.downcast_ref::<String>().unwrap().clone())
-            .unwrap(),
-        "OCaml exception, message: None"
-    );
 }
 
 #[test]
 fn test_exception_handling_nonblock_exception() {
-    let mut cr = acquire_domain_lock();
-    let result = std::panic::catch_unwind(move || {
-        ocaml::raises_nonblock_exception(&mut cr, &OCaml::unit());
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    with_domain_lock(|cr| {
+        let result = catch_unwind(AssertUnwindSafe(move || {
+            ocaml::raises_nonblock_exception(cr, &OCaml::unit());
+        }));
+        assert_eq!(
+            result
+                .err()
+                .map(|err| err.downcast_ref::<String>().unwrap().clone())
+                .unwrap(),
+            "OCaml exception, message: None"
+        );
     });
-    assert_eq!(
-        result
-            .err()
-            .map(|err| err.downcast_ref::<String>().unwrap().clone())
-            .unwrap(),
-        "OCaml exception, message: None"
-    );
 }
 
 #[test]
 fn test_dynbox() {
-    let mut cr = acquire_domain_lock();
-
-    let mut list = OCaml::nil(&mut cr).root();
-    let mut l2;
-    // Note: building a list with cons will build it in reverse order
-    for e in (0u16..4).rev() {
-        let boxed = OCaml::box_value(&mut cr, e).root();
-        list = cons(&mut cr, &boxed, &list).root();
-    }
-    l2 = ocaml::reverse_list_and_compact(&mut cr, &list);
-    let mut vec2: Vec<u16> = vec![];
-    while let Some((hd, tl)) = cr.get(&l2).uncons() {
-        l2 = tl.root();
-        vec2.push(*hd.borrow());
-    }
-    // The next call will drop the boxes through the OCaml finalizer
-    ocaml::gc_compact(&mut cr, OCaml::unit().as_ref());
-    assert_eq!(vec2, vec![3, 2, 1, 0]);
+    with_domain_lock(|cr| {
+        let mut list = OCaml::nil(cr).root();
+        let mut l2;
+        // Note: building a list with cons will build it in reverse order
+        for e in (0u16..4).rev() {
+            let boxed = OCaml::box_value(cr, e).root();
+            list = cons(cr, &boxed, &list).root();
+        }
+        l2 = ocaml::reverse_list_and_compact(cr, &list);
+        let mut vec2: Vec<u16> = vec![];
+        while let Some((hd, tl)) = cr.get(&l2).uncons() {
+            l2 = tl.root();
+            vec2.push(*hd.borrow());
+        }
+        // The next call will drop the boxes through the OCaml finalizer
+        ocaml::gc_compact(cr, OCaml::unit().as_ref());
+        assert_eq!(vec2, vec![3, 2, 1, 0]);
+    });
 }
 
 #[test]
@@ -371,9 +382,10 @@ fn test_threads() {
     // Spawn 100 threads
     for n in 0..100 {
         let handle = std::thread::spawn(move || {
-            let mut cr = acquire_domain_lock();
-            println!("thread: {n}");
-            allocate_alot(&mut cr)
+            with_domain_lock(|cr| {
+                println!("thread: {n}");
+                allocate_alot(cr)
+            });
         });
 
         handles.push((n, handle));
