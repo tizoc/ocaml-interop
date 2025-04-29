@@ -7,7 +7,7 @@ description = "Utilities for Rust and OCaml interoperability"
 homepage = "https://github.com/tizoc/ocaml-interop"
 repository = "https://github.com/tizoc/ocaml-interop"
 keywords = ["ocaml", "rust", "ffi", "interop"]
-edition = "2018"
+edition = "2021"
 exclude = [
     ".github/*",
 ]
