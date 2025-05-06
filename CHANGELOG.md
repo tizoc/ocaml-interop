@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes ⚠️
+
+- **Dropped OCaml 4 Support**: This version exclusively supports OCaml 5.x. The underlying `ocaml-sys` dependency is now configured with the `ocaml5` feature, and the library leverages OCaml 5's domain-based concurrency model.
+- **Runtime Management Overhaul for OCaml 5**:
+    * `OCamlRuntime::init()` now returns `Result<OCamlRuntimeStartupGuard, String>`. The new `OCamlRuntimeStartupGuard` RAII type is responsible for OCaml runtime initialization (including `boxroot_setup`) and shutdown (calling `boxroot_teardown` and `caml_shutdown`).
+    * The primary way to obtain an `&mut OCamlRuntime` is now via the new `OCamlRuntime::with_domain_lock(|cr| { ... })` method. This method handles OCaml domain registration and ensures the OCaml lock is held for the duration of the closure.
+    * `OCamlRuntime` and `OCamlRuntimeStartupGuard` are now `!Send` and `!Sync` to reflect their thread-affinity with the OCaml runtime and domain state.
+    * Removed `OCamlRuntime::init_persistent()` and the unsafe `OCamlRuntime::recover_handle()`.
+- **`OCaml::nil()` Signature Change**: The static method `OCaml::nil()` now requires an `&mut OCamlRuntime` argument: `OCaml::nil(cr)`.
+- **`BoxRoot<T>` Behavior**:
+    * `BoxRoot::new()` and `BoxRoot::keep()` now panic if the underlying `boxroot_create` or `boxroot_modify` calls fail, providing an error message from `boxroot_error_string()`.
+    * `BoxRoot<T>` is now explicitly `!Send` and `!Sync`.
+
+### Added
+
+- **OCaml 5 Support**: Full support for OCaml 5, including its domain-based concurrency model. This required significant internal changes to runtime and thread management.
+- **`OCamlRuntimeStartupGuard`**: A new public RAII struct returned by `OCamlRuntime::init()`. Its `Drop` implementation handles the OCaml runtime shutdown.
+- **`OCamlRuntime::with_domain_lock()`**: New static method to safely acquire a mutable reference to the OCaml runtime within a specific OCaml domain.
+
+### Changed
+
+- **Rust Edition**: Updated the crate's Rust edition from 2018 to 2021.
+- **Internal Runtime Handling**: Functions exported to OCaml (via `ocaml_export!`) now use an updated internal mechanism (`crate::internal::recover_runtime_handle_mut()`) compatible with OCaml 5's per-domain runtime state.
+
+### Removed
+
+- **Dropped OCaml 4 Support**.
+- `OCamlRuntime::init_persistent()` method.
+
 ## [0.10.0] - 2024-01-28
 
 ### Added
