@@ -207,18 +207,20 @@
 //!
 //! fn entry_point() {
 //!     // IMPORTANT: the OCaml runtime has to be initialized first.
-//!     let mut cr = OCamlRuntime::init();
-//!     // `cr` is the OCaml runtime handle, must be passed to any function
-//!     // that interacts with the OCaml runtime.
-//!     let first_n = twice(&mut cr, 5);
-//!     let bytes1 = "000000000000000".to_owned();
-//!     let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
-//!     println!("Bytes1 before: {}", bytes1);
-//!     println!("Bytes2 before: {}", bytes2);
-//!     let (result1, result2) = increment_bytes(&mut cr, bytes1, bytes2, first_n);
-//!     println!("Bytes1 after: {}", result1);
-//!     println!("Bytes2 after: {}", result2);
-//!     // `OCamlRuntime`'s `Drop` implementation will pefrorm the necessary cleanup
+//!     let _guard = OCamlRuntime::init().unwrap();
+//!     OCamlRuntime::with_domain_lock(|cr| {
+//!         // `cr` is the OCaml runtime handle, must be passed to any function
+//!         // that interacts with the OCaml runtime.
+//!         let first_n = twice(cr, 5);
+//!         let bytes1 = "000000000000000".to_owned();
+//!         let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
+//!         println!("Bytes1 before: {}", bytes1);
+//!         println!("Bytes2 before: {}", bytes2);
+//!         let (result1, result2) = increment_bytes(cr, bytes1, bytes2, first_n);
+//!         println!("Bytes1 after: {}", result1);
+//!         println!("Bytes2 after: {}", result2);
+//!     });
+//!     // `OCamlRuntimeStartupGuard`'s `Drop` implementation will pefrorm the necessary cleanup
 //!     // to shutdown the OCaml runtime.
 //! }
 //! ```

@@ -19,6 +19,25 @@ thread_local! {
   });
 }
 
+/// RAII guard for the OCaml runtime.
+pub struct OCamlRuntimeStartupGuard {
+    _not_send_sync: PhantomData<*const ()>,
+}
+
+impl Deref for OCamlRuntimeStartupGuard {
+    type Target = OCamlRuntime;
+
+    fn deref(&self) -> &OCamlRuntime {
+        unsafe { internal::recover_runtime_handle() }
+    }
+}
+
+impl DerefMut for OCamlRuntimeStartupGuard {
+    fn deref_mut(&mut self) -> &mut OCamlRuntime {
+        unsafe { internal::recover_runtime_handle_mut() }
+    }
+}
+
 /// Per-thread handle to the OCaml runtime.
 ///
 /// The first call to `OCamlRuntime::init()` on the “main” thread
@@ -33,10 +52,6 @@ pub struct OCamlRuntime {
     _not_send_sync: PhantomData<*const ()>,
 }
 
-pub struct OCamlRuntimeStartupGuard {
-    _not_send_sync: PhantomData<*const ()>,
-}
-
 impl OCamlRuntime {
     /// Initialize the OCaml runtime exactly once.
     ///
@@ -47,6 +62,7 @@ impl OCamlRuntime {
     pub fn init() -> Result<OCamlRuntimeStartupGuard, String> {
         #[cfg(not(feature = "no-caml-startup"))]
         {
+            use std::sync::atomic::Ordering;
             if INIT_CALLED
                 .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
                 .is_err()
@@ -66,7 +82,9 @@ impl OCamlRuntime {
             })
         }
         #[cfg(feature = "no-caml-startup")]
-        return Err("Rust code called from OCaml should not try to initialize the runtime".to_string());
+        return Err(
+            "Rust code called from OCaml should not try to initialize the runtime".to_string(),
+        );
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
