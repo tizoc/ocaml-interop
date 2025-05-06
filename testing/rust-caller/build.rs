@@ -8,7 +8,13 @@ fn main() {
     let ocaml_callable_dir = "./ocaml";
     let dune_dir = "../../_build/default/testing/rust-caller/ocaml";
     Command::new("opam")
-        .args(["exec", "--", "dune", "build", &format!("{}/callable.exe.o", ocaml_callable_dir)])
+        .args([
+            "exec",
+            "--",
+            "dune",
+            "build",
+            &format!("{}/callable.exe.o", ocaml_callable_dir),
+        ])
         .status()
         .expect("Dune failed");
     Command::new("rm")

@@ -162,16 +162,26 @@ pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
 // Tests
 
 #[cfg(test)]
+fn ensure_ocaml_runtime_initialized() {
+    use ocaml_interop::OCamlRuntimeStartupGuard;
+
+    static INIT: std::sync::Once = std::sync::Once::new();
+    static mut OCAML_RUNTIME: Option<OCamlRuntimeStartupGuard> = None;
+
+    INIT.call_once(|| {
+        let guard = OCamlRuntime::init().expect("Failed to initialize OCaml runtime");
+        unsafe {
+            OCAML_RUNTIME = Some(guard);
+        }
+    });
+}
+
+#[cfg(test)]
 fn with_domain_lock<F, T>(f: F) -> T
 where
     F: FnOnce(&mut OCamlRuntime) -> T,
 {
-    static INIT: std::sync::Once = std::sync::Once::new();
-
-    INIT.call_once(|| {
-        OCamlRuntime::init_persistent();
-        unsafe { ocaml_sys::caml_enter_blocking_section() };
-    });
+    ensure_ocaml_runtime_initialized();
 
     OCamlRuntime::with_domain_lock(f)
 }
@@ -376,24 +386,23 @@ fn test_dynbox() {
 
 #[test]
 fn test_threads() {
-    // Create a vector to store the handles of the spawned threads
     let mut handles = Vec::new();
 
-    // Spawn 100 threads
-    for n in 0..100 {
+    for _ in 0..100 {
         let handle = std::thread::spawn(move || {
-            with_domain_lock(|cr| {
-                println!("thread: {n}");
-                allocate_alot(cr)
-            });
+            with_domain_lock(|cr: &mut OCamlRuntime| allocate_alot(cr));
         });
 
-        handles.push((n, handle));
+        handles.push(handle);
     }
+
     std::thread::sleep(std::time::Duration::from_secs(1));
-    // Wait for all of the threads to finish
-    for (n, handle) in handles {
-        println!("Joining thread {n}");
+
+    for handle in &handles {
         assert!(handle.is_finished());
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
     }
 }
