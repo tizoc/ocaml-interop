@@ -152,7 +152,7 @@ pub unsafe fn store_raw_field_at<A>(
 }
 
 const BOX_OPS_DYN_DROP: custom_operations = custom_operations {
-    identifier: "_rust_box_dyn_drop\0".as_ptr() as *const ocaml_sys::Char,
+    identifier: c"_rust_box_dyn_drop".as_ptr() as *const ocaml_sys::Char,
     finalize: Some(drop_box_dyn),
     compare: None,
     hash: None,

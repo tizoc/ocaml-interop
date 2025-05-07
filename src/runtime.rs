@@ -11,9 +11,9 @@ use std::{
 use crate::{memory::OCamlRef, value::OCaml};
 
 thread_local! {
-  static TLS_RUNTIME: UnsafeCell<OCamlRuntime> = UnsafeCell::new({
+  static TLS_RUNTIME: UnsafeCell<OCamlRuntime> = const { UnsafeCell::new({
       OCamlRuntime { _not_send_sync: PhantomData }
-  });
+  })};
 }
 
 /// RAII guard for the OCaml runtime.
@@ -70,7 +70,7 @@ impl OCamlRuntime {
                 return Err("OCaml runtime already initialized".to_string());
             }
             unsafe {
-                let arg0 = b"ocaml\0".as_ptr() as *const ocaml_sys::Char;
+                let arg0 = c"ocaml".as_ptr() as *const ocaml_sys::Char;
                 let args = [arg0, core::ptr::null()];
                 ocaml_sys::caml_startup(args.as_ptr());
                 ocaml_boxroot_sys::boxroot_setup();
@@ -111,7 +111,7 @@ impl OCamlRuntime {
         F: FnOnce(&mut Self) -> T,
     {
         let mut lock = OCamlDomainLock::new();
-        f(&mut *lock)
+        f(&mut lock)
     }
 }
 
