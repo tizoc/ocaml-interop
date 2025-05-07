@@ -360,7 +360,7 @@ pub use ocaml_interop_derive::export;
 #[doc(hidden)]
 pub mod internal {
     use std::ffi::CString;
-
+    use std::sync::OnceLock;
     pub use crate::closure::OCamlClosure;
     pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
@@ -379,34 +379,70 @@ pub mod internal {
         unsafe { ocaml_sys::caml_sys_double_val(val) }
     }
 
+    // Static storage for the OCaml exception constructor for Rust panics.
+    // This will hold the OCaml value for an exception like `exception RustPanic of string`.
+    static RUST_PANIC_EXCEPTION_CONSTRUCTOR: OnceLock<Option<super::RawOCaml>> = OnceLock::new();
+
+    /// Retrieves the OCaml exception constructor for `RustPanic`.
+    ///
+    /// This function attempts to get a reference to an OCaml exception constructor
+    /// that should be registered from the OCaml side using a name (e.g., "rust_panic_exn").
+    /// Example OCaml registration:
+    /// ```ocaml
+    /// exception RustPanic of string
+    /// let () = Callback.register_exception "rust_panic_exn" (RustPanic "")
+    /// ```
+    /// Returns `None` if the exception is not found (i.e., not registered by the OCaml code).
+    ///
+    /// # Safety
+    /// This function is unsafe because `ocaml_sys::caml_named_value` interacts with the OCaml
+    /// runtime and must be called when the OCaml runtime lock is held and the runtime is initialized.
+    unsafe fn get_rust_panic_exception_constructor() -> Option<super::RawOCaml> {
+        if let Some(constructor_val_opt) = RUST_PANIC_EXCEPTION_CONSTRUCTOR.get() {
+            return *constructor_val_opt;
+        }
+
+        let exn_name_cstr = CString::new("rust_panic_exn").unwrap();
+        let constructor_ptr = ocaml_sys::caml_named_value(exn_name_cstr.as_ptr());
+
+        if constructor_ptr.is_null() {
+            RUST_PANIC_EXCEPTION_CONSTRUCTOR.set(None).ok();
+            
+            None
+        } else {
+            let constructor_val = *constructor_ptr;
+
+            RUST_PANIC_EXCEPTION_CONSTRUCTOR.set(Some(constructor_val)).ok();
+
+            Some(constructor_val)
+        }
+    }
+
     /// # Safety
     /// This function is intended to be called from the `#[export]` macro when a Rust panic is caught.
-    /// It raises an OCaml `Failure` exception with the provided message.
+    /// It attempts to raise a custom OCaml exception (e.g., `RustPanic of string`) with the provided message.
+    /// If the custom exception is not registered on the OCaml side, it falls back to `caml_failwith`.
     /// This function will likely not return to the Rust caller in the traditional sense,
-    /// as `caml_failwith` transfers control to the OCaml runtime's exception handling mechanism.
+    /// as it transfers control to the OCaml runtime's exception handling mechanism.
+    /// The OCaml runtime must be initialized, and the current thread must hold the domain lock.
     pub unsafe fn raise_rust_panic_exception(msg: &str) {
-        // Ensure the OCaml runtime is in a safe state to raise an exception.
-        // This typically means being inside a domain (caml_leave_blocking_section has been called).
-        // The #[export] macro ensures this by recovering the runtime handle which implies
-        // the domain lock is held.
-
-        // OCaml exceptions should be registered if they are not built-in.
-        // `Failure` is a built-in exception, so we don't need to register it.
-        // If we were to use a custom exception (e.g., `Rust_panic of string`),
-        // we'd need `caml_register_global_root` for the exception constructor
-        // and then `caml_raise_with_string` or similar.
-        // `caml_failwith` is simpler as it directly raises `Failure "message"`.
-
         let c_msg = CString::new(msg).unwrap_or_else(|_| {
             CString::new("Rust panic: Invalid message content (e.g., null bytes)").unwrap()
         });
-        ocaml_sys::caml_failwith(c_msg.as_ptr() as *const ocaml_sys::Char);
 
-        // caml_failwith should not return. If it does, it's an issue.
-        // We can add an unreachable_unchecked() here if we are absolutely sure,
-        // or a panic! to indicate a critical failure in the FFI error handling itself.
-        // For now, let's assume it behaves as expected and doesn't return.
-        std::process::abort(); // As a last resort if caml_failwith returns.
+        match get_rust_panic_exception_constructor() {
+            Some(rust_panic_exn_constructor) => {
+                // Raise the custom OCaml exception `RustPanic "message"`.
+                ocaml_sys::caml_raise_with_string(rust_panic_exn_constructor, c_msg.as_ptr() as *const ocaml_sys::Char);
+            }
+            None => {
+                // Fallback to caml_failwith if the custom exception is not found.
+                ocaml_sys::caml_failwith(c_msg.as_ptr() as *const ocaml_sys::Char);
+            }
+        }
+
+        // caml_raise_with_string or caml_failwith should not return. If they do, it's an issue.
+        std::process::abort(); // As a last resort if OCaml exception raising returns.
     }
 }
 
