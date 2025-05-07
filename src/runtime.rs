@@ -6,12 +6,9 @@ use std::{
     cell::UnsafeCell,
     marker::PhantomData,
     ops::{Deref, DerefMut},
-    sync::atomic::AtomicBool,
 };
 
 use crate::{memory::OCamlRef, value::OCaml};
-
-static INIT_CALLED: AtomicBool = AtomicBool::new(false);
 
 thread_local! {
   static TLS_RUNTIME: UnsafeCell<OCamlRuntime> = UnsafeCell::new({
@@ -62,7 +59,10 @@ impl OCamlRuntime {
     pub fn init() -> Result<OCamlRuntimeStartupGuard, String> {
         #[cfg(not(feature = "no-caml-startup"))]
         {
-            use std::sync::atomic::Ordering;
+            use std::sync::atomic::{AtomicBool, Ordering};
+
+            static INIT_CALLED: AtomicBool = AtomicBool::new(false);
+
             if INIT_CALLED
                 .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
                 .is_err()
