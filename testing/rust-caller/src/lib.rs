@@ -140,7 +140,10 @@ pub fn verify_variant_test(cr: &mut OCamlRuntime, variant: ocaml::Movement) -> S
     result.to_rust(cr)
 }
 
-pub fn verify_polymorphic_variant_test(cr: &mut OCamlRuntime, variant: ocaml::PolymorphicEnum) -> String {
+pub fn verify_polymorphic_variant_test(
+    cr: &mut OCamlRuntime,
+    variant: ocaml::PolymorphicEnum,
+) -> String {
     let ocaml_variant = variant.to_boxroot(cr);
     let result = ocaml::stringify_polymorphic_variant(cr, &ocaml_variant);
     result.to_rust(cr)
@@ -158,226 +161,248 @@ pub fn allocate_alot(cr: &mut OCamlRuntime) -> bool {
 
 // Tests
 
-// NOTE: required because at the moment, no synchronization is done on OCaml calls
 #[cfg(test)]
-use serial_test::serial;
+fn ensure_ocaml_runtime_initialized() {
+    use ocaml_interop::OCamlRuntimeStartupGuard;
+
+    static INIT: std::sync::Once = std::sync::Once::new();
+    static mut OCAML_RUNTIME: Option<OCamlRuntimeStartupGuard> = None;
+
+    INIT.call_once(|| {
+        let guard = OCamlRuntime::init().expect("Failed to initialize OCaml runtime");
+        unsafe {
+            OCAML_RUNTIME = Some(guard);
+        }
+    });
+}
+
+#[cfg(test)]
+fn with_domain_lock<F, T>(f: F) -> T
+where
+    F: FnOnce(&mut OCamlRuntime) -> T,
+{
+    ensure_ocaml_runtime_initialized();
+
+    OCamlRuntime::with_domain_lock(f)
+}
 
 #[test]
-#[serial]
 fn test_twice() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(twice(&mut cr, 10), 20);
+    with_domain_lock(|cr| {
+        assert_eq!(twice(cr, 10), 20);
+    });
 }
 
 #[test]
-#[serial]
 fn test_increment_bytes() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(
-        increment_bytes(&mut cr, "0000000000000000", 10),
-        "1111111111000000"
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(
+            increment_bytes(cr, "0000000000000000", 10),
+            "1111111111000000"
+        );
+    });
 }
 
 #[test]
-#[serial]
 fn test_increment_ints_list() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(increment_ints_list(&mut cr, &ints), expected);
+    with_domain_lock(|cr| {
+        let ints = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let expected = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(increment_ints_list(cr, &ints), expected);
+    });
 }
 
 #[test]
-#[serial]
 fn test_make_tuple() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(
-        make_tuple(&mut cr, "fst".to_owned(), 9),
-        ("fst".to_owned(), 9)
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(make_tuple(cr, "fst".to_owned(), 9), ("fst".to_owned(), 9));
+    });
 }
 
 #[test]
-#[serial]
 fn test_make_some() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(
-        make_some(&mut cr, "some".to_owned()),
-        Some("some".to_owned())
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(make_some(cr, "some".to_owned()), Some("some".to_owned()));
+    });
 }
 
 #[test]
-#[serial]
 fn test_make_result() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(make_ok(&mut cr, 10), Ok(10));
-    assert_eq!(
-        make_error(&mut cr, "error".to_owned()),
-        Err("error".to_owned())
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(make_ok(cr, 10), Ok(10));
+        assert_eq!(make_error(cr, "error".to_owned()), Err("error".to_owned()));
+    });
 }
 
 #[test]
-#[serial]
 fn test_frame_management() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(allocate_alot(&mut cr), true);
+    with_domain_lock(|cr| {
+        assert!(allocate_alot(cr));
+    });
 }
 
 #[test]
-#[serial]
 fn test_record_conversion() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    let record = ocaml::TestRecord {
-        i: 10,
-        f: 5.0,
-        i32: 10,
-        i64: Box::new(10),
-        s: "string".to_owned(),
-        t: (10, 5.0),
-    };
-    let expected = "{ i=10; f=5.00; i32=10; i64=10; s=string; t=(10, 5.00) }".to_owned();
-    assert_eq!(verify_record_test(&mut cr, record), expected);
+    with_domain_lock(|cr| {
+        let record = ocaml::TestRecord {
+            i: 10,
+            f: 5.0,
+            i32: 10,
+            i64: Box::new(10),
+            s: "string".to_owned(),
+            t: (10, 5.0),
+        };
+        let expected = "{ i=10; f=5.00; i32=10; i64=10; s=string; t=(10, 5.00) }".to_owned();
+        assert_eq!(verify_record_test(cr, record), expected);
+    });
 }
 
 #[test]
-#[serial]
 fn test_variant_conversion() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(
-        verify_variant_test(&mut cr, ocaml::Movement::RotateLeft),
-        "RotateLeft".to_owned()
-    );
-    assert_eq!(
-        verify_variant_test(&mut cr, ocaml::Movement::RotateRight),
-        "RotateRight".to_owned()
-    );
-    assert_eq!(
-        verify_variant_test(&mut cr, ocaml::Movement::Step(10)),
-        "Step(10)".to_owned()
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(
+            verify_variant_test(cr, ocaml::Movement::RotateLeft),
+            "RotateLeft".to_owned()
+        );
+        assert_eq!(
+            verify_variant_test(cr, ocaml::Movement::RotateRight),
+            "RotateRight".to_owned()
+        );
+        assert_eq!(
+            verify_variant_test(cr, ocaml::Movement::Step(10)),
+            "Step(10)".to_owned()
+        );
+    });
 }
 
 #[test]
-#[serial]
 fn test_polymorphic_variant_conversion() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
-    assert_eq!(
-        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Unit),
-        "Unit".to_owned()
-    );
-    assert_eq!(
-        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Single(10.0)),
-        "Single(10.00)".to_owned()
-    );
-    assert_eq!(
-        verify_polymorphic_variant_test(&mut cr, ocaml::PolymorphicEnum::Multiple(10, "text".to_string())),
-        "Multiple(10, text)".to_owned()
-    );
+    with_domain_lock(|cr| {
+        assert_eq!(
+            verify_polymorphic_variant_test(cr, ocaml::PolymorphicEnum::Unit),
+            "Unit".to_owned()
+        );
+        assert_eq!(
+            verify_polymorphic_variant_test(cr, ocaml::PolymorphicEnum::Single(10.0)),
+            "Single(10.00)".to_owned()
+        );
+        assert_eq!(
+            verify_polymorphic_variant_test(
+                cr,
+                ocaml::PolymorphicEnum::Multiple(10, "text".to_string())
+            ),
+            "Multiple(10, text)".to_owned()
+        );
+    });
 }
 
 #[test]
-#[serial]
 fn test_bigarray() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    with_domain_lock(|cr| {
+        let arr: Vec<u16> = (0..16).collect();
 
-    let arr: Vec<u16> = (0..16).collect();
-
-    let crr = &mut cr;
-    let arr_ocaml: BoxRoot<bigarray::Array1<_>> = arr.as_slice().to_boxroot(crr);
-    ocaml::double_u16_array(crr, &arr_ocaml);
-    assert_eq!(
-        crr.get(&arr_ocaml).as_slice(),
-        (0..16u16).map(|i| i * 2).collect::<Vec<_>>().as_slice()
-    );
+        let arr_ocaml: BoxRoot<bigarray::Array1<_>> = arr.as_slice().to_boxroot(cr);
+        ocaml::double_u16_array(cr, &arr_ocaml);
+        assert_eq!(
+            cr.get(&arr_ocaml).as_slice(),
+            (0..16u16).map(|i| i * 2).collect::<Vec<_>>().as_slice()
+        );
+    });
 }
 
 #[test]
-#[serial]
 fn test_exception_handling_with_message() {
-    OCamlRuntime::init_persistent();
-    let result = std::panic::catch_unwind(move || {
-        let mut cr = unsafe { OCamlRuntime::recover_handle() };
-        let mcr = &mut cr;
-        let message = "my-error-message".to_boxroot(mcr);
-        ocaml::raises_message_exception(mcr, &message);
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    with_domain_lock(|cr| {
+        let result = catch_unwind(AssertUnwindSafe(move || {
+            let message = "my-error-message".to_boxroot(cr);
+            ocaml::raises_message_exception(cr, &message);
+        }));
+        assert_eq!(
+            result
+                .err()
+                .map(|err| err.downcast_ref::<String>().unwrap().clone())
+                .unwrap(),
+            "OCaml exception, message: Some(\"my-error-message\")"
+        );
     });
-    assert_eq!(
-        result
-            .err()
-            .and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone()))
-            .unwrap(),
-        "OCaml exception, message: Some(\"my-error-message\")"
-    );
 }
 
 #[test]
-#[serial]
 fn test_exception_handling_without_message() {
-    OCamlRuntime::init_persistent();
-    let result = std::panic::catch_unwind(|| {
-        let cr = unsafe { OCamlRuntime::recover_handle() };
-        ocaml::raises_nonmessage_exception(cr, &OCaml::unit());
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    with_domain_lock(|cr| {
+        let result = catch_unwind(AssertUnwindSafe(move || {
+            ocaml::raises_nonmessage_exception(cr, &OCaml::unit());
+        }));
+        assert_eq!(
+            result
+                .err()
+                .map(|err| err.downcast_ref::<String>().unwrap().clone())
+                .unwrap(),
+            "OCaml exception, message: None"
+        );
     });
-    assert_eq!(
-        result
-            .err()
-            .and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone()))
-            .unwrap(),
-        "OCaml exception, message: None"
-    );
 }
 
 #[test]
-#[serial]
 fn test_exception_handling_nonblock_exception() {
-    OCamlRuntime::init_persistent();
-    let result = std::panic::catch_unwind(|| {
-        let cr = unsafe { OCamlRuntime::recover_handle() };
-        ocaml::raises_nonblock_exception(cr, &OCaml::unit());
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    with_domain_lock(|cr| {
+        let result = catch_unwind(AssertUnwindSafe(move || {
+            ocaml::raises_nonblock_exception(cr, &OCaml::unit());
+        }));
+        assert_eq!(
+            result
+                .err()
+                .map(|err| err.downcast_ref::<String>().unwrap().clone())
+                .unwrap(),
+            "OCaml exception, message: None"
+        );
     });
-    assert_eq!(
-        result
-            .err()
-            .and_then(|err| Some(err.downcast_ref::<String>().unwrap().clone()))
-            .unwrap(),
-        "OCaml exception, message: None"
-    );
 }
 
 #[test]
-#[serial]
 fn test_dynbox() {
-    OCamlRuntime::init_persistent();
-    let mut cr = unsafe { OCamlRuntime::recover_handle() };
+    with_domain_lock(|cr| {
+        let mut list = OCaml::nil(cr).root();
+        let mut l2;
+        // Note: building a list with cons will build it in reverse order
+        for e in (0u16..4).rev() {
+            let boxed = OCaml::box_value(cr, e).root();
+            list = cons(cr, &boxed, &list).root();
+        }
+        l2 = ocaml::reverse_list_and_compact(cr, &list);
+        let mut vec2: Vec<u16> = vec![];
+        while let Some((hd, tl)) = cr.get(&l2).uncons() {
+            l2 = tl.root();
+            vec2.push(*hd.borrow());
+        }
+        // The next call will drop the boxes through the OCaml finalizer
+        ocaml::gc_compact(cr, OCaml::unit().as_ref());
+        assert_eq!(vec2, vec![3, 2, 1, 0]);
+    });
+}
 
-    let mut list = OCaml::nil().root();
-    let mut l2;
-    // Note: building a list with cons will build it in reverse order
-    for e in (0u16..4).rev() {
-        let boxed = OCaml::box_value(&mut cr, e).root();
-        list = cons(&mut cr, &boxed, &list).root();
+#[test]
+fn test_threads() {
+    let mut handles = Vec::new();
+
+    for _ in 0..100 {
+        let handle = std::thread::spawn(move || {
+            with_domain_lock(|cr: &mut OCamlRuntime| allocate_alot(cr));
+        });
+
+        handles.push(handle);
     }
-    l2 = ocaml::reverse_list_and_compact(&mut cr, &list);
-    let mut vec2: Vec<u16> = vec![];
-    while let Some((hd, tl)) = cr.get(&l2).uncons() {
-        l2 = tl.root();
-        vec2.push(*hd.borrow());
+
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    for handle in &handles {
+        assert!(handle.is_finished());
     }
-    // The next call will drop the boxes through the OCaml finalizer
-    ocaml::gc_compact(&mut cr, OCaml::unit().as_ref());
-    assert_eq!(vec2, vec![3, 2, 1, 0]);
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
 }

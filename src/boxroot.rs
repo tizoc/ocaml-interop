@@ -1,11 +1,11 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use std::{marker::PhantomData, ops::Deref, sync::Once};
+use std::{marker::PhantomData, ops::Deref};
 
 use ocaml_boxroot_sys::{
-    boxroot_create, boxroot_delete, boxroot_get, boxroot_get_ref, boxroot_modify, boxroot_setup,
-    BoxRoot as PrimitiveBoxRoot,
+    boxroot_create, boxroot_delete, boxroot_error_string, boxroot_get, boxroot_get_ref,
+    boxroot_modify, BoxRoot as PrimitiveBoxRoot,
 };
 
 use crate::{memory::OCamlCell, OCaml, OCamlRef, OCamlRuntime};
@@ -16,18 +16,21 @@ pub struct BoxRoot<T: 'static> {
     _marker: PhantomData<T>,
 }
 
+fn boxroot_fail() -> ! {
+    let reason = unsafe { std::ffi::CStr::from_ptr(boxroot_error_string()) }.to_string_lossy();
+    panic!("Failed to allocate boxroot, boxroot_error_string() -> {reason}");
+}
+
 impl<T> BoxRoot<T> {
     /// Creates a new root from an [`OCaml`]`<T>` value.
     pub fn new(val: OCaml<T>) -> BoxRoot<T> {
-        static INIT: Once = Once::new();
-
-        INIT.call_once(|| unsafe {
-            boxroot_setup();
-        });
-
-        BoxRoot {
-            boxroot: unsafe { boxroot_create(val.raw) },
-            _marker: PhantomData,
+        if let Some(boxroot) = unsafe { boxroot_create(val.raw) } {
+            BoxRoot {
+                boxroot,
+                _marker: PhantomData,
+            }
+        } else {
+            boxroot_fail();
         }
     }
 
@@ -39,7 +42,9 @@ impl<T> BoxRoot<T> {
     /// Roots the OCaml value `val`, returning an [`OCamlRef`]`<T>`.
     pub fn keep<'tmp>(&'tmp mut self, val: OCaml<T>) -> OCamlRef<'tmp, T> {
         unsafe {
-            boxroot_modify(&mut self.boxroot, val.raw);
+            if !boxroot_modify(&mut self.boxroot, val.raw) {
+                boxroot_fail();
+            }
             &*(boxroot_get_ref(self.boxroot) as *const OCamlCell<T>)
         }
     }
@@ -57,4 +62,15 @@ impl<T> Deref for BoxRoot<T> {
     fn deref(&self) -> OCamlRef<T> {
         unsafe { &*(boxroot_get_ref(self.boxroot) as *const OCamlCell<T>) }
     }
+}
+
+#[cfg(test)]
+mod boxroot_assertions {
+    use super::*;
+    use static_assertions::assert_not_impl_any;
+
+    // Assert that BoxRoot<T> does not implement Send or Sync for some concrete T.
+    // Using a simple type like () or i32 is sufficient.
+    assert_not_impl_any!(BoxRoot<()>: Send, Sync);
+    assert_not_impl_any!(BoxRoot<i32>: Send, Sync);
 }

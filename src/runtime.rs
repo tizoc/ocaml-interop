@@ -1,63 +1,90 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use ocaml_boxroot_sys::{boxroot_setup, boxroot_teardown};
-use std::marker::PhantomData;
+use ocaml_boxroot_sys::boxroot_teardown;
+use std::{
+    cell::UnsafeCell,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{memory::OCamlRef, value::OCaml};
 
-/// OCaml runtime handle.
+thread_local! {
+  static TLS_RUNTIME: UnsafeCell<OCamlRuntime> = const { UnsafeCell::new({
+      OCamlRuntime { _not_send_sync: PhantomData }
+  })};
+}
+
+/// RAII guard for the OCaml runtime.
+pub struct OCamlRuntimeStartupGuard {
+    _not_send_sync: PhantomData<*const ()>,
+}
+
+impl Deref for OCamlRuntimeStartupGuard {
+    type Target = OCamlRuntime;
+
+    fn deref(&self) -> &OCamlRuntime {
+        unsafe { internal::recover_runtime_handle() }
+    }
+}
+
+impl DerefMut for OCamlRuntimeStartupGuard {
+    fn deref_mut(&mut self) -> &mut OCamlRuntime {
+        unsafe { internal::recover_runtime_handle_mut() }
+    }
+}
+
+/// Per-thread handle to the OCaml runtime.
 ///
-/// Should be initialized once at the beginning of the program
-/// and the obtained handle passed around.
+/// The first call to `OCamlRuntime::init()` on the “main” thread
+/// will perform `caml_startup` and initialize the runtime. The
+/// returned `OCamlRuntimeStartupGuard`, once dropped, will
+/// perform the OCaml runtime shutdown and release resources.
 ///
-/// Once the handle is dropped, the OCaml runtime will be shutdown.
+/// In normal use you don’t pass this handle around yourself—invoke
+/// `OCamlRuntime::with_domain_lock(...)` (or use the provided FFI
+/// export macros) to enter the OCaml domain and get a `&mut` to it.
 pub struct OCamlRuntime {
-    _private: (),
+    _not_send_sync: PhantomData<*const ()>,
 }
 
 impl OCamlRuntime {
-    /// Initializes the OCaml runtime and returns an OCaml runtime handle.
+    /// Initialize the OCaml runtime exactly once.
     ///
-    /// Once the handle is dropped, the OCaml runtime will be shutdown.
-    pub fn init() -> Self {
-        Self::init_persistent();
-        Self { _private: () }
-    }
-
-    /// Initializes the OCaml runtime.
+    /// Returns a `OCamlRuntimeStartupGuard` that will perform the
+    /// OCaml runtime shutdown and release resources once dropped.
     ///
-    /// After the first invocation, this method does nothing.
-    pub fn init_persistent() {
+    /// Returns `Err(String)` if called more than once.
+    pub fn init() -> Result<OCamlRuntimeStartupGuard, String> {
         #[cfg(not(feature = "no-caml-startup"))]
         {
-            static INIT: std::sync::Once = std::sync::Once::new();
+            use std::sync::atomic::{AtomicBool, Ordering};
 
-            INIT.call_once(|| {
-                let arg0 = "ocaml\0".as_ptr() as *const ocaml_sys::Char;
-                let c_args = [arg0, core::ptr::null()];
-                unsafe {
-                    ocaml_sys::caml_startup(c_args.as_ptr());
-                }
+            static INIT_CALLED: AtomicBool = AtomicBool::new(false);
+
+            if INIT_CALLED
+                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                .is_err()
+            {
+                return Err("OCaml runtime already initialized".to_string());
+            }
+            unsafe {
+                let arg0 = c"ocaml".as_ptr() as *const ocaml_sys::Char;
+                let args = [arg0, core::ptr::null()];
+                ocaml_sys::caml_startup(args.as_ptr());
+                ocaml_boxroot_sys::boxroot_setup();
+                ocaml_sys::caml_enter_blocking_section();
+            }
+
+            Ok(OCamlRuntimeStartupGuard {
+                _not_send_sync: PhantomData,
             })
         }
         #[cfg(feature = "no-caml-startup")]
-        panic!("Rust code that is called from an OCaml program should not try to initialize the runtime.");
-    }
-
-    /// Recover the runtime handle.
-    ///
-    /// This method is used internally, do not use directly in code, only when writing tests.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because the OCaml runtime handle should be obtained once
-    /// upon initialization of the OCaml runtime and then passed around. This method exists
-    /// only to ease the authoring of tests.
-    #[inline(always)]
-    pub unsafe fn recover_handle() -> &'static mut Self {
-        static mut RUNTIME: OCamlRuntime = OCamlRuntime { _private: () };
-        &mut RUNTIME
+        return Err(
+            "Rust code called from OCaml should not try to initialize the runtime".to_string(),
+        );
     }
 
     /// Release the OCaml runtime lock, call `f`, and re-acquire the OCaml runtime lock.
@@ -75,9 +102,20 @@ impl OCamlRuntime {
             raw: unsafe { reference.get_raw() },
         }
     }
+
+    /// Run f with the OCaml lock held (enter / leave automatically).
+    ///
+    /// This is a blocking call that will wait until the OCaml runtime is available.
+    pub fn with_domain_lock<F, T>(f: F) -> T
+    where
+        F: FnOnce(&mut Self) -> T,
+    {
+        let mut lock = OCamlDomainLock::new();
+        f(&mut lock)
+    }
 }
 
-impl Drop for OCamlRuntime {
+impl Drop for OCamlRuntimeStartupGuard {
     fn drop(&mut self) {
         unsafe {
             boxroot_teardown();
@@ -86,11 +124,11 @@ impl Drop for OCamlRuntime {
     }
 }
 
-struct OCamlBlockingSection {}
+struct OCamlBlockingSection;
 
 impl OCamlBlockingSection {
     fn new() -> Self {
-        Self {}
+        Self
     }
 
     fn perform<T, F>(self, f: F) -> T
@@ -108,11 +146,119 @@ impl Drop for OCamlBlockingSection {
     }
 }
 
+/// In OCaml 5 each **domain** has its own minor-heap and GC state.  Entering
+/// OCaml from C requires the thread to *leave* the “blocking section”, thereby
+/// resuming normal allocation/GC activity for **this domain**.  This guard
+/// performs that transition in `new()` and restores the blocking section in
+/// `Drop`.
+///
+/// While the guard is alive the current OS thread is the **only** thread that
+/// can run OCaml code *inside this domain*.  That exclusivity makes it sound
+/// to hand out **one** mutable reference to the process-wide
+/// [`OCamlRuntime`] but only for the guard’s lifetime.
+///
+/// # Safety invariant
+///
+/// *Each* live `OCamlDomainLock` owns the “entered” state of the current
+/// domain.  Creating a second guard simultaneously (nesting) would yield two
+/// overlapping `&mut OCamlRuntime` borrows (that is undefined behaviour in
+/// Rust) and would also violate the enter/leave protocol required by the OCaml
+/// C API.  Likewise, leaking a guard with `mem::forget` keeps the domain
+/// permanently *entered* and the mutable reference alive beyond its intended
+/// scope; both are unsound.
+///
+/// Consequently this type is **!Send + !Sync** and must remain on the thread
+/// where it was constructed.
+struct OCamlDomainLock {
+    _not_send_sync: PhantomData<*const ()>,
+}
+
+impl OCamlDomainLock {
+    #[inline(always)]
+    fn new() -> Self {
+        OCamlThreadRegistrationGuard::ensure();
+        unsafe {
+            ocaml_sys::caml_leave_blocking_section();
+        };
+        Self {
+            _not_send_sync: PhantomData,
+        }
+    }
+}
+
+impl Drop for OCamlDomainLock {
+    fn drop(&mut self) {
+        unsafe {
+            ocaml_sys::caml_enter_blocking_section();
+        };
+    }
+}
+
+impl Deref for OCamlDomainLock {
+    type Target = OCamlRuntime;
+
+    fn deref(&self) -> &OCamlRuntime {
+        unsafe { internal::recover_runtime_handle() }
+    }
+}
+
+impl DerefMut for OCamlDomainLock {
+    fn deref_mut(&mut self) -> &mut OCamlRuntime {
+        unsafe { internal::recover_runtime_handle_mut() }
+    }
+}
+
+// Thread registration handling
+
+extern "C" {
+    pub fn caml_c_thread_register() -> isize;
+    pub fn caml_c_thread_unregister() -> isize;
+}
+
+/// RAII guard for per-thread OCaml runtime registration.
+///
+/// This struct is instantiated once per thread (via the `thread_local!`
+/// `OCAML_THREAD`) to ensure that the OCaml runtime is registered
+/// before any FFI calls into OCaml. The `registered` field is set to `true`
+/// **only** if the initial call to `caml_c_thread_register()` returns `1`
+/// (indicating success). When the thread exits, the guard’s `Drop`
+/// implementation will call `caml_c_thread_unregister()` exactly once
+/// if and only if `registered` is `true`.
+struct OCamlThreadRegistrationGuard {
+    registered: bool,
+}
+
+thread_local! {
+    static OCAML_THREAD_REGISTRATION_GUARD: OCamlThreadRegistrationGuard = {
+        let ok = unsafe { caml_c_thread_register() } == 1;
+        OCamlThreadRegistrationGuard { registered: ok }
+    };
+}
+
+impl OCamlThreadRegistrationGuard {
+    /// **Call this at the start of any function that may touch the OCaml runtime.**
+    ///
+    /// After the first invocation in the thread it’s just a cheap TLS lookup.
+    #[inline(always)]
+    pub fn ensure() {
+        OCAML_THREAD_REGISTRATION_GUARD.with(|_| {});
+    }
+}
+
+impl Drop for OCamlThreadRegistrationGuard {
+    fn drop(&mut self) {
+        if self.registered {
+            unsafe {
+                caml_c_thread_unregister();
+            }
+        }
+    }
+}
+
 // For initializing from an OCaml-driven program
 
 #[no_mangle]
 extern "C" fn ocaml_interop_setup(_unit: crate::RawOCaml) -> crate::RawOCaml {
-    unsafe { boxroot_setup() };
     ocaml_sys::UNIT
 }
 
@@ -120,4 +266,19 @@ extern "C" fn ocaml_interop_setup(_unit: crate::RawOCaml) -> crate::RawOCaml {
 extern "C" fn ocaml_interop_teardown(_unit: crate::RawOCaml) -> crate::RawOCaml {
     unsafe { boxroot_teardown() };
     ocaml_sys::UNIT
+}
+
+#[doc(hidden)]
+pub mod internal {
+    use super::{OCamlRuntime, TLS_RUNTIME};
+
+    #[inline(always)]
+    pub unsafe fn recover_runtime_handle_mut() -> &'static mut OCamlRuntime {
+        TLS_RUNTIME.with(|cell| &mut *cell.get())
+    }
+
+    #[inline(always)]
+    pub(super) unsafe fn recover_runtime_handle() -> &'static OCamlRuntime {
+        &*recover_runtime_handle_mut()
+    }
 }

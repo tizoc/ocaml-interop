@@ -7,7 +7,7 @@ description = "Utilities for Rust and OCaml interoperability"
 homepage = "https://github.com/tizoc/ocaml-interop"
 repository = "https://github.com/tizoc/ocaml-interop"
 keywords = ["ocaml", "rust", "ffi", "interop"]
-edition = "2018"
+edition = "2021"
 exclude = [
     ".github/*",
 ]
@@ -16,11 +16,10 @@ exclude = [
 features = [ "without-ocamlopt" ]
 
 [dependencies]
-ocaml-sys = "0.23"
-ocaml-boxroot-sys = "0.2"
+ocaml-sys = { version = "0.26", features = ["ocaml5"] }
+ocaml-boxroot-sys = "0.4"
 static_assertions = "1.1.0"
 
 [features]
-without-ocamlopt = ["ocaml-sys/without-ocamlopt", "ocaml-boxroot-sys/without-ocamlopt"]
-caml-state = ["ocaml-sys/caml-state"]
+without-ocamlopt = ["ocaml-sys/without-ocamlopt"]
 no-caml-startup = []

@@ -6,7 +6,8 @@
 // error[E0499]: cannot borrow `*cr` as mutable more than once at a time
 /// ```compile_fail
 /// # use ocaml_interop::*;
-/// # let cr = &mut OCamlRuntime::init();
+/// # let _guard = &mut OCamlRuntime::init().unwrap();
+/// # let cr = internal::recover_runtime_handle_mut();
 /// let arg1: OCaml<String> = "test".to_owned().to_ocaml(cr);
 /// let arg2: OCaml<String> = "test".to_owned().to_ocaml(cr);
 /// let arg1_rust: String = arg1.to_rust();
@@ -35,7 +36,8 @@ pub struct NoStaticDerefsForNonImmediates;
 /// # use ocaml_interop::bigarray::Array1;
 /// # use std::borrow::Borrow;
 /// # ocaml! { pub fn ocaml_function(arg1: Array1<u8>); }
-/// # let cr = &mut OCamlRuntime::init();
+/// # let _guard = &mut OCamlRuntime::init().unwrap();
+/// # let cr = internal::recover_runtime_handle_mut();
 /// let arr: Vec<u8> = (0..16).collect();
 /// let oarr: OCaml<Array1<u8>> = arr.as_slice().to_ocaml(cr);
 /// let slice: &[u8] = oarr.borrow();

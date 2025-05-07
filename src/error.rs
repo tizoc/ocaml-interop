@@ -15,13 +15,11 @@ impl fmt::Display for OCamlFixnumConversionError {
         match self {
             OCamlFixnumConversionError::InputTooBig(n) => write!(
                 f,
-                "Input value doesn't fit in OCaml fixnum n={} > MAX_FIXNUM={}",
-                n, MAX_FIXNUM
+                "Input value doesn't fit in OCaml fixnum n={n} > MAX_FIXNUM={MAX_FIXNUM}",
             ),
             OCamlFixnumConversionError::InputTooSmall(n) => write!(
                 f,
-                "Input value doesn't fit in OCaml fixnum n={} < MIN_FIXNUM={}",
-                n, MIN_FIXNUM
+                "Input value doesn't fit in OCaml fixnum n={n} < MIN_FIXNUM={MIN_FIXNUM}",
             ),
         }
     }

@@ -48,7 +48,7 @@ pub unsafe trait ToOCaml<T> {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T>;
 }
 
-unsafe impl<'root, T> ToOCaml<T> for OCamlRef<'root, T> {
+unsafe impl<T> ToOCaml<T> for OCamlRef<'_, T> {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T> {
         unsafe { OCaml::new(cr, self.get_raw()) }
     }
@@ -217,7 +217,7 @@ where
     A: ToOCaml<OCamlA>,
 {
     fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, OCamlList<OCamlA>> {
-        let mut result = BoxRoot::new(OCaml::nil());
+        let mut result = BoxRoot::new(OCaml::nil(cr));
         for elt in self.iter().rev() {
             let ov = elt.to_boxroot(cr);
             let cons = alloc_cons(cr, &ov, &result);
@@ -354,7 +354,7 @@ unsafe impl<A: BigarrayElt> ToOCaml<Array1<A>> for &[A] {
 // Note: we deliberately don't implement FromOCaml<Array1<A>>,
 // because this trait doesn't have a lifetime parameter
 // and implementing would force a copy.
-impl<'a, A: BigarrayElt> Borrow<[A]> for OCaml<'a, Array1<A>> {
+impl<A: BigarrayElt> Borrow<[A]> for OCaml<'_, Array1<A>> {
     fn borrow(&self) -> &[A] {
         unsafe {
             let ba = self.custom_ptr_val::<ocaml_sys::bigarray::Bigarray>();
