@@ -23,15 +23,15 @@ pub struct OCaml<'a, T: 'a> {
     pub(crate) raw: RawOCaml,
 }
 
-impl<'a, T> Clone for OCaml<'a, T> {
+impl<T> Clone for OCaml<'_, T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, T> Copy for OCaml<'a, T> {}
+impl<T> Copy for OCaml<'_, T> {}
 
-impl<'a, T> Deref for OCaml<'a, T> {
+impl<T> Deref for OCaml<'_, T> {
     type Target = OCamlCell<T>;
 
     fn deref(&self) -> OCamlRef<T> {
@@ -168,7 +168,7 @@ impl OCaml<'static, ()> {
 
 // Be careful about not deriving anything on OCaml to
 // uphold the Borrow contract on Eq/Ord/Hash
-impl<'a, A: 'static> Borrow<A> for OCaml<'a, DynBox<A>> {
+impl<A: 'static> Borrow<A> for OCaml<'_, DynBox<A>> {
     fn borrow(&self) -> &A {
         Pin::get_ref(Pin::as_ref(
             unsafe { self.custom_ptr_val::<Pin<Box<dyn Any>>>().as_ref() }
@@ -253,7 +253,7 @@ impl<'a> OCaml<'a, OCamlBytes> {
     }
 }
 
-impl<'a> OCaml<'a, OCamlInt> {
+impl OCaml<'_, OCamlInt> {
     /// Converts an OCaml int to an `i64`.
     pub fn to_i64(&self) -> i64 {
         unsafe { int_val(self.raw) as i64 }
@@ -298,7 +298,7 @@ impl<'a> OCaml<'a, OCamlInt> {
     }
 }
 
-impl<'a> OCaml<'a, bool> {
+impl OCaml<'_, bool> {
     /// Converts an OCaml boolean into a Rust boolean.
     pub fn to_bool(&self) -> bool {
         unsafe { int_val(self.raw) != 0 }
@@ -486,7 +486,7 @@ impl_tuple!(
     7: tuple_8 -> H,
     8: tuple_9 -> I);
 
-impl<'a, A: bigarray::BigarrayElt> OCaml<'a, bigarray::Array1<A>> {
+impl<A: bigarray::BigarrayElt> OCaml<'_, bigarray::Array1<A>> {
     /// Returns the number of items in `self`
     pub fn len(&self) -> usize {
         let ba = unsafe { self.custom_ptr_val::<ocaml_sys::bigarray::Bigarray>() };
@@ -545,7 +545,7 @@ pub enum RefOrRooted<'a, 'b, T: 'static> {
     Root(BoxRoot<T>),
 }
 
-impl<'a, 'b, T: 'static> RefOrRooted<'a, 'b, T> {
+impl<T: 'static> RefOrRooted<'_, '_, T> {
     unsafe fn get_raw(&self) -> RawOCaml {
         match self {
             RefOrRooted::Ref(a) => a.get_raw(),
