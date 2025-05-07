@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2025-05-07
+
 ### Breaking Changes ⚠️
 
 - **Dropped OCaml 4 Support**: This version exclusively supports OCaml 5.x. The underlying `ocaml-sys` dependency is now configured with the `ocaml5` feature, and the library leverages OCaml 5's domain-based concurrency model.
@@ -296,7 +298,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/tizoc/ocaml-interop/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/tizoc/ocaml-interop/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/tizoc/ocaml-interop/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/tizoc/ocaml-interop/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/tizoc/ocaml-interop/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/tizoc/ocaml-interop/compare/v0.9.0...v0.9.1
