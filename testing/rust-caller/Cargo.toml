@@ -7,6 +7,3 @@ edition = "2021"
 [dependencies]
 ocaml-interop = { path = "../.." }
 ocaml-sys = "*"
-
-[dev-dependencies]
-once_cell = "*"
