@@ -27,18 +27,60 @@
 //!
 //! ## Usage
 //!
-//! ### The OCaml runtime handle
+//! ### Runtime Initialization and Management
 //!
-//! The OCaml runtime handle is represented by a [`OCamlRuntime`] value. To be able to use of the capabilities
-//! offered by the OCaml runtime, access to this handle is required. The handle is first obtained when calling
-//! [`OCamlRuntime::init`] to initialize the OCaml runtime. Rust functions called form OCaml will also receive
-//! a `&mut OCamlRuntime` as their first argument.
+//! For Rust programs that intend to call into OCaml code, the OCaml runtime must first be initialized
+//! from the Rust side. This is done using [`OCamlRuntime::init`]. If your Rust code is being called
+//! as a library from an existing OCaml program, the OCaml runtime will already be initialized by OCaml,
+//! `OCamlRuntime::init()` must not be called from Rust in that scenario.
 //!
-//! This OCaml runtime handle must belong to a single thread, and passed around (moved or as a `&mut` reference)
-//! to any code that needs access to the OCaml runtime.
+//! When initializing from Rust:
 //!
-//! Un-rooted non-immediate OCaml values have a lifetime associated to the OCaml runtime handle, and will become
-//! stale once the OCaml runtime is mutably borrowed.
+//! ```rust,no_run
+//! # use ocaml_interop::{OCamlRuntime, OCamlRuntimeStartupGuard};
+//! # fn main() -> Result<(), String> {
+//! // Initialize the OCaml runtime. This also sets up boxroot.
+//! let _guard: OCamlRuntimeStartupGuard = OCamlRuntime::init()?;
+//! // The OCaml runtime is now active.
+//! // ... OCaml operations occur here, typically within `OCamlRuntime::with_domain_lock` ...
+//! // When `_guard` goes out of scope, it automatically calls `boxroot_teardown`
+//! // and `caml_shutdown` for proper cleanup.
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! [`OCamlRuntime::init`] returns a [`Result<OCamlRuntimeStartupGuard, String>`]. The [`OCamlRuntimeStartupGuard`]
+//! is an RAII type that ensures the OCaml runtime (including boxroot) is properly shut down when it's dropped.
+//! Both [`OCamlRuntimeStartupGuard`] and [`OCamlRuntime`] are `!Send` and `!Sync` to enforce thread safety
+//! in line with OCaml 5's domain-based concurrency.
+//!
+//! ### Acquiring and Using the OCaml Runtime Handle
+//!
+//! Most operations require a mutable reference to the OCaml runtime, `cr: &mut OCamlRuntime`.
+//!
+//! **When Calling OCaml from Rust:**
+//! The primary way to obtain `cr` is via [`OCamlRuntime::with_domain_lock`]. This method ensures
+//! the current thread is registered as an OCaml domain and holds the OCaml runtime lock:
+//!
+//! ```rust,no_run
+//! # use ocaml_interop::{OCamlRuntime, ToOCaml, OCaml};
+//! # fn main() -> Result<(), String> {
+//! # let _guard = OCamlRuntime::init()?;
+//! OCamlRuntime::with_domain_lock(|cr| {
+//!     // `cr` is the &mut OCamlRuntime.
+//!     // All OCaml interactions happen here.
+//!     let _ocaml_string: OCaml<String> = "Hello, OCaml!".to_ocaml(cr);
+//! });
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! **When OCaml Calls Rust:**
+//! For functions exported using [`ocaml_export!`], `cr` is automatically provided as the first argument.
+//!
+//! Un-rooted non-immediate OCaml values have a lifetime associated with the current scope of `cr` usage.
+//! Accessing them after the OCaml runtime has been re-entered (e.g., another call to `with_domain_lock` or
+//! a call into OCaml that might trigger the GC) can lead to use-after-free errors if not properly rooted.
 //!
 //! ### OCaml value representation
 //!
