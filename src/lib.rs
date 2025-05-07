@@ -359,6 +359,8 @@ pub use ocaml_interop_derive::export;
 
 #[doc(hidden)]
 pub mod internal {
+    use std::ffi::CString;
+
     pub use crate::closure::OCamlClosure;
     pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
@@ -375,6 +377,36 @@ pub mod internal {
     // To bypass ocaml_sys::caml_sys_double_val unsafe declaration
     pub fn float_val(val: super::RawOCaml) -> f64 {
         unsafe { ocaml_sys::caml_sys_double_val(val) }
+    }
+
+    /// # Safety
+    /// This function is intended to be called from the `#[export]` macro when a Rust panic is caught.
+    /// It raises an OCaml `Failure` exception with the provided message.
+    /// This function will likely not return to the Rust caller in the traditional sense,
+    /// as `caml_failwith` transfers control to the OCaml runtime's exception handling mechanism.
+    pub unsafe fn raise_rust_panic_exception(msg: &str) {
+        // Ensure the OCaml runtime is in a safe state to raise an exception.
+        // This typically means being inside a domain (caml_leave_blocking_section has been called).
+        // The #[export] macro ensures this by recovering the runtime handle which implies
+        // the domain lock is held.
+
+        // OCaml exceptions should be registered if they are not built-in.
+        // `Failure` is a built-in exception, so we don't need to register it.
+        // If we were to use a custom exception (e.g., `Rust_panic of string`),
+        // we'd need `caml_register_global_root` for the exception constructor
+        // and then `caml_raise_with_string` or similar.
+        // `caml_failwith` is simpler as it directly raises `Failure "message"`.
+
+        let c_msg = CString::new(msg).unwrap_or_else(|_| {
+            CString::new("Rust panic: Invalid message content (e.g., null bytes)").unwrap()
+        });
+        ocaml_sys::caml_failwith(c_msg.as_ptr() as *const ocaml_sys::Char);
+
+        // caml_failwith should not return. If it does, it's an issue.
+        // We can add an unreachable_unchecked() here if we are absolutely sure,
+        // or a panic! to indicate a critical failure in the FFI error handling itself.
+        // For now, let's assume it behaves as expected and doesn't return.
+        std::process::abort(); // As a last resort if caml_failwith returns.
     }
 }
 

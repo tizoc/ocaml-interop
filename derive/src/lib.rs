@@ -211,6 +211,8 @@ pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let mut bytecode_fn_name_opt: Option<syn::Ident> = None;
     let mut bytecode_meta_span: Option<proc_macro2::Span> = None;
+    let mut no_panic_catch = false;
+    let mut no_panic_catch_span: Option<proc_macro2::Span> = None;
 
     let attr_parser = syn::meta::parser(|meta| {
         if meta.path.is_ident("bytecode") {
@@ -235,9 +237,25 @@ pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
                 Err(_) => Err(meta.error("'bytecode' attribute value must be a string literal (e.g., bytecode = \"my_func_byte\")")),
             }
+        } else if meta.path.is_ident("no_panic_catch") {
+            if no_panic_catch_span.is_some() {
+                return Err(syn::Error::new_spanned(
+                    &meta.path,
+                    "'no_panic_catch' attribute specified multiple times",
+                ));
+            }
+            // `no_panic_catch` is a flag, does not take a value.
+            // Check if it was provided as `no_panic_catch` or `no_panic_catch = true` for flexibility,
+            // but strictly it should be just `no_panic_catch`.
+            // For now, we assume its presence means true.
+            // Proper parsing would use meta.input.is_empty() or parse a bool if a value is expected.
+            // For a simple flag, its presence is enough.
+            no_panic_catch = true;
+            no_panic_catch_span = Some(meta.path.span());
+            Ok(())
         } else {
             Err(meta.error(format!(
-                "unsupported attribute '{}', only 'bytecode' is supported",
+                "unsupported attribute '{}', only 'bytecode' and 'no_panic_catch' are supported",
                 meta.path
                     .get_ident()
                     .map_or_else(|| "?".to_string(), |i| i.to_string())
@@ -288,14 +306,45 @@ pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
         process_return_type(original_fn_return_type_ast, fn_body);
 
     // 4. Assemble the full expanded function
+    let main_logic_block = quote! {
+        let #runtime_arg_pat = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
+
+        #(#boxroot_initializations)*
+
+        #final_return_expression_logic
+    };
+
+    let panic_handled_logic = if no_panic_catch {
+        main_logic_block // No panic catching
+    } else {
+        // Default: catch panics
+        quote! {
+            let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
+                #main_logic_block
+            }));
+            match result {
+                Ok(value) => value,
+                Err(panic_payload) => {
+                    let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                        *s
+                    } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                        s.as_str()
+                    } else {
+                        "Rust panic occurred, but unable to extract panic message."
+                    };
+                    unsafe {
+                        ::ocaml_interop::internal::raise_rust_panic_exception(msg);
+                        unreachable!()
+                    }
+                }
+            }
+        }
+    };
+
     let native_fn_impl = quote! {
         #[no_mangle]
         pub extern "C" fn #native_fn_name(#(#extern_c_fn_params_sig_parts),*) #extern_fn_return_type_sig {
-            let #runtime_arg_pat = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() }; // Type annotation removed here
-
-            #(#boxroot_initializations)*
-
-            #final_return_expression_logic
+            #panic_handled_logic
         }
     };
 
