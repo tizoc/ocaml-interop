@@ -354,6 +354,9 @@ pub use crate::mlvalues::{
 pub use crate::runtime::{OCamlRuntime, OCamlRuntimeStartupGuard};
 pub use crate::value::OCaml;
 
+// Re-export the procedural macro
+pub use ocaml_interop_derive::export;
+
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
@@ -367,6 +370,11 @@ pub mod internal {
     // To bypass ocaml_sys::int_val unsafe declaration
     pub fn int_val(val: super::RawOCaml) -> isize {
         unsafe { ocaml_sys::int_val(val) }
+    }
+
+    // To bypass ocaml_sys::caml_sys_double_val unsafe declaration
+    pub fn float_val(val: super::RawOCaml) -> f64 {
+        unsafe { ocaml_sys::caml_sys_double_val(val) }
     }
 }
 

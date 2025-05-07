@@ -1,0 +1,358 @@
+use proc_macro::TokenStream;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
+use syn::{parse_macro_input, Block, FnArg, ItemFn, LitStr, Pat, PathArguments, ReturnType, Type};
+
+// Helper function to validate the runtime argument
+fn validate_runtime_argument(arg_input: Option<&FnArg>) -> Result<&Pat, syn::Error> {
+    match arg_input {
+        Some(FnArg::Typed(pat_type)) => {
+            let user_provided_type = &pat_type.ty;
+            match &**user_provided_type {
+                Type::Reference(type_ref) => {
+                    if type_ref.mutability.is_none() {
+                        return Err(syn::Error::new_spanned(
+                            user_provided_type,
+                            "Expected first argument to be a mutable reference (e.g., &mut OCamlRuntime)",
+                        ));
+                    }
+                    match &*type_ref.elem {
+                        Type::Path(type_path) => {
+                            let path = &type_path.path;
+                            let num_segments = path.segments.len();
+                            if num_segments == 0 {
+                                return Err(syn::Error::new_spanned(
+                                    path,
+                                    "Type path for OCamlRuntime cannot be empty",
+                                ));
+                            }
+                            let last_segment = path.segments.last().unwrap();
+                            if last_segment.ident != "OCamlRuntime" {
+                                return Err(syn::Error::new_spanned(
+                                    last_segment,
+                                    "Expected referenced type to be OCamlRuntime",
+                                ));
+                            }
+                            if num_segments > 1 {
+                                let pre_last_segment_idx = num_segments - 2;
+                                if path.segments[pre_last_segment_idx].ident != "ocaml_interop" {
+                                    return Err(syn::Error::new_spanned(
+                                        &path.segments[pre_last_segment_idx],
+                                        "OCamlRuntime should be qualified with ocaml_interop (e.g., ocaml_interop::OCamlRuntime) or imported directly",
+                                    ));
+                                }
+                            }
+                        }
+                        _ => {
+                            return Err(syn::Error::new_spanned(
+                                &*type_ref.elem,
+                                "Expected referenced type to be OCamlRuntime (e.g. &mut ocaml_interop::OCamlRuntime)",
+                            ));
+                        }
+                    }
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        user_provided_type,
+                        "Expected first argument to be a mutable reference (e.g., &mut OCamlRuntime)",
+                    ));
+                }
+            }
+            Ok(&pat_type.pat) // Return the pattern if validation passes
+        }
+        _ => Err(syn::Error::new_spanned(
+            arg_input.unwrap_or(&FnArg::Receiver(syn::parse_quote! {self})),
+            "Function must have at least one typed argument for the OCaml runtime handle",
+        )),
+    }
+}
+
+// Helper function to process other (non-runtime) arguments
+fn process_extern_argument<'a>(
+    arg_input: &'a FnArg,
+    runtime_arg_pat: &Pat,
+) -> Result<
+    (
+        proc_macro2::TokenStream,
+        proc_macro2::TokenStream,
+        Box<Pat>,
+        bool,
+    ),
+    syn::Error,
+> {
+    if let FnArg::Typed(pat_type) = arg_input {
+        let original_pat = &pat_type.pat;
+        let original_ty = &pat_type.ty;
+
+        let is_f64 = match &**original_ty {
+            Type::Path(type_path) => type_path
+                .path
+                .segments
+                .last()
+                .map_or(false, |s| s.ident == "f64"),
+            _ => false,
+        };
+
+        if is_f64 {
+            let sig_part = quote! { #original_pat: f64 };
+            let init_part = quote! {}; // No BoxRooting for f64
+            Ok((sig_part, init_part, original_pat.clone(), true))
+        } else {
+            // Expect OCamlRef<T> for other types that need BoxRooting
+            let inner_ocaml_ref_type = match &**original_ty {
+                Type::Path(type_path) => {
+                    let last_segment = type_path
+                        .path
+                        .segments
+                        .last()
+                        .expect("Type path must have segments");
+                    if last_segment.ident == "OCamlRef" {
+                        if let PathArguments::AngleBracketed(params) = &last_segment.arguments {
+                            if let Some(syn::GenericArgument::Type(inner_ty)) = params.args.first()
+                            {
+                                quote! { #inner_ty }
+                            } else {
+                                return Err(syn::Error::new_spanned(
+                                    original_ty,
+                                    "OCamlRef is missing generic argument T",
+                                ));
+                            }
+                        } else {
+                            return Err(syn::Error::new_spanned(
+                                original_ty,
+                                "OCamlRef requires angle bracketed arguments",
+                            ));
+                        }
+                    } else {
+                        return Err(syn::Error::new_spanned(original_ty, format!("Argument `{:?}`: type `{:?}` is not f64 or OCamlRef<T>. Only f64 and OCamlRef<T> are supported for automatic BoxRooting.", quote!{#original_pat}.to_string(), quote!{#original_ty}.to_string())));
+                    }
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        original_ty,
+                        format!(
+                            "Argument `{:?}`: type must be a path type (f64 or OCamlRef<T>)",
+                            quote! {#original_pat}.to_string()
+                        ),
+                    ))
+                }
+            };
+
+            let sig_part = quote! { #original_pat: ::ocaml_interop::RawOCaml };
+            let init_part = quote! {
+                let #original_pat : #original_ty = &::ocaml_interop::BoxRoot::new(unsafe {
+                    ::ocaml_interop::OCaml::<#inner_ocaml_ref_type>::new(#runtime_arg_pat, #original_pat)
+                });
+            };
+            Ok((sig_part, init_part, original_pat.clone(), false))
+        }
+    } else {
+        Err(syn::Error::new_spanned(
+            arg_input,
+            "Receiver arguments (self) are not supported in ocaml_export functions",
+        ))
+    }
+}
+
+// Helper function to process return type
+fn process_return_type(
+    original_fn_return_type_ast: &ReturnType,
+    fn_body: &Block,
+) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+    match original_fn_return_type_ast {
+        ReturnType::Default => {
+            // User's function returns () implicitly.
+            (
+                quote! { -> ::ocaml_interop::RawOCaml }, // FFI signature still returns RawOCaml
+                quote! {
+                    #fn_body; // Execute the user's code block for its side effects.
+                    ::ocaml_interop::internal::UNIT // Return OCaml's unit value.
+                },
+            )
+        }
+        ReturnType::Type(_, ty_box) => {
+            // ty_box is Box<Type>
+            let user_return_type = &**ty_box; // This is the Type user wrote, e.g., f64 or OCaml<Something>
+            let is_f64_return = match user_return_type {
+                Type::Path(type_path) => type_path
+                    .path
+                    .segments
+                    .last()
+                    .map_or(false, |s| s.ident == "f64"),
+                _ => false,
+            };
+
+            if is_f64_return {
+                (
+                    quote! { -> f64 },
+                    quote! {
+                        let result_from_body: f64 = #fn_body;
+                        result_from_body // Directly return f64
+                    },
+                )
+            } else {
+                // Assume OCaml<T> for other return types
+                (
+                    quote! { -> ::ocaml_interop::RawOCaml },
+                    quote! {
+                        let result_from_body: #user_return_type = #fn_body;
+                        let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
+                        unsafe { final_result_for_ocaml.raw() }
+                    },
+                )
+            }
+        }
+    }
+}
+
+#[proc_macro_attribute]
+pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+
+    let mut bytecode_fn_name_opt: Option<syn::Ident> = None;
+    let mut bytecode_meta_span: Option<proc_macro2::Span> = None;
+
+    let attr_parser = syn::meta::parser(|meta| {
+        if meta.path.is_ident("bytecode") {
+            if bytecode_fn_name_opt.is_some() {
+                let mut err = syn::Error::new_spanned(
+                    &meta.path,
+                    "'bytecode' attribute specified multiple times",
+                );
+                if let Some(prev_span) = bytecode_meta_span {
+                    err.combine(syn::Error::new(
+                        prev_span,
+                        "previous 'bytecode' attribute here",
+                    ));
+                }
+                return Err(err);
+            }
+            match meta.value()?.parse::<LitStr>() {
+                Ok(lit_str) => {
+                    bytecode_fn_name_opt = Some(syn::Ident::new(&lit_str.value(), lit_str.span()));
+                    bytecode_meta_span = Some(meta.path.span());
+                    Ok(())
+                }
+                Err(_) => Err(meta.error("'bytecode' attribute value must be a string literal (e.g., bytecode = \"my_func_byte\")")),
+            }
+        } else {
+            Err(meta.error(format!(
+                "unsupported attribute '{}', only 'bytecode' is supported",
+                meta.path
+                    .get_ident()
+                    .map_or_else(|| "?".to_string(), |i| i.to_string())
+            )))
+        }
+    });
+
+    parse_macro_input!(attr with attr_parser);
+
+    let original_fn_ident = &input_fn.sig.ident;
+    let fn_inputs = &input_fn.sig.inputs;
+    let fn_body = &input_fn.block;
+    let original_fn_return_type_ast = &input_fn.sig.output;
+
+    let native_fn_name = original_fn_ident.clone();
+
+    let mut original_fn_args_iter = fn_inputs.iter();
+
+    // 1. Runtime argument: Use the helper function for validation
+    let runtime_arg_pat = match validate_runtime_argument(original_fn_args_iter.next()) {
+        Ok(pat) => pat,
+        Err(err) => return err.to_compile_error().into(),
+    };
+
+    // 2. Process other arguments for extern "C" signature and BoxRooting
+    let mut extern_c_fn_params_sig_parts = Vec::new();
+    let mut boxroot_initializations = Vec::new();
+    // let mut extern_arg_pats_for_bytecode = Vec::new(); // To store arg patterns for bytecode wrapper
+    let mut processed_args_info: Vec<(Box<Pat>, bool)> = Vec::new();
+
+    for arg in original_fn_args_iter {
+        match process_extern_argument(arg, runtime_arg_pat) {
+            Ok((sig_part, init_part, arg_pat, is_f64_flag)) => {
+                extern_c_fn_params_sig_parts.push(sig_part);
+                if !init_part.is_empty() {
+                    // Only add if there's an initialization (i.e., not f64)
+                    boxroot_initializations.push(init_part);
+                }
+                // extern_arg_pats_for_bytecode.push(arg_pat.clone()); // Store the pattern
+                processed_args_info.push((arg_pat, is_f64_flag));
+            }
+            Err(err) => return err.to_compile_error().into(),
+        }
+    }
+
+    // 3. Determine extern "C" function return type and final conversion logic
+    let (extern_fn_return_type_sig, final_return_expression_logic) =
+        process_return_type(original_fn_return_type_ast, fn_body);
+
+    // 4. Assemble the full expanded function
+    let native_fn_impl = quote! {
+        #[no_mangle]
+        pub extern "C" fn #native_fn_name(#(#extern_c_fn_params_sig_parts),*) #extern_fn_return_type_sig {
+            let #runtime_arg_pat = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() }; // Type annotation removed here
+
+            #(#boxroot_initializations)*
+
+            #final_return_expression_logic
+        }
+    };
+
+    let mut all_generated_code = vec![native_fn_impl];
+
+    // Bytecode function generation is now conditional and uses the name from the attribute
+    if let Some(bytecode_fn_name) = bytecode_fn_name_opt {
+        let mut arg_setup_code = Vec::new();
+        let mut call_args_for_native_fn = Vec::new();
+        let arg_count = processed_args_info.len();
+
+        for (i, (arg_pat, is_f64_arg)) in processed_args_info.iter().enumerate() {
+            let raw_val_ident =
+                syn::Ident::new(&format!("__ocaml_interop_arg_{}", i), arg_pat.span());
+
+            arg_setup_code.push(quote_spanned! {arg_pat.span()=>
+                #[allow(clippy::not_unsafe_ptr_arg_deref)]
+                let #raw_val_ident = unsafe { ::core::ptr::read(argv.add(#i)) };
+            });
+
+            if *is_f64_arg {
+                arg_setup_code.push(quote_spanned! {arg_pat.span()=>
+                    let #arg_pat = ::ocaml_interop::internal::float_val(#raw_val_ident);
+                });
+            } else {
+                arg_setup_code.push(quote_spanned! {arg_pat.span()=>
+                    let #arg_pat = #raw_val_ident;
+                });
+            }
+            call_args_for_native_fn.push(quote_spanned! {arg_pat.span()=> #arg_pat });
+        }
+
+        let bytecode_fn_def = quote! {
+            #[no_mangle]
+            pub extern "C" fn #bytecode_fn_name(argv: *mut ::ocaml_interop::RawOCaml, argn: ::std::os::raw::c_int) #extern_fn_return_type_sig {
+                #(#arg_setup_code)*
+
+                if cfg!(debug_assertions) {
+                    if (argn as usize) != #arg_count {
+                        panic!(
+                            "Bytecode function '{}' called with incorrect number of arguments: expected {}, got {}.",
+                            stringify!(#bytecode_fn_name),
+                            #arg_count,
+                            argn
+                        );
+                    }
+                }
+                // Call the native FFI function
+                #native_fn_name(#(#call_args_for_native_fn),*)
+            }
+        };
+        all_generated_code.push(bytecode_fn_def);
+    }
+
+    let expanded = quote! {
+        #(#all_generated_code)*
+    };
+
+    TokenStream::from(expanded)
+}
