@@ -273,44 +273,44 @@
 //!
 //! ### Calling into Rust from OCaml
 //!
-//! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the [`ocaml_export!`] macro.
+//! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `#[ocaml_interop::export]` macro.
 //!
 //! #### Example
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_export, FromOCaml, OCamlInt, OCaml, OCamlBytes,
-//!     OCamlRef, ToOCaml,
+//!     FromOCaml, OCamlInt, OCaml, OCamlBytes,
+//!     OCamlRef, ToOCaml, OCamlRuntime
 //! };
 //!
-//! // `ocaml_export` expands the function definitions by adding `pub` visibility and
-//! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
-//! // acquiring the OCaml runtime handle and binding it to the name provided as
-//! // the first parameter of the function.
-//! ocaml_export! {
-//!     // The first parameter is a name to which the GC frame handle will be bound to.
-//!     // The remaining parameters must have type `OCamlRef<T>`, and the return
-//!     // value `OCaml<T>`.
-//!     fn rust_twice(cr, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
-//!         let num: i64 = num.to_rust(cr);
-//!         unsafe { OCaml::of_i64_unchecked(num * 2) }
+//! // `#[ocaml_interop::export]` expands the function definitions by adding `pub` visibility and
+//! // the required `#[no_mangle]` and `extern "C"` declarations. It also handles
+//! // argument/return type marshalling and panic handling.
+//! // The first argument must be `&mut OCamlRuntime`.
+//! // Other arguments are typically `OCamlRef<T>` for OCaml values or direct types like `f64`.
+//! // The return type is typically `OCaml<T>` or a direct type like `f64`.
+//! 
+//! #[ocaml_interop::export]
+//! fn rust_twice(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
+//!     let num: i64 = num.to_rust(cr);
+//!     unsafe { OCaml::of_i64_unchecked(num * 2) }
+//! }
+//! 
+//! #[ocaml_interop::export]
+//! fn rust_increment_bytes(
+//!     cr: &mut OCamlRuntime,
+//!     bytes: OCamlRef<OCamlBytes>,
+//!     first_n: OCamlRef<OCamlInt>,
+//! ) -> OCaml<OCamlBytes> {
+//!     let first_n: i64 = first_n.to_rust(cr);
+//!     let first_n = first_n as usize;
+//!     let mut vec: Vec<u8> = bytes.to_rust(cr);
+//! 
+//!     for i in 0..first_n {
+//!         vec[i] += 1;
 //!     }
-//!
-//!     fn rust_increment_bytes(
-//!         cr,
-//!         bytes: OCamlRef<OCamlBytes>,
-//!         first_n: OCamlRef<OCamlInt>,
-//!     ) -> OCaml<OCamlBytes> {
-//!         let first_n: i64 = first_n.to_rust(cr);
-//!         let first_n = first_n as usize;
-//!         let mut vec: Vec<u8> = bytes.to_rust(cr);
-//!
-//!         for i in 0..first_n {
-//!             vec[i] += 1;
-//!         }
-//!
-//!         vec.to_ocaml(cr)
-//!     }
+//! 
+//!     vec.to_ocaml(cr)
 //! }
 //! ```
 //!

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_interop::{
-    alloc_error, alloc_ok, ocaml_export, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant,
+    alloc_error, alloc_ok, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant,
     OCaml, OCamlBytes, OCamlException, OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32,
     OCamlInt64, OCamlList, OCamlRef, OCamlUniformArray, ToOCaml,
 };
@@ -20,210 +20,228 @@ enum PolymorphicMovement {
     RotateRight,
 }
 
-ocaml_export! {
-    fn rust_twice(cr, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
-        let num: i64 = num.to_rust(cr);
-        unsafe { OCaml::of_i64_unchecked(num * 2) }
+#[ocaml_interop::export]
+fn rust_twice(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
+    let num: i64 = num.to_rust(cr);
+    unsafe { OCaml::of_i64_unchecked(num * 2) }
+}
+
+#[ocaml_interop::export]
+fn rust_twice_boxed_i64(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt64>) -> OCaml<OCamlInt64> {
+    let num: i64 = num.to_rust(cr);
+    let result = num * 2;
+    result.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_twice_boxed_i32(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt32>) -> OCaml<OCamlInt32> {
+    let num: i32 = num.to_rust(cr);
+    let result = num * 2;
+    result.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_add_unboxed_floats_noalloc(_cr: &mut OCamlRuntime, num: f64, num2: f64) -> f64 {
+    num * num2
+}
+
+#[ocaml_interop::export]
+fn rust_twice_boxed_float(cr: &mut OCamlRuntime, num: OCamlRef<OCamlFloat>) -> OCaml<OCamlFloat> {
+    let num: f64 = num.to_rust(cr);
+    let result = num * 2.0;
+    result.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_twice_unboxed_float(_cr: &mut OCamlRuntime, num: f64) -> f64 {
+    num * 2.0
+}
+
+#[ocaml_interop::export]
+fn rust_increment_bytes(cr: &mut OCamlRuntime, bytes: OCamlRef<OCamlBytes>, first_n: OCamlRef<OCamlInt>) -> OCaml<OCamlBytes> {
+    let first_n: i64 = first_n.to_rust(cr);
+    let first_n = first_n as usize;
+    let mut vec: Vec<u8> = bytes.to_rust(cr);
+
+    for i in 0..first_n {
+        vec[i] += 1;
     }
 
-    fn rust_twice_boxed_i64(cr, num: OCamlRef<OCamlInt64>) -> OCaml<OCamlInt64> {
-        let num: i64 = num.to_rust(cr);
-        let result = num * 2;
-        result.to_ocaml(cr)
+    vec.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_increment_ints_list(cr: &mut OCamlRuntime, ints: OCamlRef<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
+    let mut vec: Vec<i64> = ints.to_rust(cr);
+
+    for i in 0..vec.len() {
+        vec[i] += 1;
     }
 
-    fn rust_twice_boxed_i32(cr, num: OCamlRef<OCamlInt32>) -> OCaml<OCamlInt32> {
-        let num: i32 = num.to_rust(cr);
-        let result = num * 2;
-        result.to_ocaml(cr)
+    vec.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_increment_ints_uniform_array(cr: &mut OCamlRuntime, ints: OCamlRef<OCamlUniformArray<OCamlInt>>) -> OCaml<OCamlUniformArray<OCamlInt>> {
+    let mut vec: Vec<i64> = ints.to_rust(cr);
+
+    for i in 0..vec.len() {
+        vec[i] += 1;
     }
 
-    fn rust_add_unboxed_floats_noalloc(_cr, num: f64, num2: f64) -> f64 {
-        num * num2
+    vec.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_increment_floats_uniform_array(cr: &mut OCamlRuntime, ints: OCamlRef<OCamlUniformArray<OCamlFloat>>) -> OCaml<OCamlUniformArray<OCamlFloat>> {
+    let mut vec: Vec<f64> = ints.to_rust(cr);
+
+    for i in 0..vec.len() {
+        vec[i] += 1.;
     }
 
-    fn rust_twice_boxed_float(cr, num: OCamlRef<OCamlFloat>) -> OCaml<OCamlFloat> {
-        let num: f64 = num.to_rust(cr);
-        let result = num * 2.0;
-        result.to_ocaml(cr)
+    vec.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_increment_floats_float_array(cr: &mut OCamlRuntime, ints: OCamlRef<OCamlFloatArray>) -> OCaml<OCamlFloatArray> {
+    let mut vec: Vec<f64> = ints.to_rust(cr);
+
+    for i in 0..vec.len() {
+        vec[i] += 1.;
     }
 
-    fn rust_twice_unboxed_float(_cr, num: f64) -> f64 {
-        num * 2.0
-    }
+    vec.to_ocaml(cr)
+}
 
-    fn rust_increment_bytes(cr, bytes: OCamlRef<OCamlBytes>, first_n: OCamlRef<OCamlInt>) -> OCaml<OCamlBytes> {
-        let first_n: i64 = first_n.to_rust(cr);
-        let first_n = first_n as usize;
-        let mut vec: Vec<u8> = bytes.to_rust(cr);
+#[ocaml_interop::export]
+fn rust_make_tuple(cr: &mut OCamlRuntime, fst: OCamlRef<String>, snd: OCamlRef<OCamlInt>) -> OCaml<(String, OCamlInt)> {
+    let fst: String = fst.to_rust(cr);
+    let snd: i64 = snd.to_rust(cr);
+    let tuple = (fst, snd);
+    tuple.to_ocaml(cr)
+}
 
-        for i in 0..first_n {
-            vec[i] += 1;
+#[ocaml_interop::export]
+fn rust_make_some(cr: &mut OCamlRuntime, value: OCamlRef<String>) -> OCaml<Option<String>> {
+    let value: String = value.to_rust(cr);
+    let some_value = Some(value);
+    some_value.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_make_ok(cr: &mut OCamlRuntime, value: OCamlRef<OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
+    let value: i64 = value.to_rust(cr);
+    let ok_value: Result<i64, String> = Ok(value);
+    ok_value.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_make_error(cr: &mut OCamlRuntime, value: OCamlRef<String>) -> OCaml<Result<OCamlInt, String>> {
+    let value: String = value.to_rust(cr);
+    let error_value: Result<i64, String> = Err(value);
+    error_value.to_ocaml(cr)
+}
+
+#[ocaml_interop::export]
+fn rust_sleep_releasing(cr: &mut OCamlRuntime, millis: OCamlRef<OCamlInt>) {
+    let millis: i64 = millis.to_rust(cr);
+    cr.releasing_runtime(|| thread::sleep(time::Duration::from_millis(millis as u64)));
+}
+
+#[ocaml_interop::export]
+fn rust_sleep(cr: &mut OCamlRuntime, millis: OCamlRef<OCamlInt>) {
+    let millis: i64 = millis.to_rust(cr);
+    thread::sleep(time::Duration::from_millis(millis as u64));
+}
+
+#[ocaml_interop::export]
+fn rust_string_of_movement(cr: &mut OCamlRuntime, movement: OCamlRef<PolymorphicMovement>) -> OCaml<String> {
+    let movement_ocaml = cr.get(movement); // Corrected: use cr.get() for OCamlRef
+    let pm = ocaml_unpack_variant! {
+        movement_ocaml => { // Use the OCaml<'_, T> value from cr.get()
+            Step(count: OCamlInt) => { Movement::Step {count} },
+            RotateLeft => Movement::RotateLeft,
+            RotateRight => Movement::RotateRight,
         }
+    };
+    let s = match pm {
+        Err(_) => "Error unpacking".to_owned(),
+        Ok(Movement::Step {count}) => format!("Step({})", count),
+        Ok(Movement::RotateLeft) => "RotateLeft".to_owned(),
+        Ok(Movement::RotateRight) => "RotateRight".to_owned(),
+    };
+    s.to_ocaml(cr)
+}
 
-        vec.to_ocaml(cr)
-    }
-
-    fn rust_increment_ints_list(cr, ints: OCamlRef<OCamlList<OCamlInt>>) -> OCaml<OCamlList<OCamlInt>> {
-        let mut vec: Vec<i64> = ints.to_rust(cr);
-
-        for i in 0..vec.len() {
-            vec[i] += 1;
+#[ocaml_interop::export]
+fn rust_string_of_polymorphic_movement(cr: &mut OCamlRuntime, polymorphic_movement: OCamlRef<PolymorphicMovement>) -> OCaml<String> {
+    let polymorphic_movement_ocaml = cr.get(polymorphic_movement); // Corrected
+    let pm = ocaml_unpack_polymorphic_variant! {
+        polymorphic_movement_ocaml => { // Corrected
+            Step(count: OCamlInt) => { PolymorphicMovement::Step {count} },
+            RotateLeft => PolymorphicMovement::RotateLeft,
+            RotateRight => PolymorphicMovement::RotateRight,
         }
+    };
+    let s = match pm {
+        Err(_) => "Error unpacking".to_owned(),
+        Ok(PolymorphicMovement::Step {count}) => format!("`Step({})", count),
+        Ok(PolymorphicMovement::RotateLeft) => "`RotateLeft".to_owned(),
+        Ok(PolymorphicMovement::RotateRight) => "`RotateRight".to_owned(),
+    };
+    s.to_ocaml(cr)
+}
 
-        vec.to_ocaml(cr)
-    }
+#[ocaml_interop::export]
+fn rust_call_ocaml_closure(cr: &mut OCamlRuntime, ocaml_function: OCamlRef<fn(OCamlInt) -> OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
+    let ocaml_function_rooted = ocaml_function.to_boxroot(cr); // Renamed to avoid conflict
 
-    fn rust_increment_ints_uniform_array(cr, ints: OCamlRef<OCamlUniformArray<OCamlInt>>) -> OCaml<OCamlUniformArray<OCamlInt>> {
-        let mut vec: Vec<i64> = ints.to_rust(cr);
-
-        for i in 0..vec.len() {
-            vec[i] += 1;
-        }
-
-        vec.to_ocaml(cr)
-    }
-
-    fn rust_increment_floats_uniform_array(cr, ints: OCamlRef<OCamlUniformArray<OCamlFloat>>) -> OCaml<OCamlUniformArray<OCamlFloat>> {
-        let mut vec: Vec<f64> = ints.to_rust(cr);
-
-        for i in 0..vec.len() {
-            vec[i] += 1.;
-        }
-
-        vec.to_ocaml(cr)
-    }
-
-    fn rust_increment_floats_float_array(cr, ints: OCamlRef<OCamlFloatArray>) -> OCaml<OCamlFloatArray> {
-        let mut vec: Vec<f64> = ints.to_rust(cr);
-
-        for i in 0..vec.len() {
-            vec[i] += 1.;
-        }
-
-        vec.to_ocaml(cr)
-    }
-
-    fn rust_make_tuple(cr, fst: OCamlRef<String>, snd: OCamlRef<OCamlInt>) -> OCaml<(String, OCamlInt)> {
-        let fst: String = fst.to_rust(cr);
-        let snd: i64 = snd.to_rust(cr);
-        let tuple = (fst, snd);
-        tuple.to_ocaml(cr)
-    }
-
-    fn rust_make_some(cr, value: OCamlRef<String>) -> OCaml<Option<String>> {
-        let value: String = value.to_rust(cr);
-        let some_value = Some(value);
-        some_value.to_ocaml(cr)
-    }
-
-    fn rust_make_ok(cr, value: OCamlRef<OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
-        let value: i64 = value.to_rust(cr);
-        let ok_value: Result<i64, String> = Ok(value);
-        ok_value.to_ocaml(cr)
-    }
-
-    fn rust_make_error(cr, value: OCamlRef<String>) -> OCaml<Result<OCamlInt, String>> {
-        let value: String = value.to_rust(cr);
-        let error_value: Result<i64, String> = Err(value);
-        error_value.to_ocaml(cr)
-    }
-
-    fn rust_sleep_releasing(cr, millis: OCamlRef<OCamlInt>) {
-        let millis: i64 = millis.to_rust(cr);
-        cr.releasing_runtime(|| thread::sleep(time::Duration::from_millis(millis as u64)));
-        OCaml::unit()
-    }
-
-    fn rust_sleep(cr, millis: OCamlRef<OCamlInt>) {
-        let millis: i64 = millis.to_rust(cr);
-        thread::sleep(time::Duration::from_millis(millis as u64));
-        OCaml::unit()
-    }
-
-    fn rust_string_of_movement(cr, movement: OCamlRef<PolymorphicMovement>) -> OCaml<String> {
-        let movement = cr.get(movement);
-        let pm = ocaml_unpack_variant! {
-            movement => {
-                Step(count: OCamlInt) => { Movement::Step {count} },
-                RotateLeft => Movement::RotateLeft,
-                RotateRight => Movement::RotateRight,
-            }
-        };
-        let s = match pm {
-            Err(_) => "Error unpacking".to_owned(),
-            Ok(Movement::Step {count}) => format!("Step({})", count),
-            Ok(Movement::RotateLeft) => "RotateLeft".to_owned(),
-            Ok(Movement::RotateRight) => "RotateRight".to_owned(),
-        };
-        s.to_ocaml(cr)
-    }
-
-    fn rust_string_of_polymorphic_movement(cr, polymorphic_movement: OCamlRef<PolymorphicMovement>) -> OCaml<String> {
-        let polymorphic_movement = cr.get(polymorphic_movement);
-        let pm = ocaml_unpack_polymorphic_variant! {
-            polymorphic_movement => {
-                Step(count: OCamlInt) => { PolymorphicMovement::Step {count} },
-                RotateLeft => PolymorphicMovement::RotateLeft,
-                RotateRight => PolymorphicMovement::RotateRight,
-            }
-        };
-        let s = match pm {
-            Err(_) => "Error unpacking".to_owned(),
-            Ok(PolymorphicMovement::Step {count}) => format!("`Step({})", count),
-            Ok(PolymorphicMovement::RotateLeft) => "`RotateLeft".to_owned(),
-            Ok(PolymorphicMovement::RotateRight) => "`RotateRight".to_owned(),
-        };
-        s.to_ocaml(cr)
-    }
-
-    fn rust_call_ocaml_closure(cr, ocaml_function: OCamlRef<fn(OCamlInt) -> OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
-        let ocaml_function = ocaml_function.to_boxroot(cr);
-
-        let call_result: Result<i64, String> =
-            ocaml_function
+    let call_result: Result<i64, String> =
+        ocaml_function_rooted // Use the rooted value
             .try_call(cr, &0i64)
             .map(|call_result| call_result.to_rust())
             .map_err(|exception| exception.message().unwrap_or("no message".to_string()));
-        call_result.to_ocaml(cr)
-    }
+    call_result.to_ocaml(cr)
+}
 
-    fn rust_call_ocaml_closure_and_return_exn(cr, ocaml_function: OCamlRef<fn(OCamlInt) -> OCamlInt>) -> OCaml<Result<OCamlInt, OCamlException>> {
-        let ocaml_function = ocaml_function.to_boxroot(cr);
+#[ocaml_interop::export]
+fn rust_call_ocaml_closure_and_return_exn(cr: &mut OCamlRuntime, ocaml_function: OCamlRef<fn(OCamlInt) -> OCamlInt>) -> OCaml<Result<OCamlInt, OCamlException>> {
+    let ocaml_function_rooted = ocaml_function.to_boxroot(cr); // Renamed
 
-        let call_result: Result<OCaml<OCamlInt>, OCaml<OCamlException>> =
-            ocaml_function
+    let call_result: Result<OCaml<OCamlInt>, OCaml<OCamlException>> =
+        ocaml_function_rooted // Use the rooted value
             .try_call(cr, &0i64);
 
-        match call_result {
-            Ok(value) => {
-                let ocaml_value = value.root();
-                alloc_ok(cr, &ocaml_value)
-            },
-            Err(error) => {
-                let ocaml_error = error.root();
-                alloc_error(cr, &ocaml_error)
-            }
+    match call_result {
+        Ok(value) => {
+            let ocaml_value = value.root();
+            alloc_ok(cr, &ocaml_value)
+        },
+        Err(error) => {
+            let ocaml_error = error.root();
+            alloc_error(cr, &ocaml_error)
         }
     }
+}
 
-    fn rust_rust_add_7ints|rust_rust_add_7ints_byte(
-        cr,
-        int1: OCamlRef<OCamlInt>,
-        int2: OCamlRef<OCamlInt>,
-        int3: OCamlRef<OCamlInt>,
-        int4: OCamlRef<OCamlInt>,
-        int5: OCamlRef<OCamlInt>,
-        int6: OCamlRef<OCamlInt>,
-        int7: OCamlRef<OCamlInt>,
-    ) -> OCaml<OCamlInt> {
-        let int1: i64 = int1.to_rust(cr);
-        let int2: i64 = int2.to_rust(cr);
-        let int3: i64 = int3.to_rust(cr);
-        let int4: i64 = int4.to_rust(cr);
-        let int5: i64 = int5.to_rust(cr);
-        let int6: i64 = int6.to_rust(cr);
-        let int7: i64 = int7.to_rust(cr);
-        unsafe { OCaml::of_i64_unchecked(int1 + int2 + int3 + int4 + int5 + int6 + int7) }
-    }
+#[ocaml_interop::export(bytecode = "rust_rust_add_7ints_byte")]
+fn rust_rust_add_7ints(
+    cr: &mut OCamlRuntime,
+    int1: OCamlRef<OCamlInt>,
+    int2: OCamlRef<OCamlInt>,
+    int3: OCamlRef<OCamlInt>,
+    int4: OCamlRef<OCamlInt>,
+    int5: OCamlRef<OCamlInt>,
+    int6: OCamlRef<OCamlInt>,
+    int7: OCamlRef<OCamlInt>,
+) -> OCaml<OCamlInt> {
+    let int1: i64 = int1.to_rust(cr);
+    let int2: i64 = int2.to_rust(cr);
+    let int3: i64 = int3.to_rust(cr);
+    let int4: i64 = int4.to_rust(cr);
+    let int5: i64 = int5.to_rust(cr);
+    let int6: i64 = int6.to_rust(cr);
+    let int7: i64 = int7.to_rust(cr);
+    unsafe { OCaml::of_i64_unchecked(int1 + int2 + int3 + int4 + int5 + int6 + int7) }
 }
