@@ -7,6 +7,8 @@
 //!
 //! **API IS CONSIDERED UNSTABLE AT THE MOMENT AND IS LIKELY TO CHANGE IN THE FUTURE**
 //!
+//! **IMPORTANT: This version of `ocaml-interop` exclusively supports OCaml 5.x and leverages its domain-based concurrency model. OCaml 4.x is no longer supported.**
+//!
 //! [ocaml-interop](https://github.com/tizoc/ocaml-interop) is an OCaml<->Rust FFI with an emphasis
 //! on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide),
 //! [ocaml-rs](https://github.com/zshipko/ocaml-rs) and [CAMLroot](https://arxiv.org/abs/1812.04905).
@@ -89,7 +91,9 @@
 //! - [`OCaml`]`<'gc, T>` is the representation of OCaml values in Rust. These values become stale
 //!   after calls into the OCaml runtime and must be re-referenced.
 //! - [`BoxRoot`]`<T>` is a container for an [`OCaml`]`<T>` value that is rooted and tracked by
-//!   OCaml's Garbage Collector.
+//!   OCaml's Garbage Collector. `BoxRoot::new()` and `BoxRoot::keep()` will panic if the
+//!   underlying boxroot operation fails. `BoxRoot<T>` is `!Send` and `!Sync` due to its
+//!   affinity with OCaml's domain-specific GC state.
 //! - [`OCamlRef`]`<'a, T>` is a reference to an [`OCaml`]`<T>` value that may or may not be rooted.
 //!
 //! ### Converting between OCaml and Rust data
