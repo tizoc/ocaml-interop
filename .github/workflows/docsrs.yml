@@ -1,0 +1,32 @@
+name: docs.rs compatibility
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  docsrs:
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/rust-lang/crates-build-env/linux:latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - name: Build docs
+        env:
+          DOCS_RS: "1"
+        run: |
+          cargo +nightly rustdoc --lib \
+            -Zrustdoc-map \
+            --no-default-features \
+            --features "without-ocamlopt"
