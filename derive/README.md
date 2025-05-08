@@ -13,7 +13,7 @@ The `#[ocaml_interop::export]` attribute macro is used to expose Rust functions 
 *   **Automatic Runtime Handle**: The first argument of your Rust function must be the OCaml runtime handle (e.g., `cr: &mut ocaml_interop::OCamlRuntime`). The macro verifies this and uses it internally for operations like panic handling and type conversions.
 *   **Argument Marshalling**:
     *   Arguments of type `f64` are passed directly.
-    *   OCaml values passed as arguments (e.g., OCaml `string`, `int`, custom types) are made available in Rust as `ocaml_interop::OCamlRef<T>`. This provides a safe, temporary reference to the OCaml data. You can then use methods like `.to_rust(cr)` to convert them to Rust types or `.root(cr)` to create a `BoxRoot<T>` if the value needs to outlive the current function call.
+    *   OCaml values passed as arguments (e.g., OCaml `string`, `int`, custom types) are made available in Rust as `ocaml_interop::OCaml<T>` or `BoxRoot<T>`. This provides a safe, temporary reference to the OCaml data. You can then use methods like `.to_rust(cr)` to convert them to Rust types or `.root(cr)` to create a `BoxRoot<T>` if the value needs to outlive the current function call.
 *   **Return Value Marshalling**:
     *   If your Rust function returns `f64`, it's returned directly to OCaml.
     *   If your Rust function returns `ocaml_interop::OCaml<T>`, its underlying raw OCaml value is returned to OCaml.
@@ -37,7 +37,7 @@ Below are examples of how to use the `#[ocaml_interop::export]` macro.
 
 ```rust
 // In your lib.rs or a module, assuming ocaml_interop is a dependency.
-use ocaml_interop::{OCamlRuntime, OCamlRef, OCaml, OCamlInt, ToOCaml, FromOCaml};
+use ocaml_interop::{OCamlRuntime, OCaml, BoxRoot, OCamlInt, ToOCaml, FromOCaml};
 
 // Example 1: A simple function with no extra arguments and returning unit (implicitly OCaml<()>)
 #[ocaml_interop::export]
@@ -46,10 +46,10 @@ fn rust_hello_world(cr: &mut OCamlRuntime) {
     // Implicitly returns OCaml::unit()
 }
 
-// Example 2: Function with an OCamlInt argument and returning an OCamlInt
+// Example 2: Function with an OCamlInt argument (using OCaml<T>) and returning an OCamlInt
 #[ocaml_interop::export]
-fn rust_double_int(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
-    let rust_num: i64 = num.to_rust(cr);
+fn rust_double_int(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+    let rust_num: i64 = num.to_rust(); // OCaml<T>.to_rust() does not take cr for immediate types
     let result = rust_num * 2;
     OCaml::of_i64_unchecked(result) // Creates an OCaml<OCamlInt>
 }
@@ -60,16 +60,16 @@ fn rust_add_pi(cr: &mut OCamlRuntime, val: f64) -> f64 {
     val + std::f64::consts::PI
 }
 
-// Example 4: Function with multiple arguments (OCamlRef and f64)
+// Example 4: Function with multiple arguments (using OCaml<T> and f64)
 #[ocaml_interop::export]
 fn rust_process_data(
     cr: &mut OCamlRuntime,
-    label: OCamlRef<String>, // OCaml string
-    value: OCamlRef<OCamlInt>, // OCaml int
+    label: OCaml<String>,   // OCaml string, as OCaml<T>
+    value: OCaml<OCamlInt>, // OCaml int, as OCaml<T>
     factor: f64,
 ) -> OCaml<String> { // Returns OCaml string
-    let r_label: String = label.to_rust(cr); // Convert OCamlRef<String> to Rust String
-    let r_value: i64 = value.to_rust(cr);    // Convert OCamlRef<OCamlInt> to Rust i64
+    let r_label: String = label.to_rust();
+    let r_value: i64 = value.to_rust();
     let processed_value = (r_value as f64 * factor) as i64;
     let result_string = format!("{}: {}", r_label, processed_value);
     result_string.to_ocaml(cr) // Convert Rust String back to OCaml<String>
@@ -77,8 +77,8 @@ fn rust_process_data(
 
 // Example 5: Function that might panic
 #[ocaml_interop::export]
-fn rust_might_panic(cr: &mut OCamlRuntime, should_panic: OCamlRef<bool>) {
-    if should_panic.to_rust(cr) {
+fn rust_might_panic(cr: &mut OCamlRuntime, should_panic: OCaml<bool>) {
+    if should_panic.to_rust() { // OCaml<T>.to_rust() does not take cr
         panic!("This is a deliberate panic from Rust!");
     }
     println!("Did not panic.");
@@ -98,4 +98,21 @@ external rust_might_panic: bool -> unit = "rust_might_panic"
 */
 ```
 
-This `README.md` provides a basic overview. For more detailed information on `ocaml-interop` concepts like `OCamlRuntime`, `OCamlRef`, `OCaml<T>`, `BoxRoot`, type conversions (`ToOCaml`, `FromOCaml`), and OCaml exception registration, please refer to the main `ocaml-interop` crate documentation.
+### Argument Types and Rooting
+
+When defining a Rust function to be exported to OCaml:
+
+- The first argument must always be `cr: &mut OCamlRuntime`.
+- For other arguments:
+    - Use `OCaml<T>` if the argument is an OCaml value that should **not** be automatically rooted by the export macro. The Rust function receives it as a raw `OCaml<T>`. This is for cases where the value is immediate or its lifetime is managed differently.
+    - Use `BoxRoot<T>` if the argument is an OCaml value that **should be automatically rooted** by the export macro. The Rust function receives it as a `BoxRoot<T>`. This is the common case for non-immediate OCaml values to ensure they are safe to use.
+    - Use direct Rust `f64` for unboxed OCaml values. These are passed directly.
+- The return type should be `OCaml<T>` for OCaml values or a direct Rust type like `f64`.
+
+The macro handles the necessary conversions and rooting based on these types. `OCamlRef<T>` is no longer used for exported function arguments; use `OCaml<T>` or `BoxRoot<T>` instead.
+
+### `bytecode` Attribute
+
+The `bytecode` attribute allows the generation of a second wrapper function compatible with OCaml bytecode calling conventions. This is useful when the OCaml code might be compiled to bytecode.
+
+This `README.md` provides a basic overview. For more detailed information on `ocaml-interop` concepts like `OCamlRuntime`, `OCaml<T>`, `BoxRoot<T>`, type conversions (`ToOCaml`, `FromOCaml`), and OCaml exception registration, please refer to the main `ocaml-interop` crate documentation.

@@ -129,8 +129,9 @@
 //! Then instead of the value, it is the root pointing to the value that is passed as an argument.
 //! This is how `ocaml-interop` works starting with version `0.5.0`.
 //!
-//! When a Rust function is called from OCaml, it will receive arguments as [`OCamlRef`]`<T>` values,
-//! and when a OCaml function is called from Rust, arguments will be passed as [`OCamlRef`]`<T>` values.
+//! When a Rust function is called from OCaml, it will receive arguments as [`OCaml`]`<T>` or [`BoxRoot`]`<T>`
+//! values. The former will not be automatically rooted, while the latter will be.
+//! When a OCaml function is called from Rust, arguments will be passed as [`OCamlRef`]`<T>` values.
 //!
 //! #### Return values
 //!
@@ -283,7 +284,7 @@
 //! *   `bytecode = "my_ocaml_bytecode_function_name"`: This attribute directs the macro to generate an additional wrapper function suitable for being called from OCaml bytecode. The provided string will be the name of this bytecode-compatible function in OCaml. For example:
 //!     ```rust,ignore
 //!     #[ocaml_interop::export(bytecode = "rust_twice_bytecode")]
-//!     fn rust_twice(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
+//!     fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
 //!         // ...
 //!     }
 //!     ```
@@ -322,33 +323,35 @@
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     FromOCaml, OCamlInt, OCaml, OCamlBytes,
-//!     OCamlRef, ToOCaml, OCamlRuntime
+//!     BoxRoot, FromOCaml, OCamlInt, OCaml, OCamlBytes,
+//!     ToOCaml, OCamlRuntime
 //! };
 //!
 //! // `#[ocaml_interop::export]` expands the function definitions by adding `pub` visibility and
 //! // the required `#[no_mangle]` and `extern "C"` declarations. It also handles
 //! // argument/return type marshalling and panic handling.
 //! // The first argument must be `&mut OCamlRuntime`.
-//! // Other arguments are typically `OCamlRef<T>` for OCaml values or direct types like `f64`.
+//! // Other arguments are typically `OCaml<T>` for unrooted OCaml values,
+//! // `BoxRoot<T>` when those arguments should be automatically rooted,
+//! // or f64` for unboxed floats.
 //! // The return type is typically `OCaml<T>` or a direct type like `f64`.
 //! 
 //! #[ocaml_interop::export]
-//! fn rust_twice(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
-//!     let num: i64 = num.to_rust(cr);
+//! fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+//!     let num: i64 = num.to_rust();
 //!     unsafe { OCaml::of_i64_unchecked(num * 2) }
 //! }
 //! 
 //! #[ocaml_interop::export]
 //! fn rust_increment_bytes(
 //!     cr: &mut OCamlRuntime,
-//!     bytes: OCamlRef<OCamlBytes>,
-//!     first_n: OCamlRef<OCamlInt>,
+//!     bytes: OCaml<OCamlBytes>,
+//!     first_n: OCaml<OCamlInt>,
 //! ) -> OCaml<OCamlBytes> {
-//!     let first_n: i64 = first_n.to_rust(cr);
+//!     let first_n: i64 = first_n.to_rust();
 //!     let first_n = first_n as usize;
-//!     let mut vec: Vec<u8> = bytes.to_rust(cr);
-//! 
+//!     let mut vec: Vec<u8> = bytes.to_rust();
+//!
 //!     for i in 0..first_n {
 //!         vec[i] += 1;
 //!     }

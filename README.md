@@ -109,8 +109,8 @@ ocaml_print_endline(cr, &ocaml_string);
 
 ```rust
 #[ocaml_interop::export]
-pub fn twice_boxed_int(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt64>) -> OCaml<OCamlInt> {
-    let num = num.to_rust(cr);
+pub fn twice_boxed_int(cr: &mut OCamlRuntime, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt> {
+    let num = num.to_rust();
     let result = num * 2;
     result.to_ocaml(cr)
 }
