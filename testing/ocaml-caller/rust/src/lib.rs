@@ -284,3 +284,23 @@ fn rust_should_panic_with_message(
         panic!("{message}");
     }
 }
+
+#[ocaml_interop::export]
+fn rust_panic_while_releasing_lock(
+    cr: &mut OCamlRuntime,
+    message: OCaml<String>,
+    should_panic: OCaml<bool>,
+) {
+    let message_rs: String = message.to_rust();
+    let should_panic_rs: bool = should_panic.to_rust();
+
+    cr.releasing_runtime(|| {
+        if should_panic_rs {
+            // Simulate some work before panicking
+            println!("Rust: About to panic while lock is released!");
+            panic!("{}", message_rs);
+        } else {
+            println!("Rust: Executing normally while lock is released.");
+        }
+    });
+}
