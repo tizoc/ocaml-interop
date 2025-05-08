@@ -7,7 +7,7 @@
 //!
 //! **API IS CONSIDERED UNSTABLE AT THE MOMENT AND IS LIKELY TO CHANGE IN THE FUTURE**
 //!
-//! **IMPORTANT: This version of `ocaml-interop` exclusively supports OCaml 5.x and leverages its domain-based concurrency model. OCaml 4.x is no longer supported.**
+//! **IMPORTANT: Starting with version `0.11.0` only OCaml 5.x is supported**
 //!
 //! [ocaml-interop](https://github.com/tizoc/ocaml-interop) is an OCaml<->Rust FFI with an emphasis
 //! on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide),
