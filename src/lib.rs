@@ -275,6 +275,32 @@
 //!
 //! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `#[ocaml_interop::export]` macro.
 //!
+//! #### Panic Handling in Exported Functions
+//!
+//! Functions exported with `#[ocaml_interop::export]` have built-in panic handling. If a Rust panic occurs within an exported function:
+//!
+//! 1.  The panic is caught by the macro-generated wrapper.
+//! 2.  The macro attempts to raise a specific OCaml exception named `RustPanic` (of type `string`) with the panic message.
+//!     For this to work, you must define and register this exception in your OCaml code:
+//!     ```ocaml
+//!     exception RustPanic of string
+//!
+//!     (* Typically in your application's initialization code *)
+//!     let () = Callback.register_exception "rust_panic_exn" (RustPanic "")
+//!     ```
+//! 3.  If the `RustPanic` exception (registered with the name `"rust_panic_exn"`) is not found at runtime, the panic will be raised as a standard OCaml `Failure` exception, including the original panic message.
+//!
+//! This panic catching behavior is enabled by default to ensure that Rust panics do not unwind across the FFI boundary into OCaml, which would lead to undefined behavior.
+//!
+//! If you need to disable this panic handling for a specific function (e.g., for performance-critical code where you handle panics differently or are certain no panics can occur), you can use the `no_panic_catch` attribute:
+//!
+//! ```rust,ignore
+//! #[ocaml_interop::export(no_panic_catch)]
+//! fn my_performance_critical_function(cr: &mut OCamlRuntime, /* ... */) -> OCaml<Something> {
+//!     // ... code that must not panic or handles panics internally ...
+//! }
+//! ```
+//!
 //! #### Example
 //!
 //! ```rust,no_run
