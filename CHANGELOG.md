@@ -10,10 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - New procedural macro `#[ocaml_interop::export]` (replaces the older `ocaml_export!` macro).
-    * Automatically handles marshalling of `OCamlRef<T>`, `OCaml<T>`, and `f64` arguments/return types.
-    * Provides automatic panic handling: Rust panics are caught and raised as OCaml exceptions (`RustPanic of string` if registered as `"rust_panic_exn"`, otherwise `Failure`).
-    * Supports `#[ocaml_interop::export(no_panic_catch)]` to disable panic handling.
+    * Introduces new conventions for OCaml argument types in exported functions:
+        * `OCaml<T>`: For arguments that should **not** be automatically rooted by the macro.
+        * `BoxRoot<T>`: For arguments that **should be automatically rooted** by the macro.
+        * This generally replaces `OCamlRef<T>` for exported function arguments, clarifying rooting strategy at the function signature.
+    * Handles `f64` arguments and return types directly.
+    * Provides automatic panic handling: Rust panics are caught and raised as OCaml exceptions (custom `RustPanic` or fallback to `Failure`). This can be disabled with `#[ocaml_interop::export(no_panic_catch)]`.
     * Supports `#[ocaml_interop::export(bytecode = "stub_name")]` for generating bytecode wrapper functions.
+
+### Changed
+
+- **Argument Handling in Exported Functions**: The `#[ocaml_interop::export]` macro promotes using `OCaml<T>` or `BoxRoot<T>` for OCaml value arguments instead of `OCamlRef<T>` to make rooting behavior explicit.
 
 ### Removed
 
