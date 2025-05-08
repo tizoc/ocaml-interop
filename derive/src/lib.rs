@@ -3,6 +3,52 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, Block, FnArg, ItemFn, LitStr, Pat, PathArguments, ReturnType, Type};
 
+// Helper function to extract generic type arguments
+fn extract_inner_type_from_path(
+    type_path: &syn::TypePath,
+    expected_wrapper_ident: &str,
+) -> Result<Box<syn::Type>, syn::Error> {
+    let last_segment = type_path.path.segments.last().ok_or_else(|| {
+        syn::Error::new_spanned(
+            type_path,
+            format!(
+                "Type path for {} must have segments",
+                expected_wrapper_ident
+            ),
+        )
+    })?;
+
+    if last_segment.ident != expected_wrapper_ident {
+        return Err(syn::Error::new_spanned(
+            type_path,
+            format!(
+                "Expected type wrapper {}, found {}",
+                expected_wrapper_ident, last_segment.ident
+            ),
+        ));
+    }
+
+    match &last_segment.arguments {
+        PathArguments::AngleBracketed(params) => match params.args.first() {
+            Some(syn::GenericArgument::Type(inner_ty)) => Ok(Box::new(inner_ty.clone())),
+            _ => Err(syn::Error::new_spanned(
+                &last_segment.arguments,
+                format!(
+                    "{}<T> type argument T is missing or not a type",
+                    expected_wrapper_ident
+                ),
+            )),
+        },
+        _ => Err(syn::Error::new_spanned(
+            &last_segment.arguments,
+            format!(
+                "{}<T> type argument T must be angle bracketed",
+                expected_wrapper_ident
+            ),
+        )),
+    }
+}
+
 // Helper function to validate the runtime argument
 fn validate_runtime_argument(arg_input: Option<&FnArg>) -> Result<&Pat, syn::Error> {
     match arg_input {
@@ -73,78 +119,99 @@ fn process_extern_argument<'a>(
     runtime_arg_pat: &Pat,
 ) -> Result<
     (
-        proc_macro2::TokenStream,
-        proc_macro2::TokenStream,
-        Box<Pat>,
-        bool,
+        proc_macro2::TokenStream, // C signature part
+        proc_macro2::TokenStream, // Rust initialization part
+        Box<Pat>,                 // Argument pattern
+        bool,                     // is_f64 flag
     ),
     syn::Error,
 > {
     if let FnArg::Typed(pat_type) = arg_input {
         let original_pat = &pat_type.pat;
-        let original_ty = &pat_type.ty;
+        let original_ty = &pat_type.ty; // This is Box<Type>
 
-        let is_f64 = match &**original_ty {
-            Type::Path(type_path) => type_path
+        // 1. Handle f64: always raw, C type is f64
+        if let Type::Path(type_path) = &**original_ty {
+            if type_path
                 .path
                 .segments
                 .last()
-                .map_or(false, |s| s.ident == "f64"),
-            _ => false,
-        };
+                .map_or(false, |s| s.ident == "f64")
+            {
+                let sig_part = quote! { #original_pat: f64 };
+                let init_part = quote! {}; // No special initialization
+                return Ok((sig_part, init_part, original_pat.clone(), true)); // true for is_f64
+            }
+        }
 
-        if is_f64 {
-            let sig_part = quote! { #original_pat: f64 };
-            let init_part = quote! {}; // No BoxRooting for f64
-            Ok((sig_part, init_part, original_pat.clone(), true))
-        } else {
-            // Expect OCamlRef<T> for other types that need BoxRooting
-            let inner_ocaml_ref_type = match &**original_ty {
-                Type::Path(type_path) => {
-                    let last_segment = type_path
-                        .path
-                        .segments
-                        .last()
-                        .expect("Type path must have segments");
-                    if last_segment.ident == "OCamlRef" {
-                        if let PathArguments::AngleBracketed(params) = &last_segment.arguments {
-                            if let Some(syn::GenericArgument::Type(inner_ty)) = params.args.first()
-                            {
-                                quote! { #inner_ty }
-                            } else {
-                                return Err(syn::Error::new_spanned(
-                                    original_ty,
-                                    "OCamlRef is missing generic argument T",
-                                ));
-                            }
-                        } else {
-                            return Err(syn::Error::new_spanned(
-                                original_ty,
-                                "OCamlRef requires angle bracketed arguments",
-                            ));
-                        }
-                    } else {
-                        return Err(syn::Error::new_spanned(original_ty, format!("Argument `{:?}`: type `{:?}` is not f64 or OCamlRef<T>. Only f64 and OCamlRef<T> are supported for automatic BoxRooting.", quote!{#original_pat}.to_string(), quote!{#original_ty}.to_string())));
+        // 2. Handle BoxRoot<T> or OCaml<T>
+        if let Type::Path(type_path) = &**original_ty {
+            let last_segment = type_path.path.segments.last().ok_or_else(|| {
+                syn::Error::new_spanned(type_path, "Type path must have segments")
+            })?;
+
+            if last_segment.ident == "BoxRoot" {
+                // Expects BoxRoot<T>, implies BoxRooting
+                match extract_inner_type_from_path(type_path, "BoxRoot") {
+                    Ok(inner_type) => {
+                        let sig_part = quote! { #original_pat: ::ocaml_interop::RawOCaml };
+                        let init_part = quote! {
+                            let #original_pat : #original_ty = ::ocaml_interop::BoxRoot::new(unsafe {
+                                ::ocaml_interop::OCaml::<#inner_type>::new(#runtime_arg_pat, #original_pat)
+                            });
+                        };
+                        Ok((sig_part, init_part, original_pat.clone(), false)) // false for is_f64
                     }
-                }
-                _ => {
-                    return Err(syn::Error::new_spanned(
+                    Err(e) => Err(syn::Error::new_spanned(
                         original_ty,
                         format!(
-                            "Argument `{:?}`: type must be a path type (f64 or OCamlRef<T>)",
-                            quote! {#original_pat}.to_string()
+                            "Argument `{}`: Error parsing BoxRoot<T>: {}. Expected BoxRoot<T>, OCaml<T>, or f64.",
+                            quote! {#original_pat}.to_string(),
+                            e
                         ),
-                    ))
+                    )),
                 }
-            };
-
-            let sig_part = quote! { #original_pat: ::ocaml_interop::RawOCaml };
-            let init_part = quote! {
-                let #original_pat : #original_ty = &::ocaml_interop::BoxRoot::new(unsafe {
-                    ::ocaml_interop::OCaml::<#inner_ocaml_ref_type>::new(#runtime_arg_pat, #original_pat)
-                });
-            };
-            Ok((sig_part, init_part, original_pat.clone(), false))
+            } else if last_segment.ident == "OCaml" {
+                // Expects OCaml<T>, implies raw handling (no BoxRoot by macro)
+                match extract_inner_type_from_path(type_path, "OCaml") {
+                    Ok(inner_type) => {
+                        let sig_part = quote! { #original_pat: ::ocaml_interop::RawOCaml };
+                        let init_part = quote! {
+                            let #original_pat : #original_ty = unsafe { ::ocaml_interop::OCaml::<#inner_type>::new(#runtime_arg_pat, #original_pat) };
+                        };
+                        Ok((sig_part, init_part, original_pat.clone(), false)) // false for is_f64
+                    }
+                    Err(e) => Err(syn::Error::new_spanned(
+                        original_ty,
+                        format!(
+                            "Argument `{}`: Error parsing OCaml<T>: {}. Expected BoxRoot<T>, OCaml<T>, or f64.",
+                            quote! {#original_pat}.to_string(),
+                            e
+                        ),
+                    )),
+                }
+            } else {
+                // Type is a Path, but not f64, BoxRoot, or OCaml
+                Err(syn::Error::new_spanned(
+                    original_ty,
+                    format!(
+                        "Argument `{}` (type `{}`): type must be f64, BoxRoot<T>, or OCaml<T>. Found `{}`.",
+                        quote! {#original_pat}.to_string(),
+                        quote! {#original_ty}.to_string(),
+                        last_segment.ident
+                    ),
+                ))
+            }
+        } else {
+            // Type is not a Type::Path (e.g., reference, tuple, etc.) and not f64.
+            Err(syn::Error::new_spanned(
+                original_ty,
+                format!(
+                    "Argument `{}` (type `{}`): type must be f64, BoxRoot<T>, or OCaml<T>. It is not a simple path type.",
+                    quote! {#original_pat}.to_string(),
+                    quote! {#original_ty}.to_string()
+                ),
+            ))
         }
     } else {
         Err(syn::Error::new_spanned(
