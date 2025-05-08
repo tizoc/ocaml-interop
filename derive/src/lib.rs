@@ -149,7 +149,7 @@ fn process_extern_argument<'a>(
     } else {
         Err(syn::Error::new_spanned(
             arg_input,
-            "Receiver arguments (self) are not supported in ocaml_export functions",
+            "Receiver arguments (self) are not supported in ocaml_interop::export functions",
         ))
     }
 }

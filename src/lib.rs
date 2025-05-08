@@ -78,7 +78,7 @@
 //! ```
 //!
 //! **When OCaml Calls Rust:**
-//! For functions exported using [`ocaml_export!`], `cr` is automatically provided as the first argument.
+//! For functions exported by annotating them with `#[ocaml_interop::export]`, `cr` is automatically provided as the first argument.
 //!
 //! Un-rooted non-immediate OCaml values have a lifetime associated with the current scope of `cr` usage.
 //! Accessing them after the OCaml runtime has been re-entered (e.g., another call to `with_domain_lock` or
