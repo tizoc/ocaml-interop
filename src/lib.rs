@@ -275,6 +275,23 @@
 //!
 //! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `#[ocaml_interop::export]` macro.
 //!
+//! #### Attributes for `#[ocaml_interop::export]`
+//!
+//! The `#[ocaml_interop::export]` macro supports several attributes to customize its behavior:
+//!
+//! *   `no_panic_catch`: As described below, this disables the default panic handling mechanism.
+//! *   `bytecode = "my_ocaml_bytecode_function_name"`: This attribute directs the macro to generate an additional wrapper function suitable for being called from OCaml bytecode. The provided string will be the name of this bytecode-compatible function in OCaml. For example:
+//!     ```rust,ignore
+//!     #[ocaml_interop::export(bytecode = "rust_twice_bytecode")]
+//!     fn rust_twice(cr: &mut OCamlRuntime, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
+//!         // ...
+//!     }
+//!     ```
+//!     In OCaml, you would then declare it as:
+//!     ```ocaml
+//!     external rust_twice : int -> int = "rust_twice_bytecode" "rust_twice" 
+//!     ```
+//!
 //! #### Panic Handling in Exported Functions
 //!
 //! Functions exported with `#[ocaml_interop::export]` have built-in panic handling. If a Rust panic occurs within an exported function:
