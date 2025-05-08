@@ -245,3 +245,12 @@ fn rust_rust_add_7ints(
     let int7: i64 = int7.to_rust(cr);
     unsafe { OCaml::of_i64_unchecked(int1 + int2 + int3 + int4 + int5 + int6 + int7) }
 }
+
+#[ocaml_interop::export]
+fn rust_should_panic_with_message(cr: &mut OCamlRuntime, message: OCamlRef<String>, should_panic: OCamlRef<bool>) {
+    let message: String = message.to_rust(cr);
+    let should_panic: bool = should_panic.to_rust(cr);
+    if should_panic {
+        panic!("{message}");
+    }
+}

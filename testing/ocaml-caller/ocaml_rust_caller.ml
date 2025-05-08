@@ -19,6 +19,10 @@ type movement_polymorphic =
   | `Unknown
   | `UnkownBlock of int ]
 
+exception RustPanic of string
+
+let () = Callback.register_exception "rust_panic_exn" (RustPanic "")
+
 module Rust = struct
   external tests_teardown : unit -> unit = "ocaml_interop_teardown"
   external twice : int -> int = "rust_twice"
@@ -69,6 +73,7 @@ module Rust = struct
   external rust_rust_add_7ints :
     int -> int -> int -> int -> int -> int -> int -> int
     = "rust_rust_add_7ints_byte" "rust_rust_add_7ints"
+  external rust_should_panic_with_message : string -> bool -> unit = "rust_should_panic_with_message"
 end
 
 let test_twice () = Alcotest.(check int) "Multiply by 2" 20 (Rust.twice 10)
@@ -216,6 +221,21 @@ let test_byte_function () =
   let result = Rust.rust_rust_add_7ints 1 2 3 4 5 6 7 in
   Alcotest.(check int) "Call a bytecode function" expected result
 
+let test_rust_panic_with_message () =
+  let panic_message_from_ocaml = "This is a custom panic message" in
+  (* Test that it panics when should_panic is true *)
+  Alcotest.check_raises "Rust function panics with a specific message when bool is true"
+    (RustPanic panic_message_from_ocaml)
+    (fun () -> Rust.rust_should_panic_with_message panic_message_from_ocaml true);
+  (* Test that it does not panic when should_panic is false *)
+  try
+    Rust.rust_should_panic_with_message panic_message_from_ocaml false;
+    Alcotest.(check pass) "Rust function does not panic when bool is false" () ()
+  with
+  | RustPanic msg -> Alcotest.fail ("Expected no panic, but got RustPanic: " ^ msg)
+  | exn -> Alcotest.fail ("Expected no panic, but got unexpected exception: " ^ Printexc.to_string exn)
+
+
 (* Sleeps on the Rust thread releasing the OCaml runtime lock *)
 let test_blocking_section () =
   let before = Unix.gettimeofday () in
@@ -275,6 +295,7 @@ let () =
           test_case "Rust.call_ocaml_closure_and_return_exn" `Quick
             test_call_ocaml_closure_and_return_exn;
           test_case "Rust.rust_rust_add_7ints" `Quick test_byte_function;
+          test_case "Rust.rust_should_panic_with_message" `Quick test_rust_panic_with_message;
         ] );
     ];
   Rust.tests_teardown ()
