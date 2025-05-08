@@ -1,7 +1,10 @@
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, Block, FnArg, ItemFn, LitStr, Pat, PathArguments, ReturnType, Type};
+use syn::{Block, FnArg, ItemFn, Pat, PathArguments, ReturnType, Type}; // Removed LitStr and parse_macro_input
+use syn::punctuated::Punctuated;
+use syn::{Meta, Token, Expr, ExprLit, Lit};
+use syn::parse::Parser; // Added this line
 
 // Helper function to extract generic type arguments
 fn extract_inner_type_from_path(
@@ -272,65 +275,72 @@ fn process_return_type(
     }
 }
 
-#[proc_macro_attribute]
-pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input_fn = parse_macro_input!(item as ItemFn);
+// Renamed from original `export` and modified to use proc_macro2 types
+fn export_internal_logic(attr_ts: proc_macro2::TokenStream, item_ts: proc_macro2::TokenStream) -> Result<proc_macro2::TokenStream, syn::Error> {
+    let input_fn = syn::parse2::<ItemFn>(item_ts)?;
 
     let mut bytecode_fn_name_opt: Option<syn::Ident> = None;
     let mut bytecode_meta_span: Option<proc_macro2::Span> = None;
     let mut no_panic_catch = false;
     let mut no_panic_catch_span: Option<proc_macro2::Span> = None;
 
-    let attr_parser = syn::meta::parser(|meta| {
-        if meta.path.is_ident("bytecode") {
+    // Correctly parse attribute arguments for syn 2.0
+    let attribute_parser = Punctuated::<Meta, Token![,]>::parse_terminated;
+    let parsed_attributes = attribute_parser.parse2(attr_ts)?;
+
+    for meta in parsed_attributes {
+        if meta.path().is_ident("bytecode") {
             if bytecode_fn_name_opt.is_some() {
                 let mut err = syn::Error::new_spanned(
-                    &meta.path,
-                    "'bytecode' attribute specified multiple times",
+                    &meta.path(),
+                    "\'bytecode\' attribute specified multiple times",
                 );
                 if let Some(prev_span) = bytecode_meta_span {
                     err.combine(syn::Error::new(
                         prev_span,
-                        "previous 'bytecode' attribute here",
+                        "previous \'bytecode\' attribute here",
                     ));
                 }
                 return Err(err);
             }
-            match meta.value()?.parse::<LitStr>() {
-                Ok(lit_str) => {
-                    bytecode_fn_name_opt = Some(syn::Ident::new(&lit_str.value(), lit_str.span()));
-                    bytecode_meta_span = Some(meta.path.span());
-                    Ok(())
+            match meta {
+                syn::Meta::NameValue(mnv) => {
+                    if let Expr::Lit(ExprLit { lit: Lit::Str(lit_str), .. }) = mnv.value {
+                        bytecode_fn_name_opt = Some(syn::Ident::new(&lit_str.value(), lit_str.span()));
+                        bytecode_meta_span = Some(mnv.path.span());
+                    } else {
+                        return Err(syn::Error::new_spanned(mnv.value, "\'bytecode\' attribute value must be a string literal (e.g., bytecode = \\\"my_func_byte\\\")"));
+                    }
                 }
-                Err(_) => Err(meta.error("'bytecode' attribute value must be a string literal (e.g., bytecode = \"my_func_byte\")")),
+                _ => {
+                     return Err(syn::Error::new_spanned(meta, "\'bytecode\' attribute must be a name-value pair (e.g., bytecode = \\\"my_func_byte\\\")"));
+                }
             }
-        } else if meta.path.is_ident("no_panic_catch") {
+        } else if meta.path().is_ident("no_panic_catch") {
             if no_panic_catch_span.is_some() {
                 return Err(syn::Error::new_spanned(
-                    &meta.path,
-                    "'no_panic_catch' attribute specified multiple times",
+                    &meta.path(),
+                    "\'no_panic_catch\' attribute specified multiple times",
                 ));
             }
-            // `no_panic_catch` is a flag, does not take a value.
-            // Check if it was provided as `no_panic_catch` or `no_panic_catch = true` for flexibility,
-            // but strictly it should be just `no_panic_catch`.
-            // For now, we assume its presence means true.
-            // Proper parsing would use meta.input.is_empty() or parse a bool if a value is expected.
-            // For a simple flag, its presence is enough.
-            no_panic_catch = true;
-            no_panic_catch_span = Some(meta.path.span());
-            Ok(())
+            match meta {
+                syn::Meta::Path(_) => {
+                    no_panic_catch = true;
+                    no_panic_catch_span = Some(meta.path().span());
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(meta, "\'no_panic_catch\' attribute should be a bare path (e.g., #[export(no_panic_catch)]), not a name-value or list"));
+                }
+            }
         } else {
-            Err(meta.error(format!(
-                "unsupported attribute '{}', only 'bytecode' and 'no_panic_catch' are supported",
-                meta.path
+            return Err(syn::Error::new_spanned(meta.path(), format!(
+                "unsupported attribute \'{}\', only \'bytecode\' and \'no_panic_catch\' are supported",
+                meta.path()
                     .get_ident()
                     .map_or_else(|| "?".to_string(), |i| i.to_string())
-            )))
+            )));
         }
-    });
-
-    parse_macro_input!(attr with attr_parser);
+    }
 
     let original_fn_ident = &input_fn.sig.ident;
     let fn_inputs = &input_fn.sig.inputs;
@@ -344,7 +354,7 @@ pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
     // 1. Runtime argument: Use the helper function for validation
     let runtime_arg_pat = match validate_runtime_argument(original_fn_args_iter.next()) {
         Ok(pat) => pat,
-        Err(err) => return err.to_compile_error().into(),
+        Err(err) => return Err(err),
     };
 
     // 2. Process other arguments for extern "C" signature and BoxRooting
@@ -364,7 +374,7 @@ pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
                 // extern_arg_pats_for_bytecode.push(arg_pat.clone()); // Store the pattern
                 processed_args_info.push((arg_pat, is_f64_flag));
             }
-            Err(err) => return err.to_compile_error().into(),
+            Err(err) => return Err(err),
         }
     }
 
@@ -470,5 +480,19 @@ pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
         #(#all_generated_code)*
     };
 
-    TokenStream::from(expanded)
+    Ok(expanded)
 }
+
+#[proc_macro_attribute]
+pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr_ts2 = proc_macro2::TokenStream::from(attr);
+    let item_ts2 = proc_macro2::TokenStream::from(item);
+
+    match export_internal_logic(attr_ts2, item_ts2) {
+        Ok(generated_code) => TokenStream::from(generated_code),
+        Err(err) => TokenStream::from(err.to_compile_error()),
+    }
+}
+
+#[cfg(test)]
+mod tests;
