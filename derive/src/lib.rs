@@ -402,16 +402,11 @@ fn export_internal_logic(attr_ts: proc_macro2::TokenStream, item_ts: proc_macro2
             match result {
                 Ok(value) => value,
                 Err(panic_payload) => {
-                    let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
-                        *s
-                    } else if let Some(s) = panic_payload.downcast_ref::<String>() {
-                        s.as_str()
-                    } else {
-                        "Rust panic occurred, but unable to extract panic message."
-                    };
                     unsafe {
-                        ::ocaml_interop::internal::raise_rust_panic_exception(msg);
-                        unreachable!()
+                        ::ocaml_interop::internal::process_panic_payload_and_raise_ocaml_exception(panic_payload);
+                        ::std::unreachable!(
+                            "process_panic_payload_and_raise_ocaml_exception should not return"
+                        );
                     }
                 }
             }

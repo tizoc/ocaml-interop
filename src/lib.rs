@@ -490,6 +490,18 @@ pub mod internal {
         // caml_raise_with_string or caml_failwith should not return. If they do, it's an issue.
         std::process::abort(); // As a last resort if OCaml exception raising returns.
     }
+
+    pub unsafe fn process_panic_payload_and_raise_ocaml_exception(panic_payload: Box<dyn ::std::any::Any + Send>) {
+        let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+            *s
+        } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+            s.as_str()
+        } else {
+            "Rust panic occurred, but unable to extract panic message."
+        };
+        raise_rust_panic_exception(msg);
+        unreachable!("raise_rust_panic_exception should have already transferred control or aborted.");
+    }
 }
 
 #[doc(hidden)]
