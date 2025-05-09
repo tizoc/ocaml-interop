@@ -1,10 +1,10 @@
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
+use syn::parse::Parser;
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{Block, FnArg, ItemFn, Pat, PathArguments, ReturnType, Type};
-use syn::punctuated::Punctuated;
-use syn::{Meta, Token, Expr, ExprLit, Lit};
-use syn::parse::Parser;
+use syn::{Expr, ExprLit, Lit, Meta, Token};
 
 // Helper function to extract generic type arguments
 fn extract_inner_type_from_path(
@@ -14,10 +14,7 @@ fn extract_inner_type_from_path(
     let last_segment = type_path.path.segments.last().ok_or_else(|| {
         syn::Error::new_spanned(
             type_path,
-            format!(
-                "Type path for {} must have segments",
-                expected_wrapper_ident
-            ),
+            format!("Type path for {expected_wrapper_ident} must have segments",),
         )
     })?;
 
@@ -25,8 +22,8 @@ fn extract_inner_type_from_path(
         return Err(syn::Error::new_spanned(
             type_path,
             format!(
-                "Expected type wrapper {}, found {}",
-                expected_wrapper_ident, last_segment.ident
+                "Expected type wrapper {expected_wrapper_ident}, found {}",
+                last_segment.ident
             ),
         ));
     }
@@ -36,18 +33,12 @@ fn extract_inner_type_from_path(
             Some(syn::GenericArgument::Type(inner_ty)) => Ok(Box::new(inner_ty.clone())),
             _ => Err(syn::Error::new_spanned(
                 &last_segment.arguments,
-                format!(
-                    "{}<T> type argument T is missing or not a type",
-                    expected_wrapper_ident
-                ),
+                format!("{expected_wrapper_ident}<T> type argument T is missing or not a type",),
             )),
         },
         _ => Err(syn::Error::new_spanned(
             &last_segment.arguments,
-            format!(
-                "{}<T> type argument T must be angle bracketed",
-                expected_wrapper_ident
-            ),
+            format!("{expected_wrapper_ident}<T> type argument T must be angle bracketed",),
         )),
     }
 }
@@ -117,8 +108,8 @@ fn validate_runtime_argument(arg_input: Option<&FnArg>) -> Result<&Pat, syn::Err
 }
 
 // Helper function to process other (non-runtime) arguments
-fn process_extern_argument<'a>(
-    arg_input: &'a FnArg,
+fn process_extern_argument(
+    arg_input: &FnArg,
     runtime_arg_pat: &Pat,
 ) -> Result<
     (
@@ -139,7 +130,7 @@ fn process_extern_argument<'a>(
                 .path
                 .segments
                 .last()
-                .map_or(false, |s| s.ident == "f64")
+                .is_some_and(|s| s.ident == "f64")
             {
                 let sig_part = quote! { #original_pat: f64 };
                 let init_part = quote! {}; // No special initialization
@@ -169,7 +160,7 @@ fn process_extern_argument<'a>(
                         original_ty,
                         format!(
                             "Argument `{}`: Error parsing BoxRoot<T>: {}. Expected BoxRoot<T>, OCaml<T>, or f64.",
-                            quote! {#original_pat}.to_string(),
+                            quote! {#original_pat},
                             e
                         ),
                     )),
@@ -188,7 +179,7 @@ fn process_extern_argument<'a>(
                         original_ty,
                         format!(
                             "Argument `{}`: Error parsing OCaml<T>: {}. Expected BoxRoot<T>, OCaml<T>, or f64.",
-                            quote! {#original_pat}.to_string(),
+                            quote! {#original_pat},
                             e
                         ),
                     )),
@@ -199,8 +190,8 @@ fn process_extern_argument<'a>(
                     original_ty,
                     format!(
                         "Argument `{}` (type `{}`): type must be f64, BoxRoot<T>, or OCaml<T>. Found `{}`.",
-                        quote! {#original_pat}.to_string(),
-                        quote! {#original_ty}.to_string(),
+                        quote! {#original_pat},
+                        quote! {#original_ty},
                         last_segment.ident
                     ),
                 ))
@@ -211,8 +202,8 @@ fn process_extern_argument<'a>(
                 original_ty,
                 format!(
                     "Argument `{}` (type `{}`): type must be f64, BoxRoot<T>, or OCaml<T>. It is not a simple path type.",
-                    quote! {#original_pat}.to_string(),
-                    quote! {#original_ty}.to_string()
+                    quote! {#original_pat},
+                    quote! {#original_ty}
                 ),
             ))
         }
@@ -248,7 +239,7 @@ fn process_return_type(
                     .path
                     .segments
                     .last()
-                    .map_or(false, |s| s.ident == "f64"),
+                    .is_some_and(|s| s.ident == "f64"),
                 _ => false,
             };
 
@@ -276,7 +267,10 @@ fn process_return_type(
 }
 
 // Renamed from original `export` and modified to use proc_macro2 types
-fn export_internal_logic(attr_ts: proc_macro2::TokenStream, item_ts: proc_macro2::TokenStream) -> Result<proc_macro2::TokenStream, syn::Error> {
+fn export_internal_logic(
+    attr_ts: proc_macro2::TokenStream,
+    item_ts: proc_macro2::TokenStream,
+) -> Result<proc_macro2::TokenStream, syn::Error> {
     let input_fn = syn::parse2::<ItemFn>(item_ts)?;
 
     let mut bytecode_fn_name_opt: Option<syn::Ident> = None;
@@ -292,7 +286,7 @@ fn export_internal_logic(attr_ts: proc_macro2::TokenStream, item_ts: proc_macro2
         if meta.path().is_ident("bytecode") {
             if bytecode_fn_name_opt.is_some() {
                 let mut err = syn::Error::new_spanned(
-                    &meta.path(),
+                    meta.path(),
                     "\'bytecode\' attribute specified multiple times",
                 );
                 if let Some(prev_span) = bytecode_meta_span {
@@ -305,21 +299,26 @@ fn export_internal_logic(attr_ts: proc_macro2::TokenStream, item_ts: proc_macro2
             }
             match meta {
                 syn::Meta::NameValue(mnv) => {
-                    if let Expr::Lit(ExprLit { lit: Lit::Str(lit_str), .. }) = mnv.value {
-                        bytecode_fn_name_opt = Some(syn::Ident::new(&lit_str.value(), lit_str.span()));
+                    if let Expr::Lit(ExprLit {
+                        lit: Lit::Str(lit_str),
+                        ..
+                    }) = mnv.value
+                    {
+                        bytecode_fn_name_opt =
+                            Some(syn::Ident::new(&lit_str.value(), lit_str.span()));
                         bytecode_meta_span = Some(mnv.path.span());
                     } else {
                         return Err(syn::Error::new_spanned(mnv.value, "\'bytecode\' attribute value must be a string literal (e.g., bytecode = \\\"my_func_byte\\\")"));
                     }
                 }
                 _ => {
-                     return Err(syn::Error::new_spanned(meta, "\'bytecode\' attribute must be a name-value pair (e.g., bytecode = \\\"my_func_byte\\\")"));
+                    return Err(syn::Error::new_spanned(meta, "\'bytecode\' attribute must be a name-value pair (e.g., bytecode = \\\"my_func_byte\\\")"));
                 }
             }
         } else if meta.path().is_ident("no_panic_catch") {
             if no_panic_catch_span.is_some() {
                 return Err(syn::Error::new_spanned(
-                    &meta.path(),
+                    meta.path(),
                     "\'no_panic_catch\' attribute specified multiple times",
                 ));
             }
@@ -352,10 +351,7 @@ fn export_internal_logic(attr_ts: proc_macro2::TokenStream, item_ts: proc_macro2
     let mut original_fn_args_iter = fn_inputs.iter();
 
     // 1. Runtime argument: Use the helper function for validation
-    let runtime_arg_pat = match validate_runtime_argument(original_fn_args_iter.next()) {
-        Ok(pat) => pat,
-        Err(err) => return Err(err),
-    };
+    let runtime_arg_pat = validate_runtime_argument(original_fn_args_iter.next())?;
 
     // 2. Process other arguments for extern "C" signature and BoxRooting
     let mut extern_c_fn_params_sig_parts = Vec::new();
@@ -430,7 +426,7 @@ fn export_internal_logic(attr_ts: proc_macro2::TokenStream, item_ts: proc_macro2
 
         for (i, (arg_pat, is_f64_arg)) in processed_args_info.iter().enumerate() {
             let raw_val_ident =
-                syn::Ident::new(&format!("__ocaml_interop_arg_{}", i), arg_pat.span());
+                syn::Ident::new(&format!("__ocaml_interop_arg_{i}"), arg_pat.span());
 
             arg_setup_code.push(quote_spanned! {arg_pat.span()=>
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
