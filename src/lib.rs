@@ -290,7 +290,7 @@
 //!     ```
 //!     In OCaml, you would then declare it as:
 //!     ```ocaml
-//!     external rust_twice : int -> int = "rust_twice_bytecode" "rust_twice" 
+//!     external rust_twice : int -> int = "rust_twice_bytecode" "rust_twice"
 //!     ```
 //!
 //! #### Panic Handling in Exported Functions
@@ -335,13 +335,13 @@
 //! // `BoxRoot<T>` when those arguments should be automatically rooted,
 //! // or f64` for unboxed floats.
 //! // The return type is typically `OCaml<T>` or a direct type like `f64`.
-//! 
+//!
 //! #[ocaml_interop::export]
 //! fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
 //!     let num: i64 = num.to_rust();
 //!     unsafe { OCaml::of_i64_unchecked(num * 2) }
 //! }
-//! 
+//!
 //! #[ocaml_interop::export]
 //! fn rust_increment_bytes(
 //!     cr: &mut OCamlRuntime,
@@ -355,7 +355,7 @@
 //!     for i in 0..first_n {
 //!         vec[i] += 1;
 //!     }
-//! 
+//!
 //!     vec.to_ocaml(cr)
 //! }
 //! ```
@@ -405,8 +405,6 @@ pub use ocaml_interop_derive::export;
 
 #[doc(hidden)]
 pub mod internal {
-    use std::ffi::CString;
-    use std::sync::OnceLock;
     pub use crate::closure::OCamlClosure;
     pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
@@ -414,6 +412,8 @@ pub mod internal {
     pub use crate::runtime::internal::recover_runtime_handle_mut;
     pub use ocaml_boxroot_sys::boxroot_teardown;
     pub use ocaml_sys::caml_hash_variant;
+    use std::ffi::CString;
+    use std::sync::OnceLock;
 
     // To bypass ocaml_sys::int_val unsafe declaration
     pub fn int_val(val: super::RawOCaml) -> isize {
@@ -453,12 +453,14 @@ pub mod internal {
 
         if constructor_ptr.is_null() {
             RUST_PANIC_EXCEPTION_CONSTRUCTOR.set(None).ok();
-            
+
             None
         } else {
             let constructor_val = *constructor_ptr;
 
-            RUST_PANIC_EXCEPTION_CONSTRUCTOR.set(Some(constructor_val)).ok();
+            RUST_PANIC_EXCEPTION_CONSTRUCTOR
+                .set(Some(constructor_val))
+                .ok();
 
             Some(constructor_val)
         }
@@ -479,7 +481,10 @@ pub mod internal {
         match get_rust_panic_exception_constructor() {
             Some(rust_panic_exn_constructor) => {
                 // Raise the custom OCaml exception `RustPanic "message"`.
-                ocaml_sys::caml_raise_with_string(rust_panic_exn_constructor, c_msg.as_ptr() as *const ocaml_sys::Char);
+                ocaml_sys::caml_raise_with_string(
+                    rust_panic_exn_constructor,
+                    c_msg.as_ptr() as *const ocaml_sys::Char,
+                );
             }
             None => {
                 // Fallback to caml_failwith if the custom exception is not found.
@@ -491,7 +496,9 @@ pub mod internal {
         std::process::abort(); // As a last resort if OCaml exception raising returns.
     }
 
-    pub unsafe fn process_panic_payload_and_raise_ocaml_exception(panic_payload: Box<dyn ::std::any::Any + Send>) {
+    pub unsafe fn process_panic_payload_and_raise_ocaml_exception(
+        panic_payload: Box<dyn ::std::any::Any + Send>,
+    ) {
         let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
             *s
         } else if let Some(s) = panic_payload.downcast_ref::<String>() {
@@ -500,7 +507,9 @@ pub mod internal {
             "Rust panic occurred, but unable to extract panic message."
         };
         raise_rust_panic_exception(msg);
-        unreachable!("raise_rust_panic_exception should have already transferred control or aborted.");
+        unreachable!(
+            "raise_rust_panic_exception should have already transferred control or aborted."
+        );
     }
 }
 

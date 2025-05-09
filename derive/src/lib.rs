@@ -1,10 +1,10 @@
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{Block, FnArg, ItemFn, Pat, PathArguments, ReturnType, Type}; // Removed LitStr and parse_macro_input
+use syn::{Block, FnArg, ItemFn, Pat, PathArguments, ReturnType, Type};
 use syn::punctuated::Punctuated;
 use syn::{Meta, Token, Expr, ExprLit, Lit};
-use syn::parse::Parser; // Added this line
+use syn::parse::Parser;
 
 // Helper function to extract generic type arguments
 fn extract_inner_type_from_path(
