@@ -27,3 +27,12 @@ default = ["boxroot"]
 boxroot = ["ocaml-boxroot-sys/bundle-boxroot"]
 without-ocamlopt = ["ocaml-sys/without-ocamlopt"]
 no-caml-startup = []
+
+[workspace]
+members = [
+    "derive",
+    "testing/rust-caller"
+]
+exclude = [
+    "_build/default/testing/ocaml-caller/rust"
+]
