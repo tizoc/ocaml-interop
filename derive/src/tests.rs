@@ -50,7 +50,7 @@ fn test_simple_function_no_args_no_return() {
 fn test_f64_arg_and_return() {
     let attributes = quote! {};
     let input_function = quote! {
-        pub fn multiply_by_two(cr: &mut ::ocaml_interop::OCamlRuntime, num: f64) -> f64 {
+        pub fn multiply_by_two(cr: &mut OCamlRuntime, num: f64) -> f64 {
             num * 2.0
         }
     };
@@ -94,10 +94,10 @@ fn test_f64_arg_and_return() {
 fn test_ocaml_string_arg_and_return() {
     let attributes = quote! {};
     let input_function = quote! {
-        pub fn greet(cr: &mut ::ocaml_interop::OCamlRuntime, name: ::ocaml_interop::OCaml<String>) -> ::ocaml_interop::OCaml<String> {
-            let rust_name: String = name.to_rust(cr);
+        pub fn greet(cr: &mut OCamlRuntime, name: OCaml<String>) -> OCaml<String> {
+            let rust_name: String = name.to_rust();
             let greeting = format!("Hello, {}!", rust_name);
-            ::ocaml_interop::OCaml::of_rust(cr, &greeting)
+            OCaml::of_rust(cr, &greeting)
         }
     };
 
@@ -106,11 +106,11 @@ fn test_ocaml_string_arg_and_return() {
         pub extern "C" fn greet(name: ::ocaml_interop::RawOCaml) -> ::ocaml_interop::RawOCaml {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
                 let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
-                let name: ::ocaml_interop::OCaml<String> = unsafe { ::ocaml_interop::OCaml::<String>::new(cr, name) };
-                let result_from_body: ::ocaml_interop::OCaml<String> = {
-                    let rust_name: String = name.to_rust(cr);
+                let name: OCaml<String> = unsafe { ::ocaml_interop::OCaml::<String>::new(cr, name) };
+                let result_from_body: OCaml<String> = {
+                    let rust_name: String = name.to_rust();
                     let greeting = format!("Hello, {}!", rust_name);
-                    ::ocaml_interop::OCaml::of_rust(cr, &greeting)
+                    OCaml::of_rust(cr, &greeting)
                 };
                 let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
                 unsafe { final_result_for_ocaml.raw() }
@@ -144,9 +144,9 @@ fn test_ocaml_string_arg_and_return() {
 fn test_boxroot_ocaml_string_arg() {
     let attributes = quote! {};
     let input_function = quote! {
-        pub fn get_string_len(cr: &mut ::ocaml_interop::OCamlRuntime, s: ::ocaml_interop::BoxRoot<String>) -> ::ocaml_interop::OCaml<isize> {
+        pub fn get_string_len(cr: &mut OCamlRuntime, s: BoxRoot<String>) -> OCaml<isize> {
             let rust_s: String = s.to_rust(cr);
-            ::ocaml_interop::OCaml::of_rust(cr, &(rust_s.len() as isize))
+            OCaml::of_rust(cr, &(rust_s.len() as isize))
         }
     };
 
@@ -155,12 +155,12 @@ fn test_boxroot_ocaml_string_arg() {
         pub extern "C" fn get_string_len(s: ::ocaml_interop::RawOCaml) -> ::ocaml_interop::RawOCaml {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
                 let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
-                let s: ::ocaml_interop::BoxRoot<String> = ::ocaml_interop::BoxRoot::new(unsafe {
+                let s: BoxRoot<String> = ::ocaml_interop::BoxRoot::new(unsafe {
                     ::ocaml_interop::OCaml::<String>::new(cr, s)
                 });
-                let result_from_body: ::ocaml_interop::OCaml<isize> = {
+                let result_from_body: OCaml<isize> = {
                     let rust_s: String = s.to_rust(cr);
-                    ::ocaml_interop::OCaml::of_rust(cr, &(rust_s.len() as isize))
+                    OCaml::of_rust(cr, &(rust_s.len() as isize))
                 };
                 let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
                 unsafe { final_result_for_ocaml.raw() }
@@ -194,7 +194,7 @@ fn test_boxroot_ocaml_string_arg() {
 fn test_no_panic_catch_attribute() {
     let attributes = quote! { no_panic_catch };
     let input_function = quote! {
-        pub fn function_that_might_panic(cr: &mut ::ocaml_interop::OCamlRuntime) {
+        pub fn function_that_might_panic(cr: &mut OCamlRuntime) {
             // This function could panic, but with no_panic_catch, it won\'t be caught by the macro.
             println!("Potentially panicking function");
         }
@@ -226,7 +226,7 @@ fn test_no_panic_catch_attribute() {
 fn test_bytecode_attribute_simple() {
     let attributes = quote! { bytecode = "test_fn_byte" };
     let input_function = quote! {
-        pub fn test_fn(cr: &mut ::ocaml_interop::OCamlRuntime) {
+        pub fn test_fn(cr: &mut OCamlRuntime) {
             println!("Test");
         }
     };
@@ -292,9 +292,9 @@ fn test_bytecode_attribute_simple() {
 fn test_bytecode_attribute_with_int_arg_and_return() {
     let attributes = quote! { bytecode = "add_one_byte" };
     let input_function = quote! {
-        pub fn add_one(cr: &mut ::ocaml_interop::OCamlRuntime, num: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt>) -> ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> {
-            let rust_num: i64 = num.to_rust(cr);
-            ::ocaml_interop::OCaml::of_rust(cr, &(rust_num + 1))
+        pub fn add_one(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+            let rust_num: i64 = num.to_rust();
+            OCaml::of_rust(cr, &(rust_num + 1))
         }
     };
 
@@ -303,10 +303,10 @@ fn test_bytecode_attribute_with_int_arg_and_return() {
         pub extern "C" fn add_one(num: ::ocaml_interop::RawOCaml) -> ::ocaml_interop::RawOCaml {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
                 let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
-                let num: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> = unsafe { ::ocaml_interop::OCaml::<::ocaml_interop::OCamlInt>::new(cr, num) };
-                let result_from_body: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> = {
-                    let rust_num: i64 = num.to_rust(cr);
-                    ::ocaml_interop::OCaml::of_rust(cr, &(rust_num + 1))
+                let num: OCaml<OCamlInt> = unsafe { ::ocaml_interop::OCaml::<OCamlInt>::new(cr, num) };
+                let result_from_body: OCaml<OCamlInt> = {
+                    let rust_num: i64 = num.to_rust();
+                    OCaml::of_rust(cr, &(rust_num + 1))
                 };
                 let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
                 unsafe { final_result_for_ocaml.raw() }
@@ -366,15 +366,15 @@ fn test_multiple_args_mixed_types() {
     let attributes = quote! {};
     let input_function = quote! {
         pub fn process_data(
-            cr: &mut ::ocaml_interop::OCamlRuntime,
-            name: ::ocaml_interop::OCaml<String>,
-            count: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt>,
-            is_active: ::ocaml_interop::OCaml<::ocaml_interop::OCamlBool>,
+            cr: &mut OCamlRuntime,
+            name: OCaml<String>,
+            count: OCaml<OCamlInt>,
+            is_active: OCaml<OCamlBool>,
             score: f64
-        ) -> ::ocaml_interop::OCaml<String> {
-            let rust_name: String = name.to_rust(cr);
-            let rust_count: i64 = count.to_rust(cr);
-            let rust_is_active: bool = is_active.to_rust(cr);
+        ) -> OCaml<String> {
+            let rust_name: String = name.to_rust();
+            let rust_count: i64 = count.to_rust();
+            let rust_is_active: bool = is_active.to_rust();
             let result_string = format!(
                 "Processed: {} with count {}, active: {}, score: {}",
                 rust_name,
@@ -382,7 +382,7 @@ fn test_multiple_args_mixed_types() {
                 rust_is_active,
                 score
             );
-            ::ocaml_interop::OCaml::of_rust(cr, &result_string)
+            OCaml::of_rust(cr, &result_string)
         }
     };
 
@@ -396,13 +396,13 @@ fn test_multiple_args_mixed_types() {
         ) -> ::ocaml_interop::RawOCaml {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
                 let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
-                let name: ::ocaml_interop::OCaml<String> = unsafe { ::ocaml_interop::OCaml::<String>::new(cr, name) };
-                let count: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> = unsafe { ::ocaml_interop::OCaml::<::ocaml_interop::OCamlInt>::new(cr, count) };
-                let is_active: ::ocaml_interop::OCaml<::ocaml_interop::OCamlBool> = unsafe { ::ocaml_interop::OCaml::<::ocaml_interop::OCamlBool>::new(cr, is_active) };
-                let result_from_body: ::ocaml_interop::OCaml<String> = {
-                    let rust_name: String = name.to_rust(cr);
-                    let rust_count: i64 = count.to_rust(cr);
-                    let rust_is_active: bool = is_active.to_rust(cr);
+                let name: OCaml<String> = unsafe { ::ocaml_interop::OCaml::<String>::new(cr, name) };
+                let count: OCaml<OCamlInt> = unsafe { ::ocaml_interop::OCaml::<OCamlInt>::new(cr, count) };
+                let is_active: OCaml<OCamlBool> = unsafe { ::ocaml_interop::OCaml::<OCamlBool>::new(cr, is_active) };
+                let result_from_body: OCaml<String> = {
+                    let rust_name: String = name.to_rust();
+                    let rust_count: i64 = count.to_rust();
+                    let rust_is_active: bool = is_active.to_rust();
                     let result_string = format!(
                         "Processed: {} with count {}, active: {}, score: {}",
                         rust_name,
@@ -410,6 +410,138 @@ fn test_multiple_args_mixed_types() {
                         rust_is_active,
                         score
                     );
+                    OCaml::of_rust(cr, &result_string)
+                };
+                let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
+                unsafe { final_result_for_ocaml.raw() }
+            }));
+            match result {
+                Ok(value) => value,
+                Err(panic_payload) => {
+                    unsafe {
+                        ::ocaml_interop::internal::process_panic_payload_and_raise_ocaml_exception(panic_payload);
+                        ::std::unreachable!(
+                            "process_panic_payload_and_raise_ocaml_exception should not return"
+                        );
+                    }
+                }
+            }
+        }
+    };
+
+    let actual_expansion_result = export_internal_logic(attributes, input_function);
+    assert!(
+        actual_expansion_result.is_ok(),
+        "Macro expansion failed: {:?}",
+        actual_expansion_result.err().map(|e| e.to_string())
+    );
+    let actual_expansion = actual_expansion_result.unwrap();
+
+    assert_eq!(actual_expansion.to_string(), expected_expansion.to_string());
+}
+
+#[test]
+fn test_complex_ocaml_types_list_option() {
+    let attributes = quote! {};
+    let input_function = quote! {
+        pub fn process_string_list(
+            cr: &mut OCamlRuntime,
+            list: OCaml<OCamlList<String>>,
+            threshold: OCaml<OCamlInt>
+        ) -> OCaml<Option<i64>> {
+            let rust_list: Vec<String> = list.to_rust();
+            let rust_threshold: i64 = threshold.to_rust();
+            if rust_list.len() > rust_threshold as usize {
+                OCaml::of_rust(cr, &Some(rust_list.len() as i64))
+            } else {
+                OCaml::of_rust(cr, &None)
+            }
+        }
+    };
+
+    let expected_expansion = quote! {
+        #[no_mangle]
+        pub extern "C" fn process_string_list(
+            list: ::ocaml_interop::RawOCaml,
+            threshold: ::ocaml_interop::RawOCaml
+        ) -> ::ocaml_interop::RawOCaml {
+            let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
+                let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
+                let list: OCaml<OCamlList<String> > = unsafe { ::ocaml_interop::OCaml::<OCamlList<String> >::new(cr, list) };
+                let threshold: OCaml<OCamlInt> = unsafe { ::ocaml_interop::OCaml::<OCamlInt>::new(cr, threshold) };
+                let result_from_body: OCaml<Option<i64> > = {
+                    let rust_list: Vec<String> = list.to_rust();
+                    let rust_threshold: i64 = threshold.to_rust();
+                    if rust_list.len() > rust_threshold as usize {
+                        OCaml::of_rust(cr, &Some(rust_list.len() as i64))
+                    } else {
+                        OCaml::of_rust(cr, &None)
+                    }
+                };
+                let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
+                unsafe { final_result_for_ocaml.raw() }
+            }));
+            match result {
+                Ok(value) => value,
+                Err(panic_payload) => {
+                    unsafe {
+                        ::ocaml_interop::internal::process_panic_payload_and_raise_ocaml_exception(panic_payload);
+                        ::std::unreachable!(
+                            "process_panic_payload_and_raise_ocaml_exception should not return"
+                        );
+                    }
+                }
+            }
+        }
+    };
+
+    let actual_expansion_result = export_internal_logic(attributes, input_function);
+    assert!(
+        actual_expansion_result.is_ok(),
+        "Macro expansion failed: {:?}",
+        actual_expansion_result.err().map(|e| e.to_string())
+    );
+    let actual_expansion = actual_expansion_result.unwrap();
+
+    assert_eq!(actual_expansion.to_string(), expected_expansion.to_string());
+}
+
+#[test]
+fn test_fully_qualified_paths_args_and_return() {
+    let attributes = quote! {};
+    let input_function = quote! {
+        pub fn process_fully_qualified(
+            cr: &mut ::ocaml_interop::OCamlRuntime,
+            name: ::ocaml_interop::OCaml<String>,
+            count: ::ocaml_interop::BoxRoot<::ocaml_interop::OCamlInt>
+        ) -> ::ocaml_interop::OCaml<String> {
+            let rust_name: String = name.to_rust();
+            let rust_count: i64 = count.to_rust(cr); // BoxRoot needs cr for to_rust
+            let result_string = format!(
+                "Name: {}, Count: {}",
+                rust_name,
+                rust_count
+            );
+            ::ocaml_interop::OCaml::of_rust(cr, &result_string)
+        }
+    };
+
+    let expected_expansion = quote! {
+        #[no_mangle]
+        pub extern "C" fn process_fully_qualified(
+            name: ::ocaml_interop::RawOCaml,
+            count: ::ocaml_interop::RawOCaml
+        ) -> ::ocaml_interop::RawOCaml {
+            let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
+                let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
+                let name: ::ocaml_interop::OCaml<String> = unsafe { ::ocaml_interop::OCaml::<String>::new(cr, name) };
+                let count: ::ocaml_interop::BoxRoot<::ocaml_interop::OCamlInt> = ::ocaml_interop::BoxRoot::new(unsafe {
+                    ::ocaml_interop::OCaml::<::ocaml_interop::OCamlInt>::new(cr, count)
+                });
+                let result_from_body: ::ocaml_interop::OCaml<String> = {
+                    let rust_name: String = name.to_rust();
+                    let rust_count: i64 = count.to_rust(cr);
+                    let result_string = format!("Name: {}, Count: {}", rust_name, rust_count);
                     ::ocaml_interop::OCaml::of_rust(cr, &result_string)
                 };
                 let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
