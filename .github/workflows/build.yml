@@ -46,6 +46,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+      - name: Test derive crate
+        run: cd derive && cargo test -- --nocapture
       - run: opam install dune alcotest base
       - name: Rust caller test
         run: cd testing/rust-caller; cargo test
