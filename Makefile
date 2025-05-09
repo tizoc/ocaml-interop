@@ -2,9 +2,10 @@
 
 test-all:
 	cargo test
-	cd testing/rust-caller; cargo test
+	cargo test -p ocaml-interop-derive
+	cargo test -p rust-caller
 	cd testing/ocaml-caller; opam exec -- dune test -f
 
 test-examples:
-	cd testing/rust-caller; cargo test
+	cargo test -p rust-caller
 	cd testing/ocaml-caller; opam exec -- dune test -f

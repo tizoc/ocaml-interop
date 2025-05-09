@@ -1,6 +1,6 @@
 (rule
  (targets libcallable_rust.a dllcallable_rust.so)
- (deps (source_tree .))
+ (deps (source_tree src) dune-Cargo.toml)
  (action
   (no-infer
    (progn
@@ -9,6 +9,7 @@
         if [ \"$(uname -s)\" = \"Darwin\" ]; then
           export RUSTFLAGS='-C link-args=-Wl,-undefined,dynamic_lookup'
         fi
+        mv dune-Cargo.toml Cargo.toml
         cargo build
       ")
     (run sh -c
@@ -19,5 +20,5 @@
 
 (library
  (name callable_rust)
- (c_library_flags -lpthread -lc -lm)
+ (c_library_flags -lc -lm)
  (foreign_archives callable_rust))

@@ -1,0 +1,21 @@
+[package]
+name = "ocaml-interop-derive"
+version = "0.1.0"
+authors = ["Bruno Deferrari <utizoc@gmail.com>"]
+description = "Proc-macros for ocaml-interop"
+homepage = "https://github.com/tizoc/ocaml-interop"
+repository = "https://github.com/tizoc/ocaml-interop"
+keywords = ["ocaml", "rust", "ffi", "interop"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0", features = ["full"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+
+[dev-dependencies]
+pretty_assertions = "1.0"

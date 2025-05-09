@@ -108,13 +108,11 @@ ocaml_print_endline(cr, &ocaml_string);
 ### Call Rust functions from OCaml
 
 ```rust
-// Rust
-ocaml_export! {
-    pub fn twice_boxed_int(cr, num: OCamlRef<OCamlInt64>) -> OCaml<OCamlInt64> {
-        let num = num.to_rust(cr);
-        let result = num * 2;
-        result.to_ocaml(cr)
-    }
+#[ocaml_interop::export]
+pub fn twice_boxed_int(cr: &mut OCamlRuntime, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {
+    let num = num.to_rust();
+    let result = num * 2;
+    result.to_ocaml(cr)
 }
 ```
 

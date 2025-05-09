@@ -8,6 +8,4 @@ edition = "2021"
 crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
-ocaml-interop = { path = "../../../../.." }
-# Above is for building with dune, bellow is for building from this directory
-# ocaml-interop = { path = "../../.." }
+ocaml-interop = { path = "../../.." }
