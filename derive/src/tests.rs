@@ -287,3 +287,155 @@ fn test_bytecode_attribute_simple() {
 
     assert_eq!(actual_expansion.to_string(), expected_expansion.to_string());
 }
+
+#[test]
+fn test_bytecode_attribute_with_int_arg_and_return() {
+    let attributes = quote! { bytecode = "add_one_byte" };
+    let input_function = quote! {
+        pub fn add_one(cr: &mut ::ocaml_interop::OCamlRuntime, num: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt>) -> ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> {
+            let rust_num: i64 = num.to_rust(cr);
+            ::ocaml_interop::OCaml::of_rust(cr, &(rust_num + 1))
+        }
+    };
+
+    let expected_native_part = quote! {
+        #[no_mangle]
+        pub extern "C" fn add_one(num: ::ocaml_interop::RawOCaml) -> ::ocaml_interop::RawOCaml {
+            let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
+                let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
+                let num: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> = unsafe { ::ocaml_interop::OCaml::<::ocaml_interop::OCamlInt>::new(cr, num) };
+                let result_from_body: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> = {
+                    let rust_num: i64 = num.to_rust(cr);
+                    ::ocaml_interop::OCaml::of_rust(cr, &(rust_num + 1))
+                };
+                let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
+                unsafe { final_result_for_ocaml.raw() }
+            }));
+            match result {
+                Ok(value) => value,
+                Err(panic_payload) => {
+                    unsafe {
+                        ::ocaml_interop::internal::process_panic_payload_and_raise_ocaml_exception(panic_payload);
+                        ::std::unreachable!(
+                            "process_panic_payload_and_raise_ocaml_exception should not return"
+                        );
+                    }
+                }
+            }
+        }
+    };
+
+    let expected_bytecode_part = quote! {
+        #[no_mangle]
+        pub extern "C" fn add_one_byte(argv: *mut ::ocaml_interop::RawOCaml, argn: ::std::os::raw::c_int) -> ::ocaml_interop::RawOCaml {
+            #[allow(clippy::not_unsafe_ptr_arg_deref)]
+            let __ocaml_interop_arg_0 = unsafe { ::core::ptr::read(argv.add(0usize)) };
+            let num = __ocaml_interop_arg_0;
+            if cfg!(debug_assertions) {
+                if (argn as usize) != 1usize {
+                    panic!(
+                        "Bytecode function '{}' called with incorrect number of arguments: expected {}, got {}.",
+                        stringify!(add_one_byte),
+                        1usize,
+                        argn
+                    );
+                }
+            }
+            add_one(num)
+        }
+    };
+
+    let expected_expansion = quote! {
+        #expected_native_part
+        #expected_bytecode_part
+    };
+
+    let actual_expansion_result = export_internal_logic(attributes, input_function);
+    assert!(
+        actual_expansion_result.is_ok(),
+        "Macro expansion failed: {:?}",
+        actual_expansion_result.err().map(|e| e.to_string())
+    );
+    let actual_expansion = actual_expansion_result.unwrap();
+
+    assert_eq!(actual_expansion.to_string(), expected_expansion.to_string());
+}
+
+#[test]
+fn test_multiple_args_mixed_types() {
+    let attributes = quote! {};
+    let input_function = quote! {
+        pub fn process_data(
+            cr: &mut ::ocaml_interop::OCamlRuntime,
+            name: ::ocaml_interop::OCaml<String>,
+            count: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt>,
+            is_active: ::ocaml_interop::OCaml<::ocaml_interop::OCamlBool>,
+            score: f64
+        ) -> ::ocaml_interop::OCaml<String> {
+            let rust_name: String = name.to_rust(cr);
+            let rust_count: i64 = count.to_rust(cr);
+            let rust_is_active: bool = is_active.to_rust(cr);
+            let result_string = format!(
+                "Processed: {} with count {}, active: {}, score: {}",
+                rust_name,
+                rust_count,
+                rust_is_active,
+                score
+            );
+            ::ocaml_interop::OCaml::of_rust(cr, &result_string)
+        }
+    };
+
+    let expected_expansion = quote! {
+        #[no_mangle]
+        pub extern "C" fn process_data(
+            name: ::ocaml_interop::RawOCaml,
+            count: ::ocaml_interop::RawOCaml,
+            is_active: ::ocaml_interop::RawOCaml,
+            score: f64
+        ) -> ::ocaml_interop::RawOCaml {
+            let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
+                let cr = unsafe { &mut ::ocaml_interop::internal::recover_runtime_handle_mut() };
+                let name: ::ocaml_interop::OCaml<String> = unsafe { ::ocaml_interop::OCaml::<String>::new(cr, name) };
+                let count: ::ocaml_interop::OCaml<::ocaml_interop::OCamlInt> = unsafe { ::ocaml_interop::OCaml::<::ocaml_interop::OCamlInt>::new(cr, count) };
+                let is_active: ::ocaml_interop::OCaml<::ocaml_interop::OCamlBool> = unsafe { ::ocaml_interop::OCaml::<::ocaml_interop::OCamlBool>::new(cr, is_active) };
+                let result_from_body: ::ocaml_interop::OCaml<String> = {
+                    let rust_name: String = name.to_rust(cr);
+                    let rust_count: i64 = count.to_rust(cr);
+                    let rust_is_active: bool = is_active.to_rust(cr);
+                    let result_string = format!(
+                        "Processed: {} with count {}, active: {}, score: {}",
+                        rust_name,
+                        rust_count,
+                        rust_is_active,
+                        score
+                    );
+                    ::ocaml_interop::OCaml::of_rust(cr, &result_string)
+                };
+                let final_result_for_ocaml: ::ocaml_interop::OCaml<_> = result_from_body;
+                unsafe { final_result_for_ocaml.raw() }
+            }));
+            match result {
+                Ok(value) => value,
+                Err(panic_payload) => {
+                    unsafe {
+                        ::ocaml_interop::internal::process_panic_payload_and_raise_ocaml_exception(panic_payload);
+                        ::std::unreachable!(
+                            "process_panic_payload_and_raise_ocaml_exception should not return"
+                        );
+                    }
+                }
+            }
+        }
+    };
+
+    let actual_expansion_result = export_internal_logic(attributes, input_function);
+    assert!(
+        actual_expansion_result.is_ok(),
+        "Macro expansion failed: {:?}",
+        actual_expansion_result.err().map(|e| e.to_string())
+    );
+    let actual_expansion = actual_expansion_result.unwrap();
+
+    assert_eq!(actual_expansion.to_string(), expected_expansion.to_string());
+}
