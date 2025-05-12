@@ -12,7 +12,6 @@ use crate::core::ProcessedArg;
 
 pub(crate) fn get_interop_type_detail(
     user_type: &syn::Type,
-    is_return_type_context: bool,
 ) -> Result<InteropTypeDetail, syn::Error> {
     match user_type {
         Type::Tuple(type_tuple) => {
@@ -63,17 +62,10 @@ pub(crate) fn get_interop_type_detail(
                         })
                     }
                     "BoxRoot" => {
-                        if is_return_type_context {
-                            Err(syn::Error::new_spanned(
-                                user_type,
-                                "BoxRoot<T> cannot be used as a return type directly. Return OCaml<T> instead.",
-                            ))
-                        } else {
-                            let inner_type = extract_inner_type_from_path(type_path, "BoxRoot")?;
-                            Ok(InteropTypeDetail::BoxRoot {
-                                inner_type,
-                            })
-                        }
+                        let inner_type = extract_inner_type_from_path(type_path, "BoxRoot")?;
+                        Ok(InteropTypeDetail::BoxRoot {
+                            inner_type,
+                        })
                     }
                     _ => Err(syn::Error::new_spanned(
                         user_type,
@@ -140,12 +132,13 @@ pub(crate) fn extract_inner_type_from_path(
     }
 }
 
-// Validates the first function argument, ensuring it's a valid OCamlRuntime reference.
-pub(crate) fn validate_runtime_argument(
+// Parses the first function argument, ensuring it's a syntactically valid OCamlRuntime reference.
+// Type and mutability validation against `noalloc` is handled in `validation.rs`.
+pub(crate) fn parse_runtime_argument(
     first_arg: Option<&FnArg>,
-    noalloc: bool,
     fn_inputs_span: proc_macro2::Span,
-) -> Result<(syn::PatType, Type), syn::Error> {
+) -> Result<(syn::PatType, Box<Type>), syn::Error> {
+    // Return Box<Type> for consistency
     let fn_arg = first_arg.ok_or_else(|| {
         syn::Error::new(
             fn_inputs_span,
@@ -163,53 +156,8 @@ pub(crate) fn validate_runtime_argument(
         }
     };
 
-    let arg_type = pat_type.ty.clone();
-
-    let (is_ocaml_runtime_type, is_mutable_runtime) = if let Type::Reference(type_ref) = &*arg_type
-    {
-        if let Type::Path(type_path) = &*type_ref.elem {
-            // Check for both `OCamlRuntime` and `::ocaml_interop::OCamlRuntime` or `ocaml_interop::OCamlRuntime`
-            let path_str = quote!(#type_path).to_string();
-            let is_runtime_path = path_str == "OCamlRuntime"
-                || path_str == "ocaml_interop :: OCamlRuntime"
-                || path_str == ":: ocaml_interop :: OCamlRuntime"; // Allow for spaces quote! might add
-
-            if is_runtime_path {
-                (true, type_ref.mutability.is_some())
-            } else {
-                (false, false)
-            }
-        } else {
-            (false, false)
-        }
-    } else {
-        (false, false)
-    };
-
-    if !is_ocaml_runtime_type {
-        return Err(syn::Error::new_spanned(
-            &*arg_type,
-            "Exported functions must take an OCamlRuntime reference (e.g., `rt: &OCamlRuntime` or `rt: &mut OCamlRuntime`) as their first argument.",
-        ));
-    }
-
-    // Case 1: `noalloc` is true. Runtime must be `&OCamlRuntime` (immutable).
-    if noalloc {
-        if is_mutable_runtime {
-            return Err(syn::Error::new_spanned(
-                &*arg_type,
-                "When `noalloc` is used, OCaml runtime argument must be an immutable reference (e.g., &OCamlRuntime)",
-            ));
-        }
-    // Case 2: `noalloc` is false (default, allocations allowed). Runtime must be `&mut OCamlRuntime` (mutable).
-    } else if !is_mutable_runtime {
-        return Err(syn::Error::new_spanned(
-                &*arg_type,
-                "OCaml runtime argument must be a mutable reference (e.g., &mut OCamlRuntime). Use `noalloc` for an immutable reference.",
-            ));
-    }
-
-    Ok((pat_type, *arg_type))
+    let arg_type_box = pat_type.ty.clone();
+    Ok((pat_type, arg_type_box))
 }
 
 // Processes a single user-provided (non-runtime) function argument.
@@ -218,29 +166,14 @@ pub(crate) fn process_extern_argument(arg_input: &FnArg) -> Result<ProcessedArg,
         let original_pat = &pat_type.pat;
         let original_ty = &pat_type.ty;
 
-        let interop_detail = get_interop_type_detail(original_ty, false)?;
+        let interop_detail = get_interop_type_detail(original_ty)?;
 
-        match &interop_detail {
-            InteropTypeDetail::Primitive { .. } => Ok(ProcessedArg {
-                pattern: original_pat.clone(),
-                type_detail: interop_detail.clone(),
-                original_rust_type: Box::new(*original_ty.clone()),
-            }),
-            InteropTypeDetail::OCaml { .. } => Ok(ProcessedArg {
-                pattern: original_pat.clone(),
-                type_detail: interop_detail.clone(),
-                original_rust_type: Box::new(*original_ty.clone()),
-            }),
-            InteropTypeDetail::BoxRoot { .. } => Ok(ProcessedArg {
-                pattern: original_pat.clone(),
-                type_detail: interop_detail.clone(),
-                original_rust_type: Box::new(*original_ty.clone()),
-            }),
-            InteropTypeDetail::Unit => Err(syn::Error::new_spanned(
-                original_ty,
-                "Unit type `()` is not a supported argument type directly. Use OCaml<()> if needed for placeholder.",
-            )),
-        }
+        // Match all variants to construct ProcessedArg. Validation for Unit is in validation.rs
+        Ok(ProcessedArg {
+            pattern: original_pat.clone(),
+            type_detail: interop_detail.clone(), // interop_detail can now be Unit
+            original_rust_type: Box::new(*original_ty.clone()),
+        })
     } else {
         Err(syn::Error::new_spanned(
             arg_input,
@@ -258,20 +191,9 @@ pub(crate) fn process_return_type(
         ReturnType::Type(_, ty_box) => (**ty_box).clone(),
     };
 
-    let interop_detail_matched = get_interop_type_detail(&user_return_type_ast, true)?;
+    let interop_detail_matched = get_interop_type_detail(&user_return_type_ast)?;
 
-    match interop_detail_matched {
-        InteropTypeDetail::Unit => Ok((interop_detail_matched, user_return_type_ast)),
-        InteropTypeDetail::Primitive { .. } => Ok((interop_detail_matched, user_return_type_ast)),
-        InteropTypeDetail::OCaml { .. } => Ok((interop_detail_matched, user_return_type_ast)),
-        InteropTypeDetail::BoxRoot { .. } => {
-            // This case should be caught by get_interop_type_detail when is_return_type_context is true.
-            Err(syn::Error::new_spanned(
-                user_return_type_ast,
-                "Internal error: BoxRoot<T> should not be possible as a return type here (caught by get_interop_type_detail).",
-            ))
-        }
-    }
+    Ok((interop_detail_matched, user_return_type_ast))
 }
 
 pub(crate) fn parse_export_definition(
@@ -389,16 +311,9 @@ pub(crate) fn parse_export_definition(
     let mut original_fn_args_iter = fn_inputs.iter();
 
     let (runtime_arg_pat_ref, runtime_arg_ty_ref) =
-        validate_runtime_argument(original_fn_args_iter.next(), noalloc, fn_inputs_span)?;
+        parse_runtime_argument(original_fn_args_iter.next(), fn_inputs_span)?;
     let runtime_arg_pat = Box::new(runtime_arg_pat_ref.pat.as_ref().clone());
-    let runtime_arg_ty = Box::new(runtime_arg_ty_ref);
-
-    if fn_inputs.len() <= 1 {
-        return Err(syn::Error::new(
-            original_fn_ident.span(),
-            "OCaml functions must take at least one argument in addition to the OCamlRuntime.",
-        ));
-    }
+    let runtime_arg_ty = runtime_arg_ty_ref; // Already a Box<Type>
 
     let mut processed_args: Vec<ProcessedArg> = Vec::new();
     for arg in original_fn_args_iter {

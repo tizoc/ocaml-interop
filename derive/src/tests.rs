@@ -683,7 +683,7 @@ fn test_error_alloc_with_immutable_runtime() {
     if let Err(e) = actual_expansion_result {
         let error_message = e.to_string();
         assert!(
-            error_message.contains("OCaml runtime argument must be a mutable reference (e.g., &mut OCamlRuntime). Use `noalloc` for an immutable reference."),
+            error_message.contains("OCaml runtime argument must be a mutable reference (e.g., &mut OCamlRuntime). Use `#[export(noalloc)]` for an immutable reference."),
             "Error message did not contain the expected text for alloc with immutable runtime. Got: {}",
             error_message
         );

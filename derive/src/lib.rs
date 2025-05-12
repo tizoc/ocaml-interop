@@ -4,6 +4,7 @@ use syn::ItemFn;
 mod core;
 mod expansion;
 mod parsing;
+mod validation;
 
 fn export_internal_logic(
     attr_ts: proc_macro2::TokenStream,
@@ -17,6 +18,8 @@ fn export_internal_logic(
     })?;
 
     let parsed_data = parsing::parse_export_definition(attr_ts, &input_fn)?;
+
+    validation::validate_parsed_data(&parsed_data)?;
 
     expansion::expand_function_from_data(&parsed_data)
 }
