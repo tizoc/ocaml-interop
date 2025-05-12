@@ -78,7 +78,7 @@
 //! ```
 //!
 //! **When OCaml Calls Rust:**
-//! For functions exported using [`ocaml_export!`], `cr` is automatically provided as the first argument.
+//! For functions exported by annotating them with `#[ocaml_interop::export]`, `cr` is automatically provided as the first argument.
 //!
 //! Un-rooted non-immediate OCaml values have a lifetime associated with the current scope of `cr` usage.
 //! Accessing them after the OCaml runtime has been re-entered (e.g., another call to `with_domain_lock` or
@@ -129,8 +129,9 @@
 //! Then instead of the value, it is the root pointing to the value that is passed as an argument.
 //! This is how `ocaml-interop` works starting with version `0.5.0`.
 //!
-//! When a Rust function is called from OCaml, it will receive arguments as [`OCamlRef`]`<T>` values,
-//! and when a OCaml function is called from Rust, arguments will be passed as [`OCamlRef`]`<T>` values.
+//! When a Rust function is called from OCaml, it will receive arguments as [`OCaml`]`<T>` or [`BoxRoot`]`<T>`
+//! values. The former will not be automatically rooted, while the latter will be.
+//! When a OCaml function is called from Rust, arguments will be passed as [`OCamlRef`]`<T>` values.
 //!
 //! #### Return values
 //!
@@ -273,44 +274,95 @@
 //!
 //! ### Calling into Rust from OCaml
 //!
-//! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the [`ocaml_export!`] macro.
+//! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `#[ocaml_interop::export]` macro.
+//!
+//! #### Attributes for `#[ocaml_interop::export]`
+//!
+//! The `#[ocaml_interop::export]` macro supports several attributes to customize its behavior:
+//!
+//! *   `no_panic_catch`: As described below, this disables the default panic handling mechanism.
+//! *   `bytecode = "my_ocaml_bytecode_function_name"`: This attribute directs the macro to generate an additional wrapper function suitable for being called from OCaml bytecode. The provided string will be the name of this bytecode-compatible function in OCaml. For example:
+//!     ```rust,ignore
+//!     #[ocaml_interop::export(bytecode = "rust_twice_bytecode")]
+//!     fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+//!         // ...
+//!     }
+//!     ```
+//!     In OCaml, you would then declare it as:
+//!     ```ocaml
+//!     external rust_twice : int -> int = "rust_twice_bytecode" "rust_twice"
+//!     ```
+//! *   `noalloc`: Indicates that the function does not allocate on the OCaml heap.
+//!     *   The function must take `cr: &OCamlRuntime` (an immutable reference).
+//!     *   This attribute implies `no_panic_catch`.
+//!     *   The corresponding OCaml `external` declaration **must** include the `[@@noalloc]` attribute.
+//!
+//! #### Panic Handling in Exported Functions
+//!
+//! Functions exported with `#[ocaml_interop::export]` have built-in panic handling. If a Rust panic occurs within an exported function:
+//!
+//! 1.  The panic is caught by the macro-generated wrapper.
+//! 2.  The macro attempts to raise a specific OCaml exception named `RustPanic` (of type `string`) with the panic message.
+//!     For this to work, you must define and register this exception in your OCaml code:
+//!     ```ocaml
+//!     exception RustPanic of string
+//!
+//!     (* Typically in your application's initialization code *)
+//!     let () = Callback.register_exception "rust_panic_exn" (RustPanic "")
+//!     ```
+//! 3.  If the `RustPanic` exception (registered with the name `"rust_panic_exn"`) is not found at runtime, the panic will be raised as a standard OCaml `Failure` exception, including the original panic message.
+//!
+//! This panic catching behavior is enabled by default to ensure that Rust panics do not unwind across the FFI boundary into OCaml, which would lead to undefined behavior.
+//!
+//! If you need to disable this panic handling for a specific function (e.g., for performance-critical code where you handle panics differently or are certain no panics can occur), you can use the `no_panic_catch` attribute:
+//!
+//! ```rust,ignore
+//! #[ocaml_interop::export(no_panic_catch)]
+//! fn my_performance_critical_function(cr: &mut OCamlRuntime, /* ... */) -> OCaml<Something> {
+//!     // ... code that must not panic or handles panics internally ...
+//! }
+//! ```
 //!
 //! #### Example
 //!
 //! ```rust,no_run
 //! use ocaml_interop::{
-//!     ocaml_export, FromOCaml, OCamlInt, OCaml, OCamlBytes,
-//!     OCamlRef, ToOCaml,
+//!     BoxRoot, FromOCaml, OCamlInt, OCaml, OCamlBytes,
+//!     ToOCaml, OCamlRuntime
 //! };
 //!
-//! // `ocaml_export` expands the function definitions by adding `pub` visibility and
-//! // the required `#[no_mangle]` and `extern` declarations. It also takes care of
-//! // acquiring the OCaml runtime handle and binding it to the name provided as
-//! // the first parameter of the function.
-//! ocaml_export! {
-//!     // The first parameter is a name to which the GC frame handle will be bound to.
-//!     // The remaining parameters must have type `OCamlRef<T>`, and the return
-//!     // value `OCaml<T>`.
-//!     fn rust_twice(cr, num: OCamlRef<OCamlInt>) -> OCaml<OCamlInt> {
-//!         let num: i64 = num.to_rust(cr);
-//!         unsafe { OCaml::of_i64_unchecked(num * 2) }
+//! // `#[ocaml_interop::export]` expands the function definitions by adding
+//! // the required `#[no_mangle]` and `extern "C"` declarations. It also handles
+//! // argument/return type marshalling and panic handling.
+//! // The first argument must be `&mut OCamlRuntime` (or `&OCamlRuntime` for noalloc).
+//! // Other arguments are typically `OCaml<T>` for unrooted OCaml values,
+//! // `BoxRoot<T>` when those arguments should be automatically rooted,
+//! // or direct Rust primitives like `f64`, `i64`, `i32`, `bool`, `isize` for unboxed values
+//! // (requiring `[@@unboxed]` or `[@untagged]` on the OCaml `external`).
+//! // The return type is typically `OCaml<T>` or a direct Rust primitive
+//! // (also requiring `[@@unboxed]` or `[@untagged]` on the OCaml `external`).
+//!
+//! #[ocaml_interop::export]
+//! fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+//!     let num: i64 = num.to_rust();
+//!     unsafe { OCaml::of_i64_unchecked(num * 2) }
+//! }
+//!
+//! #[ocaml_interop::export]
+//! fn rust_increment_bytes(
+//!     cr: &mut OCamlRuntime,
+//!     bytes: OCaml<OCamlBytes>,
+//!     first_n: OCaml<OCamlInt>,
+//! ) -> OCaml<OCamlBytes> {
+//!     let first_n: i64 = first_n.to_rust();
+//!     let first_n = first_n as usize;
+//!     let mut vec: Vec<u8> = bytes.to_rust();
+//!
+//!     for i in 0..first_n {
+//!         vec[i] += 1;
 //!     }
 //!
-//!     fn rust_increment_bytes(
-//!         cr,
-//!         bytes: OCamlRef<OCamlBytes>,
-//!         first_n: OCamlRef<OCamlInt>,
-//!     ) -> OCaml<OCamlBytes> {
-//!         let first_n: i64 = first_n.to_rust(cr);
-//!         let first_n = first_n as usize;
-//!         let mut vec: Vec<u8> = bytes.to_rust(cr);
-//!
-//!         for i in 0..first_n {
-//!             vec[i] += 1;
-//!         }
-//!
-//!         vec.to_ocaml(cr)
-//!     }
+//!     vec.to_ocaml(cr)
 //! }
 //! ```
 //!
@@ -354,19 +406,144 @@ pub use crate::mlvalues::{
 pub use crate::runtime::{OCamlRuntime, OCamlRuntimeStartupGuard};
 pub use crate::value::OCaml;
 
+// Re-export the procedural macro
+pub use ocaml_interop_derive::export;
+
 #[doc(hidden)]
 pub mod internal {
     pub use crate::closure::OCamlClosure;
     pub use crate::memory::{alloc_tuple, caml_alloc, store_field};
     pub use crate::mlvalues::tag;
     pub use crate::mlvalues::UNIT;
-    pub use crate::runtime::internal::recover_runtime_handle_mut;
+    pub use crate::runtime::internal::{recover_runtime_handle, recover_runtime_handle_mut};
     pub use ocaml_boxroot_sys::boxroot_teardown;
     pub use ocaml_sys::caml_hash_variant;
+    use std::ffi::CString;
+    use std::sync::OnceLock;
 
     // To bypass ocaml_sys::int_val unsafe declaration
     pub fn int_val(val: super::RawOCaml) -> isize {
         unsafe { ocaml_sys::int_val(val) }
+    }
+
+    // To bypass ocaml_sys::caml_sys_double_val unsafe declaration
+    pub fn float_val(val: super::RawOCaml) -> f64 {
+        unsafe { ocaml_sys::caml_sys_double_val(val) }
+    }
+
+    pub fn int32_val(val: super::RawOCaml) -> i32 {
+        unsafe { crate::mlvalues::int32_val(val) }
+    }
+
+    pub fn int64_val(val: super::RawOCaml) -> i64 {
+        unsafe { crate::mlvalues::int64_val(val) }
+    }
+
+    pub fn alloc_int32(val: i32) -> super::RawOCaml {
+        unsafe { ocaml_sys::caml_copy_int32(val) }
+    }
+
+    pub fn alloc_int64(val: i64) -> super::RawOCaml {
+        unsafe { ocaml_sys::caml_copy_int64(val) }
+    }
+
+    pub fn alloc_float(val: f64) -> super::RawOCaml {
+        unsafe { ocaml_sys::caml_copy_double(val) }
+    }
+
+    pub fn make_ocaml_bool(val: bool) -> super::RawOCaml {
+        unsafe { ocaml_sys::val_int(val as isize) }
+    }
+
+    pub fn make_ocaml_int(val: isize) -> super::RawOCaml {
+        unsafe { ocaml_sys::val_int(val) }
+    }
+
+    // Static storage for the OCaml exception constructor for Rust panics.
+    // This will hold the OCaml value for an exception like `exception RustPanic of string`.
+    static RUST_PANIC_EXCEPTION_CONSTRUCTOR: OnceLock<Option<super::RawOCaml>> = OnceLock::new();
+
+    /// Retrieves the OCaml exception constructor for `RustPanic`.
+    ///
+    /// This function attempts to get a reference to an OCaml exception constructor
+    /// that should be registered from the OCaml side using a name (e.g., "rust_panic_exn").
+    /// Example OCaml registration:
+    /// ```ocaml
+    /// exception RustPanic of string
+    /// let () = Callback.register_exception "rust_panic_exn" (RustPanic "")
+    /// ```
+    /// Returns `None` if the exception is not found (i.e., not registered by the OCaml code).
+    ///
+    /// # Safety
+    /// This function is unsafe because `ocaml_sys::caml_named_value` interacts with the OCaml
+    /// runtime and must be called when the OCaml runtime lock is held and the runtime is initialized.
+    unsafe fn get_rust_panic_exception_constructor() -> Option<super::RawOCaml> {
+        if let Some(constructor_val_opt) = RUST_PANIC_EXCEPTION_CONSTRUCTOR.get() {
+            return *constructor_val_opt;
+        }
+
+        let exn_name_cstr = CString::new("rust_panic_exn").unwrap();
+        let constructor_ptr = ocaml_sys::caml_named_value(exn_name_cstr.as_ptr());
+
+        if constructor_ptr.is_null() {
+            RUST_PANIC_EXCEPTION_CONSTRUCTOR.set(None).ok();
+
+            None
+        } else {
+            let constructor_val = *constructor_ptr;
+
+            RUST_PANIC_EXCEPTION_CONSTRUCTOR
+                .set(Some(constructor_val))
+                .ok();
+
+            Some(constructor_val)
+        }
+    }
+
+    /// # Safety
+    /// This function is intended to be called from the `#[export]` macro when a Rust panic is caught.
+    /// It attempts to raise a custom OCaml exception (e.g., `RustPanic of string`) with the provided message.
+    /// If the custom exception is not registered on the OCaml side, it falls back to `caml_failwith`.
+    /// This function will likely not return to the Rust caller in the traditional sense,
+    /// as it transfers control to the OCaml runtime's exception handling mechanism.
+    /// The OCaml runtime must be initialized, and the current thread must hold the domain lock.
+    pub unsafe fn raise_rust_panic_exception(msg: &str) {
+        let c_msg = CString::new(msg).unwrap_or_else(|_| {
+            CString::new("Rust panic: Invalid message content (e.g., null bytes)").unwrap()
+        });
+
+        match get_rust_panic_exception_constructor() {
+            Some(rust_panic_exn_constructor) => {
+                // Raise the custom OCaml exception `RustPanic "message"`.
+                ocaml_sys::caml_raise_with_string(
+                    rust_panic_exn_constructor,
+                    c_msg.as_ptr() as *const ocaml_sys::Char,
+                );
+            }
+            None => {
+                // Fallback to caml_failwith if the custom exception is not found.
+                ocaml_sys::caml_failwith(c_msg.as_ptr() as *const ocaml_sys::Char);
+            }
+        }
+
+        // caml_raise_with_string or caml_failwith should not return. If they do, it's an issue.
+        std::process::abort(); // As a last resort if OCaml exception raising returns.
+    }
+
+    pub unsafe fn process_panic_payload_and_raise_ocaml_exception(
+        panic_payload: Box<dyn ::std::any::Any + Send>,
+    ) {
+        let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+            *s
+        } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+            s.as_str()
+        } else {
+            "Rust panic occurred, but unable to extract panic message."
+        };
+        raise_rust_panic_exception(msg);
+        unreachable!(
+            "raise_rust_panic_exception should have already transferred control or aborted."
+        );
     }
 }
 

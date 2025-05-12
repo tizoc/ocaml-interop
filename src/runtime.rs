@@ -278,7 +278,7 @@ pub mod internal {
     }
 
     #[inline(always)]
-    pub(super) unsafe fn recover_runtime_handle() -> &'static OCamlRuntime {
-        &*recover_runtime_handle_mut()
+    pub unsafe fn recover_runtime_handle() -> &'static OCamlRuntime {
+        TLS_RUNTIME.with(|cell| &*cell.get())
     }
 }

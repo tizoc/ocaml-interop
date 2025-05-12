@@ -14,6 +14,17 @@ pub use ocaml_sys::{
 pub mod bigarray;
 pub mod tag;
 
+
+pub(crate) unsafe fn int32_val(v: RawOCaml) -> i32 {
+    let val = unsafe { field_val(v, 1) };
+    unsafe { *(val as *const i32) }
+}
+
+pub(crate) unsafe fn int64_val(v: RawOCaml) -> i64 {
+    let val = unsafe { field_val(v, 1) };
+    unsafe { *(val as *const i64) }
+}
+
 /// [`OCaml`]`<OCamlList<T>>` is a reference to an OCaml `list` containing
 /// values of type `T`.
 pub struct OCamlList<A> {

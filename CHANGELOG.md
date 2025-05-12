@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New procedural macro `#[ocaml_interop::export]` in a dedicated `ocaml-interop-derive` crate,
+  replaces the older `ocaml_export!` macro.
+    * Introduces `OCaml<T>` (non-rooted) and `BoxRoot<T>` (auto-rooted) argument types,
+      clarifying rooting strategy and replacing `OCamlRef<T>` for exported function arguments.
+    * Direct mapping for Rust primitive types (`f64`, `i64`, `i32`, `bool`, `isize`) as arguments
+      and return values, requiring corresponding `[@unboxed]` or `[@untagged]` attributes on the
+      OCaml `external` declaration.
+    * Automatic panic handling: Rust panics are caught and raised as OCaml exceptions (custom
+      `RustPanic` or fallback `Failure`). Disable with `#[ocaml_interop::export(no_panic_catch)]`.
+    * Bytecode wrapper generation via `#[ocaml_interop::export(bytecode = "stub_name")]`.
+    * `noalloc` attribute: `#[ocaml_interop::export(noalloc)]` for functions that do not
+      allocate on the OCaml heap. Requires `&OCamlRuntime` (immutable) and implies no panic catch.
+      The OCaml `external` must be annotated with `[@@noalloc]`.
+
+### Changed
+
+- **Argument Handling in Exported Functions**: The `#[ocaml_interop::export]` macro promotes using
+  `OCaml<T>` or `BoxRoot<T>` for OCaml value arguments instead of `OCamlRef<T>` to make rooting
+  behavior explicit.
+
+### Removed
+
+- Removed the `ocaml_export!` macro.
+
 ## [0.11.1] - 2025-05-07
 
 ### Fixed
