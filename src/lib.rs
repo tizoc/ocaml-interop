@@ -368,6 +368,40 @@ pub mod internal {
     pub fn int_val(val: super::RawOCaml) -> isize {
         unsafe { ocaml_sys::int_val(val) }
     }
+
+    // To bypass ocaml_sys::caml_sys_double_val unsafe declaration
+    pub fn float_val(val: super::RawOCaml) -> f64 {
+        unsafe { ocaml_sys::caml_sys_double_val(val) }
+    }
+
+    pub fn int32_val(val: super::RawOCaml) -> i32 {
+        unsafe { crate::mlvalues::int32_val(val) }
+    }
+
+    pub fn int64_val(val: super::RawOCaml) -> i64 {
+        unsafe { crate::mlvalues::int64_val(val) }
+    }
+
+    pub fn alloc_int32(val: i32) -> super::RawOCaml {
+        unsafe { ocaml_sys::caml_copy_int32(val) }
+    }
+
+    pub fn alloc_int64(val: i64) -> super::RawOCaml {
+        unsafe { ocaml_sys::caml_copy_int64(val) }
+    }
+
+    pub fn alloc_float(val: f64) -> super::RawOCaml {
+        unsafe { ocaml_sys::caml_copy_double(val) }
+    }
+
+    pub fn make_ocaml_bool(val: bool) -> super::RawOCaml {
+        unsafe { ocaml_sys::val_int(val as isize) }
+    }
+
+    pub fn make_ocaml_int(val: isize) -> super::RawOCaml {
+        unsafe { ocaml_sys::val_int(val) }
+    }
+
 }
 
 #[doc(hidden)]
