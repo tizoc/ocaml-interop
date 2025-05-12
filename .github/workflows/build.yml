@@ -46,9 +46,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+      - name: Test derive crate
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p ocaml-interop-derive
       - run: opam install dune alcotest base
       - name: Rust caller test
-        run: cd testing/rust-caller; cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p rust-caller
       - name: Build OCaml caller
         run: cd testing/ocaml-caller; opam exec -- dune build -j 1
       - name: OCaml caller test
