@@ -12,366 +12,96 @@
 //! [ocaml-interop](https://github.com/tizoc/ocaml-interop) is an OCaml<->Rust FFI with an emphasis
 //! on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide),
 //! [ocaml-rs](https://github.com/zshipko/ocaml-rs) and [CAMLroot](https://arxiv.org/abs/1812.04905).
-//!
+//! 
 //! ## Table of Contents
 //!
 //! - [Usage](#usage)
-//!   * [The OCaml runtime handle](#the-ocaml-runtime-handle)
+//!   * [Runtime Initialization and Management](#runtime-initialization-and-management)
+//!   * [Acquiring and Using the OCaml Runtime Handle](#acquiring-and-using-the-ocaml-runtime-handle)
 //!   * [OCaml value representation](#ocaml-value-representation)
 //!   * [Converting between OCaml and Rust data](#converting-between-ocaml-and-rust-data)
-//!     + [`FromOCaml` trait](#fromocaml-trait)
-//!     + [`ToOCaml` trait](#toocaml-trait)
 //!   * [Calling convention](#calling-convention)
 //!   * [OCaml exceptions](#ocaml-exceptions)
 //!   * [Calling into OCaml from Rust](#calling-into-ocaml-from-rust)
 //!   * [Calling into Rust from OCaml](#calling-into-rust-from-ocaml)
+//! - [User Guides](user_guides)
 //! - [References and links](#references-and-links)
 //!
 //! ## Usage
 //!
+//! This section provides a high-level overview of `ocaml-interop`. For detailed explanations,
+//! tutorials, and best practices, please refer to the [User Guides module](user_guides).
+//!
 //! ### Runtime Initialization and Management
 //!
-//! For Rust programs that intend to call into OCaml code, the OCaml runtime must first be initialized
-//! from the Rust side. This is done using [`OCamlRuntime::init`]. If your Rust code is being called
-//! as a library from an existing OCaml program, the OCaml runtime will already be initialized by OCaml,
-//! `OCamlRuntime::init()` must not be called from Rust in that scenario.
+//! Proper initialization and management of the OCaml runtime is crucial, especially when Rust
+//! code drives the execution. This involves using [`OCamlRuntime::init`] and managing its
+//! lifecycle with [`OCamlRuntimeStartupGuard`].
 //!
-//! When initializing from Rust:
-//!
-//! ```rust,no_run
-//! # use ocaml_interop::{OCamlRuntime, OCamlRuntimeStartupGuard};
-//! # fn main() -> Result<(), String> {
-//! // Initialize the OCaml runtime. This also sets up boxroot.
-//! let _guard: OCamlRuntimeStartupGuard = OCamlRuntime::init()?;
-//! // The OCaml runtime is now active.
-//! // ... OCaml operations occur here, typically within `OCamlRuntime::with_domain_lock` ...
-//! // When `_guard` goes out of scope, it automatically calls `boxroot_teardown`
-//! // and `caml_shutdown` for proper cleanup.
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! [`OCamlRuntime::init`] returns a [`Result<OCamlRuntimeStartupGuard, String>`]. The [`OCamlRuntimeStartupGuard`]
-//! is an RAII type that ensures the OCaml runtime (including boxroot) is properly shut down when it's dropped.
-//! Both [`OCamlRuntimeStartupGuard`] and [`OCamlRuntime`] are `!Send` and `!Sync` to enforce thread safety
-//! in line with OCaml 5's domain-based concurrency.
+//! For detailed information, see
+//! [OCaml Runtime (Part 5)](user_guides::part5_managing_the_ocaml_runtime_for_rust_driven_programs).
 //!
 //! ### Acquiring and Using the OCaml Runtime Handle
 //!
-//! Most operations require a mutable reference to the OCaml runtime, `cr: &mut OCamlRuntime`.
+//! Most interop operations require an OCaml runtime handle (`cr: &mut OCamlRuntime`).
+//! This handle is obtained differently depending on whether Rust calls OCaml or OCaml calls Rust.
 //!
-//! **When Calling OCaml from Rust:**
-//! The primary way to obtain `cr` is via [`OCamlRuntime::with_domain_lock`]. This method ensures
-//! the current thread is registered as an OCaml domain and holds the OCaml runtime lock:
-//!
-//! ```rust,no_run
-//! # use ocaml_interop::{OCamlRuntime, ToOCaml, OCaml};
-//! # fn main() -> Result<(), String> {
-//! # let _guard = OCamlRuntime::init()?;
-//! OCamlRuntime::with_domain_lock(|cr| {
-//!     // `cr` is the &mut OCamlRuntime.
-//!     // All OCaml interactions happen here.
-//!     let _ocaml_string: OCaml<String> = "Hello, OCaml!".to_ocaml(cr);
-//! });
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! **When OCaml Calls Rust:**
-//! For functions exported by annotating them with `#[ocaml_interop::export]`, `cr` is automatically provided as the first argument.
-//!
-//! Un-rooted non-immediate OCaml values have a lifetime associated with the current scope of `cr` usage.
-//! Accessing them after the OCaml runtime has been re-entered (e.g., another call to `with_domain_lock` or
-//! a call into OCaml that might trigger the GC) can lead to use-after-free errors if not properly rooted.
+//! See these guides for more details:
+//! - [Part 2: Fundamental Concepts](user_guides::part2_fundamental_concepts)
+//! - [OCaml Runtime (Part 5)](user_guides::part5_managing_the_ocaml_runtime_for_rust_driven_programs)
 //!
 //! ### OCaml value representation
 //!
-//! OCaml values are exposed to Rust using three types:
+//! OCaml values are represented in Rust using types like [`OCaml<'gc, T>`](OCaml),
+//! [`BoxRoot<T>`](BoxRoot), and [`OCamlRef<'a, T>`](OCamlRef), each with specific roles
+//! in memory management and GC interaction.
 //!
-//! - [`OCaml`]`<'gc, T>` is the representation of OCaml values in Rust. These values become stale
-//!   after calls into the OCaml runtime and must be re-referenced.
-//! - [`BoxRoot`]`<T>` is a container for an [`OCaml`]`<T>` value that is rooted and tracked by
-//!   OCaml's Garbage Collector. `BoxRoot::new()` and `BoxRoot::keep()` will panic if the
-//!   underlying boxroot operation fails. `BoxRoot<T>` is `!Send` and `!Sync` due to its
-//!   affinity with OCaml's domain-specific GC state.
-//! - [`OCamlRef`]`<'a, T>` is a reference to an [`OCaml`]`<T>` value that may or may not be rooted.
+//! Learn more in [Part 2: Fundamental Concepts](user_guides::part2_fundamental_concepts).
 //!
 //! ### Converting between OCaml and Rust data
 //!
-//! #### [`FromOCaml`] trait
+//! The traits [`FromOCaml`] and [`ToOCaml`] facilitate data conversion
+//! between Rust and OCaml types.
 //!
-//! The [`FromOCaml`] trait implements conversion from OCaml values into Rust values, using the `from_ocaml` function.
-//!
-//! [`OCaml`]`<T>` values have a `to_rust()` method that is usually more convenient than `Type::from_ocaml(ocaml_value)`,
-//! and works for any combination that implements the `FromOCaml` trait.
-//!
-//! [`OCamlRef`]`<T>` values have a `to_rust(cr)` that needs an [`OCamlRuntime`] reference to be passed to it.
-//!
-//! #### [`ToOCaml`] trait
-//!
-//! The [`ToOCaml`] trait implements conversion from Rust values into OCaml values, using the `to_ocaml` method.
-//! It takes a single parameter that must be a `&mut OCamlRuntime`.
+//! For conversion details and examples, refer to
+//! [Part 2: Fundamental Concepts](user_guides::part2_fundamental_concepts), as well as the guides
+//! on exporting and invoking functions.
 //!
 //! ### Calling convention
 //!
-//! There are two possible calling conventions in regards to rooting, one with *callee rooted arguments*,
-//! and another with *caller rooted arguments*.
+//! `ocaml-interop` uses a caller-rooted argument convention for safety, where the caller is
+//! responsible for ensuring arguments are rooted before a function call.
 //!
-//! #### Callee rooted arguments calling convention
-//!
-//! With this calling convention, values that are arguments to a function call are passed directly.
-//! Functions that receive arguments are responsible for rooting them. This is how OCaml's C API and
-//! `ocaml-interop` versions before `0.5.0` work.
-//!
-//! #### Caller rooted arguments calling convention
-//!
-//! With this calling convention, values that are arguments to a function call must be rooted by the caller.
-//! Then instead of the value, it is the root pointing to the value that is passed as an argument.
-//! This is how `ocaml-interop` works starting with version `0.5.0`.
-//!
-//! When a Rust function is called from OCaml, it will receive arguments as [`OCaml`]`<T>` or [`BoxRoot`]`<T>`
-//! values. The former will not be automatically rooted, while the latter will be.
-//! When a OCaml function is called from Rust, arguments will be passed as [`OCamlRef`]`<T>` values.
-//!
-//! #### Return values
-//!
-//! When an OCaml function is called from Rust, the return value is a [`BoxRoot`]`<T>`.
-//!
-//! Rust functions that are meant to be called from OCaml must return [`OCaml`]`<T>` values.
+//! This is explained further in [Part 2: Fundamental Concepts](user_guides::part2_fundamental_concepts).
 //!
 //! ### OCaml exceptions
 //!
-//! If an OCaml function called from Rust raises an exception, this will result in a panic.
+//! By default, Rust panics in exported functions are caught and translated to OCaml exceptions.
+//! Conversely, OCaml exceptions raised during calls from Rust will result in Rust panics.
 //!
-//! OCaml functions meant to be called from Rust should not raise exceptions to signal errors,
-//! but instead return `result` or `option` values, which can then be mapped into `Result` and
-//! `Option` values in Rust.
+//! For error handling strategies, see
+//! [Part 2: Fundamental Concepts](user_guides::part2_fundamental_concepts) and
+//! [Part 6: Advanced Topics](user_guides::part6_advanced_topics).
 //!
 //! ### Calling into OCaml from Rust
 //!
-//! The following code defines two OCaml functions and registers them using the `Callback.register` mechanism:
+//! To call OCaml functions from Rust, they typically need to be registered in OCaml
+//! (e.g., using `Callback.register`) and then declared in Rust using the [`ocaml!`] macro.
+//! This setup allows Rust to find and invoke these OCaml functions.
 //!
-//! ```ocaml
-//! let increment_bytes bytes first_n =
-//!   let limit = (min (Bytes.length bytes) first_n) - 1 in
-//!   for i = 0 to limit do
-//!     let value = (Bytes.get_uint8 bytes i) + 1 in
-//!     Bytes.set_uint8 bytes i value
-//!   done;
-//!   bytes
-//!
-//! let twice x = 2 * x
-//!
-//! let () =
-//!   Callback.register "increment_bytes" increment_bytes;
-//!   Callback.register "twice" twice
-//! ```
-//!
-//! To be able to call these from Rust, there are a few things that need to be done:
-//!
-//! - Rust-driven programs must initialize the OCaml runtime.
-//! - Functions that were exported from the OCaml side with `Callback.register` have to be declared using the [`ocaml!`] macro.
-//!
-//! ### Example
-//!
-//! ```rust,no_run
-//! use ocaml_interop::{
-//!     BoxRoot, FromOCaml, OCaml, OCamlInt, OCamlRef, ToOCaml, OCamlRuntime
-//! };
-//!
-//! // To call an OCaml function, it first has to be declared inside an `ocaml!` macro block:
-//! mod ocaml_funcs {
-//!     use ocaml_interop::{ocaml, OCamlInt};
-//!
-//!     ocaml! {
-//!         // OCaml: `val increment_bytes: bytes -> int -> bytes`
-//!         // registered with `Callback.register "increment_bytes" increment_bytes`.
-//!         // In Rust, this will be exposed as:
-//!         //     pub fn increment_bytes(
-//!         //         _: &mut OCamlRuntime,
-//!         //         bytes: OCamlRef<String>,
-//!         //         first_n: OCamlRef<OCamlInt>,
-//!         //     ) -> BoxRoot<String>;
-//!         pub fn increment_bytes(bytes: String, first_n: OCamlInt) -> String;
-//!         // OCaml: `val twice: int -> int`
-//!         // registered with `Callback.register "twice" twice`.
-//!         // In Rust this will be exposed as:
-//!         //     pub fn twice(
-//!         //         _: &mut OCamlRuntime,
-//!         //         num: OCamlRef<OCamlInt>,
-//!         //     ) -> BoxRoot<OCamlInt>;
-//!         pub fn twice(num: OCamlInt) -> OCamlInt;
-//!     }
-//! }
-//!
-//! fn increment_bytes(
-//!     cr: &mut OCamlRuntime,
-//!     bytes1: String,
-//!     bytes2: String,
-//!     first_n: usize,
-//! ) -> (String, String) {
-//!     // Any calls into the OCaml runtime takes as input a `&mut` reference to an `OCamlRuntime`
-//!     // value that is obtained as the result of initializing the OCaml runtime with the
-//!     // `OCamlRuntime::init()` call.
-//!     // The `ToOCaml` trait provides the `to_ocaml` and `to_boxroot` methods to convert Rust
-//!     // values into OCaml values.
-//!     // Here `to_boxroot` is used to produce OCaml values that are already rooted.
-//!     let ocaml_bytes1_rooted: BoxRoot<String> = bytes1.to_boxroot(cr);
-//!     let ocaml_bytes2_rooted = bytes2.to_boxroot(cr);
-//!
-//!     // Rust `i64` integers can be converted into OCaml fixnums with `OCaml::of_i64`
-//!     // and `OCaml::of_i64_unchecked`.
-//!     // Such conversion doesn't require any allocation on the OCaml side, and doesn't
-//!     // invalidate other `OCaml<T>` values. In addition, these immediate values require rooting.
-//!     let ocaml_first_n: OCaml<'static, OCamlInt> =
-//!         unsafe { OCaml::of_i64_unchecked(first_n as i64) };
-//!
-//!     // Any OCaml function (declared above in a `ocaml!` block) can be called as a regular
-//!     // Rust function, by passing a `&mut OCamlRuntime` as the first argument, followed by
-//!     // the rest of the arguments declared for that function.
-//!     // Arguments to these functions must be `OCamlRef<T>` values. These are the result of
-//!     // dereferencing `OCaml<T>` and `BoxRoot<T>` values.
-//!     let result1 = ocaml_funcs::increment_bytes(
-//!         cr,                   // &mut OCamlRuntime
-//!         &ocaml_bytes1_rooted, // OCamlRef<String>
-//!         &ocaml_first_n,       // OCamlRef<OCamlInt>
-//!     );
-//!
-//!     let result2 = ocaml_funcs::increment_bytes(
-//!         cr,
-//!         &ocaml_bytes2_rooted,
-//!         &ocaml_first_n,
-//!     );
-//!
-//!     (result1.to_rust(cr), result2.to_rust(cr))
-//! }
-//!
-//! fn twice(cr: &mut OCamlRuntime, num: usize) -> usize {
-//!     let ocaml_num = unsafe { OCaml::of_i64_unchecked(num as i64) };
-//!     let result = ocaml_funcs::twice(cr, &ocaml_num);
-//!     result.to_rust::<i64>(cr) as usize
-//! }
-//!
-//! fn entry_point() {
-//!     // IMPORTANT: the OCaml runtime has to be initialized first.
-//!     let _guard = OCamlRuntime::init().unwrap();
-//!     OCamlRuntime::with_domain_lock(|cr| {
-//!         // `cr` is the OCaml runtime handle, must be passed to any function
-//!         // that interacts with the OCaml runtime.
-//!         let first_n = twice(cr, 5);
-//!         let bytes1 = "000000000000000".to_owned();
-//!         let bytes2 = "aaaaaaaaaaaaaaa".to_owned();
-//!         println!("Bytes1 before: {}", bytes1);
-//!         println!("Bytes2 before: {}", bytes2);
-//!         let (result1, result2) = increment_bytes(cr, bytes1, bytes2, first_n);
-//!         println!("Bytes1 after: {}", result1);
-//!         println!("Bytes2 after: {}", result2);
-//!     });
-//!     // `OCamlRuntimeStartupGuard`'s `Drop` implementation will pefrorm the necessary cleanup
-//!     // to shutdown the OCaml runtime.
-//! }
-//! ```
+//! For a comprehensive guide on calling OCaml functions from Rust,
+//! including detailed examples and best practices, please see:
+//! [Invoking OCaml Functions (Part 4)](user_guides::part4_invoking_ocaml_functions_from_rust).
 //!
 //! ### Calling into Rust from OCaml
 //!
-//! To be able to call a Rust function from OCaml, it has to be defined in a way that exposes it to OCaml. This can be done with the `#[ocaml_interop::export]` macro.
+//! Rust functions can be exposed to OCaml using the [`#[ocaml_interop::export]`](export)
+//! procedural macro, which handles FFI boilerplate, type marshalling, and panic safety.
 //!
-//! #### Attributes for `#[ocaml_interop::export]`
+//! Attributes like `no_panic_catch`, `bytecode`, and `noalloc` allow customization.
 //!
-//! The `#[ocaml_interop::export]` macro supports several attributes to customize its behavior:
-//!
-//! *   `no_panic_catch`: As described below, this disables the default panic handling mechanism.
-//! *   `bytecode = "my_ocaml_bytecode_function_name"`: This attribute directs the macro to generate an additional wrapper function suitable for being called from OCaml bytecode. The provided string will be the name of this bytecode-compatible function in OCaml. For example:
-//!     ```rust,ignore
-//!     #[ocaml_interop::export(bytecode = "rust_twice_bytecode")]
-//!     fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
-//!         // ...
-//!     }
-//!     ```
-//!     In OCaml, you would then declare it as:
-//!     ```ocaml
-//!     external rust_twice : int -> int = "rust_twice_bytecode" "rust_twice"
-//!     ```
-//! *   `noalloc`: Indicates that the function does not allocate on the OCaml heap.
-//!     *   The function must take `cr: &OCamlRuntime` (an immutable reference).
-//!     *   This attribute implies `no_panic_catch`.
-//!     *   The corresponding OCaml `external` declaration **must** include the `[@@noalloc]` attribute.
-//!
-//! #### Panic Handling in Exported Functions
-//!
-//! Functions exported with `#[ocaml_interop::export]` have built-in panic handling. If a Rust panic occurs within an exported function:
-//!
-//! 1.  The panic is caught by the macro-generated wrapper.
-//! 2.  The macro attempts to raise a specific OCaml exception named `RustPanic` (of type `string`) with the panic message.
-//!     For this to work, you must define and register this exception in your OCaml code:
-//!     ```ocaml
-//!     exception RustPanic of string
-//!
-//!     (* Typically in your application's initialization code *)
-//!     let () = Callback.register_exception "rust_panic_exn" (RustPanic "")
-//!     ```
-//! 3.  If the `RustPanic` exception (registered with the name `"rust_panic_exn"`) is not found at runtime, the panic will be raised as a standard OCaml `Failure` exception, including the original panic message.
-//!
-//! This panic catching behavior is enabled by default to ensure that Rust panics do not unwind across the FFI boundary into OCaml, which would lead to undefined behavior.
-//!
-//! If you need to disable this panic handling for a specific function (e.g., for performance-critical code where you handle panics differently or are certain no panics can occur), you can use the `no_panic_catch` attribute:
-//!
-//! ```rust,ignore
-//! #[ocaml_interop::export(no_panic_catch)]
-//! fn my_performance_critical_function(cr: &mut OCamlRuntime, /* ... */) -> OCaml<Something> {
-//!     // ... code that must not panic or handles panics internally ...
-//! }
-//! ```
-//!
-//! #### Example
-//!
-//! ```rust,no_run
-//! use ocaml_interop::{
-//!     BoxRoot, FromOCaml, OCamlInt, OCaml, OCamlBytes,
-//!     ToOCaml, OCamlRuntime
-//! };
-//!
-//! // `#[ocaml_interop::export]` expands the function definitions by adding
-//! // the required `#[no_mangle]` and `extern "C"` declarations. It also handles
-//! // argument/return type marshalling and panic handling.
-//! // The first argument must be `&mut OCamlRuntime` (or `&OCamlRuntime` for noalloc).
-//! // Other arguments are typically `OCaml<T>` for unrooted OCaml values,
-//! // `BoxRoot<T>` when those arguments should be automatically rooted,
-//! // or direct Rust primitives like `f64`, `i64`, `i32`, `bool`, `isize` for unboxed values
-//! // (requiring `[@@unboxed]` or `[@untagged]` on the OCaml `external`).
-//! // The return type is typically `OCaml<T>` or a direct Rust primitive
-//! // (also requiring `[@@unboxed]` or `[@untagged]` on the OCaml `external`).
-//!
-//! #[ocaml_interop::export]
-//! fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
-//!     let num: i64 = num.to_rust();
-//!     unsafe { OCaml::of_i64_unchecked(num * 2) }
-//! }
-//!
-//! #[ocaml_interop::export]
-//! fn rust_increment_bytes(
-//!     cr: &mut OCamlRuntime,
-//!     bytes: OCaml<OCamlBytes>,
-//!     first_n: OCaml<OCamlInt>,
-//! ) -> OCaml<OCamlBytes> {
-//!     let first_n: i64 = first_n.to_rust();
-//!     let first_n = first_n as usize;
-//!     let mut vec: Vec<u8> = bytes.to_rust();
-//!
-//!     for i in 0..first_n {
-//!         vec[i] += 1;
-//!     }
-//!
-//!     vec.to_ocaml(cr)
-//! }
-//! ```
-//!
-//! Then in OCaml, these functions can be referred to in the same way as C functions:
-//!
-//! ```ocaml
-//! external rust_twice: int -> int = "rust_twice"
-//! external rust_increment_bytes: bytes -> int -> bytes = "rust_increment_bytes"
-//! ```
+//! For a detailed guide, see
+//! [Exporting Rust Functions (Part 3)](user_guides::part3_exporting_rust_functions_to_ocaml).
 //!
 //! ## References and links
 //!
@@ -391,6 +121,8 @@ mod memory;
 mod mlvalues;
 mod runtime;
 mod value;
+#[doc = include_str!("../docs/README.md")]
+pub mod user_guides;
 
 pub use crate::boxroot::BoxRoot;
 
@@ -406,7 +138,111 @@ pub use crate::mlvalues::{
 pub use crate::runtime::{OCamlRuntime, OCamlRuntimeStartupGuard};
 pub use crate::value::OCaml;
 
-// Re-export the procedural macro
+/// Exports a Rust function to OCaml.
+///
+/// This procedural macro handles the complexities of the OCaml Foreign Function Interface (FFI),
+/// allowing Rust functions to be called from OCaml code. It generates the necessary
+/// `extern "C"` wrapper function and manages type conversions and memory safety.
+///
+/// ## Basic Usage
+///
+/// ```rust
+/// use ocaml_interop::{OCaml, OCamlRuntime, OCamlBytes, OCamlInt, ToOCaml};
+///
+/// #[ocaml_interop::export]
+/// fn process_bytes(cr: &mut OCamlRuntime, data: OCaml<OCamlBytes>) -> OCaml<OCamlInt> {
+///     let byte_slice: &[u8] = &data.to_rust::<Vec<u8>>();
+///     let length = byte_slice.len() as i64;
+///     length.to_ocaml(cr)
+/// }
+/// ```
+///
+/// The macro generates an `extern "C"` function with the same identifier as the Rust function
+/// (e.g., `process_bytes` in the example above).
+///
+/// ## Key Features
+///
+/// *   **Automatic FFI Boilerplate:** Generates the `extern "C"` wrapper and handles argument/return
+///     value marshalling.
+/// *   **Type Safety:** Utilizes types like [`OCaml<T>`] and [`BoxRoot<T>`] to provide safe
+///     abstractions over OCaml values.
+/// *   **Argument Handling:**
+///     *   The first argument *must* be [`&mut OCamlRuntime`] (or [`&OCamlRuntime`] if `noalloc`
+///         is used).
+///     *   [`OCaml<'gc, T>`]: For OCaml values passed as arguments. These are *not* automatically
+///         rooted by the macro. Their lifetime `'gc` is tied to the current function call's
+///         [`OCamlRuntime`] scope. Root them explicitly (e.g., with [`BoxRoot<T>`]) if they need to
+///         persist beyond this scope or be re-passed to OCaml.
+///     *   [`BoxRoot<T>`]: If an argument is declared as `BoxRoot<T>`, the macro automatically
+///         roots the incoming OCaml value before your function body executes. This ensures the value
+///         is valid throughout the function, even across further OCaml calls.
+///     *   **Direct Primitive Types:** Supports direct mapping for Rust primitive types like `f64`,
+///         `i64`, `i32`, `bool`, and `isize` as arguments. The OCaml `external` declaration
+///         must use corresponding `[@@unboxed]` or `[@untagged]` attributes.
+/// *   **Return Types:**
+///     *   Typically, functions return [`OCaml<T>`].
+///     *   Direct primitive types (see above) can also be returned.
+/// *   **Panic Handling:**
+///     *   By default, Rust panics are caught and raised as an OCaml exception (`RustPanic of string`
+///         if registered, otherwise `Failure`).
+///     *   This can be disabled with `#[ocaml_interop::export(no_panic_catch)]`. Use with caution.
+/// *   **Bytecode Function Generation:**
+///     *   Use `#[ocaml_interop::export(bytecode = "my_ocaml_bytecode_function_name")]` to generate
+///         a wrapper for OCaml bytecode compilation.
+///     *   The OCaml `external` declaration should then specify both the bytecode and native
+///         function names: `external rust_fn : int -> int = "bytecode_stub_name" "native_c_stub_name"`.
+/// *   **`noalloc` Attribute:**
+///     *   `#[ocaml_interop::export(noalloc)]` for functions that must not trigger OCaml GC
+///         allocations.
+///     *   Requires the runtime argument to be `cr: &OCamlRuntime` (immutable).
+///     *   Implies `no_panic_catch`. Panics in `noalloc` functions lead to undefined behavior.
+///     *   The corresponding OCaml `external` **must** be annotated with `[@@noalloc]`.
+///     *   The user is responsible for ensuring no OCaml allocations occur in the Rust function body.
+///
+/// ## Argument and Return Value Conventions
+///
+/// The macro handles the conversion between OCaml's representation and Rust types.
+///
+/// ### OCaml Values
+///
+/// *   [`OCaml<T>`]: Represents an OCaml value that is not yet rooted. Its lifetime is tied to the
+///     current OCaml runtime scope.
+/// *   [`BoxRoot<T>`]: Represents an OCaml value that has been rooted and is protected from the OCaml
+///     garbage collector. The `#[ocaml_interop::export]` macro can automatically root arguments
+///     if they are specified as `BoxRoot<T>`.
+///
+/// ### Direct Primitive Type Mapping
+///
+/// For performance, certain Rust primitive types can be directly mapped to unboxed or untagged
+/// OCaml types. This avoids boxing overhead.
+///
+/// | Rust Type | OCaml Type        | OCaml `external` Attribute(s) Needed |
+/// | :-------- | :---------------- | :----------------------------------- |
+/// | `f64`     | `float`           | `[@@unboxed]` (or on arg/ret type)   |
+/// | `i64`     | `int64`           | `[@@unboxed]` (or on arg/ret type)   |
+/// | `i32`     | `int32`           | `[@@unboxed]` (or on arg/ret type)   |
+/// | `bool`    | `bool`            | `[@untagged]` (or on arg/ret type)   |
+/// | `isize`   | `int`             | `[@untagged]` (or on arg/ret type)   |
+/// | `()`      | `unit`            | (Usually implicit for return)        |
+///
+/// **Example (OCaml `external` for direct primitives):**
+/// ```ocaml
+/// external process_primitive_values :
+///   (int [@untagged]) ->
+///   (bool [@untagged]) ->
+///   (float [@unboxed]) ->
+///   (int32 [@unboxed]) =
+///   "" "process_primitive_values"
+/// ```
+///
+/// For more detailed information, refer to the user guides, particularly 
+/// [Exporting Rust Functions (Part 3)](user_guides::part3_exporting_rust_functions_to_ocaml)
+///
+/// [`OCaml<T>`]: OCaml
+/// [`OCaml<'gc, T>`]: OCaml
+/// [`BoxRoot<T>`]: BoxRoot
+/// [`&mut OCamlRuntime`]: OCamlRuntime
+/// [`&OCamlRuntime`]: OCamlRuntime
 pub use ocaml_interop_derive::export;
 
 #[doc(hidden)]

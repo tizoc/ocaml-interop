@@ -60,4 +60,14 @@ jobs:
       - name: Build OCaml caller
         run: cd testing/ocaml-caller; opam exec -- dune build -j 1
       - name: OCaml caller test
-        run: cd testing/ocaml-caller; opam exec -- dune test
+        run: cd testing/ocaml-caller; opam exec -- dune test -f
+      - name: Test Tuples Example
+        run: cd docs/examples/tuples; opam exec -- dune test -f
+      - name: Test Records Example
+        run: cd docs/examples/records; opam exec -- dune test -f
+      - name: Test Variants Example
+        run: cd docs/examples/variants; opam exec -- dune test -f
+      - name: Test Polymorphic Variants Example
+        run: cd docs/examples/polymorphic_variants; opam exec -- dune test -f
+      - name: Test Noalloc Primitives Example
+        run: cd docs/examples/noalloc_primitives; opam exec -- dune test -f
