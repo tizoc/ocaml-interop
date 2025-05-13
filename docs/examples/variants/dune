@@ -1,0 +1,8 @@
+(executables
+ (names variants_example)
+ (libraries variants_rust_lib threads.posix))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./variants_example.exe)))

@@ -1,0 +1,8 @@
+(executables
+ (names records_example)
+ (libraries records_rust_lib threads.posix))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./records_example.exe)))

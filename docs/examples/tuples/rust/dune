@@ -1,0 +1,24 @@
+(rule
+ (targets libtuples_example_rust_lib.a dlltuples_example_rust_lib.so)
+ (deps (source_tree src) dune-Cargo.toml)
+ (action
+  (no-infer
+   (progn
+    ;; macOS requires these flags because undefined symbols are not allowed by default
+    (run sh -c "
+        if [ \"$(uname -s)\" = \"Darwin\" ]; then
+          export RUSTFLAGS='-C link-args=-Wl,-undefined,dynamic_lookup'
+        fi
+        mv dune-Cargo.toml Cargo.toml
+        cargo build
+      ")
+    (run sh -c
+      "cp target/debug/libtuples_example_rust_lib.so ./dlltuples_example_rust_lib.so 2> /dev/null || \
+       cp target/debug/libtuples_example_rust_lib.dylib ./dlltuples_example_rust_lib.so")
+    (run cp target/debug/libtuples_example_rust_lib.a ./libtuples_example_rust_lib.a)
+   ))))
+
+(library
+ (name tuples_example_rust_lib)
+ (c_library_flags -lc -lm)
+ (foreign_archives tuples_example_rust_lib))
