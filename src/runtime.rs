@@ -118,6 +118,7 @@ impl OCamlRuntime {
 impl Drop for OCamlRuntimeStartupGuard {
     fn drop(&mut self) {
         unsafe {
+            ocaml_sys::caml_leave_blocking_section();
             boxroot_teardown();
             ocaml_sys::caml_shutdown();
         }
