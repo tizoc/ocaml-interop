@@ -1,0 +1,8 @@
+[package]
+name = "ocaml-interop-dune-builder"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "A helper crate for ocaml-interop build scripts to build OCaml code using Dune."
+
+[dependencies]

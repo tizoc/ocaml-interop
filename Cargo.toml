@@ -32,6 +32,7 @@ no-caml-startup = []
 members = [
     ".",
     "derive",
+    "dune-builder",
     "testing/rust-caller",
     "testing/ocaml-caller/rust"
 ]
