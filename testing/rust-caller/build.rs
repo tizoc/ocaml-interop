@@ -1,48 +1,29 @@
 // Copyright (c) Viable Systems and TezEdge Contributors
 // SPDX-License-Identifier: MIT
 
-use std::{env, process::Command};
+// DuneBuilder is a helper for building OCaml code with dune and collecting object
+// files for linking with Rust.
+use ocaml_interop_dune_builder::DuneBuilder;
 
 fn main() {
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let ocaml_callable_dir = "./ocaml";
-    let dune_dir = "../../_build/default/testing/rust-caller/ocaml";
-    Command::new("opam")
-        .args([
-            "exec",
-            "--",
-            "dune",
-            "build",
-            &format!("{}/callable.exe.o", ocaml_callable_dir),
-        ])
-        .status()
-        .expect("Dune failed");
-    Command::new("rm")
-        .args(["-f", &format!("{}/libcallable.a", out_dir)])
-        .status()
-        .expect("rm failed");
-    Command::new("rm")
-        .args(["-f", &format!("{}/libcallable.o", out_dir)])
-        .status()
-        .expect("rm failed");
-    Command::new("cp")
-        .args([
-            &format!("{}/callable.exe.o", dune_dir),
-            &format!("{}/callable.o", out_dir),
-        ])
-        .status()
-        .expect("File copy failed.");
-    Command::new("ar")
-        .args([
-            "qs",
-            &format!("{}/libcallable.a", out_dir),
-            &format!("{}/callable.o", out_dir),
-        ])
-        .status()
-        .expect("ar failed");
+    // Relative path to the OCaml source directory
+    // It is used to determine the location of the dune project and the build directory.
+    // The path is relative to the crate's manifest directory.
+    // In this case, it is "ocaml", which is the directory containing the OCaml code.
+    let ocaml_callable_dir = "ocaml";
 
+    // Rebuild if the OCaml source code changes.
     println!("cargo:rerun-if-changed={}/callable.ml", ocaml_callable_dir);
     println!("cargo:rerun-if-changed={}/dune", ocaml_callable_dir);
-    println!("cargo:rustc-link-search={}", out_dir);
-    println!("cargo:rustc-link-lib=static=callable");
+
+    // Build the OCaml code using dune and collect the object files for linking with Rust.
+    let dune_builder = DuneBuilder::new(ocaml_callable_dir);
+    let objects = dune_builder.build("callable.exe.o");
+
+    let mut build = cc::Build::new();
+    for object in objects {
+        build.object(object);
+    }
+
+    build.compile("callable_ocaml");
 }
