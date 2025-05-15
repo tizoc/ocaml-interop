@@ -68,11 +68,9 @@ impl DuneBuilder {
             .expect("Failed to find dune project location");
         let dune_project_dir = PathBuf::from(dune_project_dir_str);
 
-        let ocaml_build_dir_str = dir_relative_to_dune_project(
-            &callable_ocaml_dir,
-            &dune_project_dir,
-        )
-        .expect("Failed to determine OCaml build directory relative to dune project");
+        let ocaml_build_dir_str =
+            dir_relative_to_dune_project(&callable_ocaml_dir, &dune_project_dir)
+                .expect("Failed to determine OCaml build directory relative to dune project");
         let ocaml_build_dir = PathBuf::from(ocaml_build_dir_str);
 
         let profile = "default".to_string();
@@ -147,7 +145,7 @@ impl DuneBuilder {
         if self.profile != "default" {
             command.arg("--profile").arg(&self.profile);
         }
-        
+
         command.arg(target_path_str.to_string());
         command.args(&self.dune_args);
 

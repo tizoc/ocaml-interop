@@ -12,7 +12,7 @@
 //! [ocaml-interop](https://github.com/tizoc/ocaml-interop) is an OCaml<->Rust FFI with an emphasis
 //! on safety inspired by [caml-oxide](https://github.com/stedolan/caml-oxide),
 //! [ocaml-rs](https://github.com/zshipko/ocaml-rs) and [CAMLroot](https://arxiv.org/abs/1812.04905).
-//! 
+//!
 //! ## Table of Contents
 //!
 //! - [Usage](#usage)
@@ -120,9 +120,9 @@ mod macros;
 mod memory;
 mod mlvalues;
 mod runtime;
-mod value;
 #[doc = include_str!("../docs/README.md")]
 pub mod user_guides;
+mod value;
 
 pub use crate::boxroot::BoxRoot;
 
@@ -235,7 +235,7 @@ pub use crate::value::OCaml;
 ///   "" "process_primitive_values"
 /// ```
 ///
-/// For more detailed information, refer to the user guides, particularly 
+/// For more detailed information, refer to the user guides, particularly
 /// [Exporting Rust Functions (Part 3)](user_guides::part3_exporting_rust_functions_to_ocaml)
 ///
 /// [`OCaml<T>`]: OCaml

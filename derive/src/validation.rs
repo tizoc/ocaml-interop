@@ -1,5 +1,5 @@
-use syn::{Error, Type};
 use quote::quote;
+use syn::{Error, Type};
 
 use crate::core::{ExportedFnData, InteropTypeDetail};
 
@@ -92,7 +92,6 @@ pub fn validate_parsed_data(data: &ExportedFnData) -> Result<(), Error> {
                 ));
             }
         }
-
     }
     Ok(())
 }
