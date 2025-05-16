@@ -14,7 +14,6 @@ pub use ocaml_sys::{
 pub mod bigarray;
 pub mod tag;
 
-
 pub(crate) unsafe fn int32_val(v: RawOCaml) -> i32 {
     let val = unsafe { field_val(v, 1) };
     unsafe { *(val as *const i32) }

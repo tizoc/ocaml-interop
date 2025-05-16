@@ -1,0 +1,24 @@
+(rule
+ (targets libnoalloc_primitives_rust_lib.a dllnoalloc_primitives_rust_lib.so)
+ (deps (source_tree src) dune-Cargo.toml)
+ (action
+  (no-infer
+   (progn
+    ;; macOS requires these flags because undefined symbols are not allowed by default
+    (run sh -c "
+        if [ \"$(uname -s)\" = \"Darwin\" ]; then
+          export RUSTFLAGS='-C link-args=-Wl,-undefined,dynamic_lookup'
+        fi
+        mv dune-Cargo.toml Cargo.toml
+        cargo build
+      ")
+    (run sh -c
+      "cp target/debug/libnoalloc_primitives_rust_lib.so ./dllnoalloc_primitives_rust_lib.so 2> /dev/null || \
+       cp target/debug/libnoalloc_primitives_rust_lib.dylib ./dllnoalloc_primitives_rust_lib.so")
+    (run cp target/debug/libnoalloc_primitives_rust_lib.a ./libnoalloc_primitives_rust_lib.a)
+   ))))
+
+(library
+ (name noalloc_primitives_rust_lib)
+ (c_library_flags -lc -lm)
+ (foreign_archives noalloc_primitives_rust_lib))

@@ -1,0 +1,24 @@
+(rule
+ (targets libvariants_rust_lib.a dllvariants_rust_lib.so)
+ (deps (source_tree src) dune-Cargo.toml)
+ (action
+  (no-infer
+   (progn
+    ;; macOS requires these flags because undefined symbols are not allowed by default
+    (run sh -c "
+        if [ \"$(uname -s)\" = \"Darwin\" ]; then
+          export RUSTFLAGS='-C link-args=-Wl,-undefined,dynamic_lookup'
+        fi
+        mv dune-Cargo.toml Cargo.toml
+        cargo build
+      ")
+    (run sh -c
+      "cp target/debug/libvariants_rust_lib.so ./dllvariants_rust_lib.so 2> /dev/null || \
+       cp target/debug/libvariants_rust_lib.dylib ./dllvariants_rust_lib.so")
+    (run cp target/debug/libvariants_rust_lib.a ./libvariants_rust_lib.a)
+   ))))
+
+(library
+ (name variants_rust_lib)
+ (c_library_flags -lc -lm)
+ (foreign_archives variants_rust_lib))

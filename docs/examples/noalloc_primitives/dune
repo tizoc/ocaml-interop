@@ -1,0 +1,8 @@
+(executables
+ (names noalloc_primitives)
+ (libraries noalloc_primitives_rust_lib threads.posix))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./noalloc_primitives.exe)))

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New userguide, replaces old documentation.
 - New procedural macro `#[ocaml_interop::export]` in a dedicated `ocaml-interop-derive` crate,
   replaces the older `ocaml_export!` macro.
     * Introduces `OCaml<T>` (non-rooted) and `BoxRoot<T>` (auto-rooted) argument types,
