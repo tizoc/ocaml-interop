@@ -3,6 +3,7 @@ name = "rust-caller"
 version = "0.1.0"
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 edition = "2021"
+publish = false
 
 [dependencies]
 ocaml-interop = { path = "../.." }

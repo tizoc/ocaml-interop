@@ -3,6 +3,7 @@ name = "callable_rust"
 version = "0.1.0"
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 edition = "2021"
+publish = false
 
 [lib]
 crate-type = ["staticlib", "cdylib"]
