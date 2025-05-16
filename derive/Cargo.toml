@@ -1,6 +1,6 @@
 [package]
 name = "ocaml-interop-derive"
-version = "0.1.0"
+version = "0.12.0"
 authors = ["Bruno Deferrari <utizoc@gmail.com>"]
 description = "Proc-macros for ocaml-interop"
 homepage = "https://github.com/tizoc/ocaml-interop"
