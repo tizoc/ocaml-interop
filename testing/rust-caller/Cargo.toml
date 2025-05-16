@@ -6,4 +6,7 @@ edition = "2021"
 
 [dependencies]
 ocaml-interop = { path = "../.." }
-ocaml-sys = "*"
+
+[build-dependencies]
+cc = "1"
+ocaml-interop-dune-builder = { path = "../../dune-builder" }
