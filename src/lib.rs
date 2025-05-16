@@ -150,7 +150,7 @@ pub use crate::value::OCaml;
 /// use ocaml_interop::{OCaml, OCamlRuntime, OCamlBytes, OCamlInt, ToOCaml};
 ///
 /// #[ocaml_interop::export]
-/// fn process_bytes(cr: &mut OCamlRuntime, data: OCaml<OCamlBytes>) -> OCaml<OCamlInt> {
+/// pub fn process_bytes(cr: &mut OCamlRuntime, data: OCaml<OCamlBytes>) -> OCaml<OCamlInt> {
 ///     let byte_slice: &[u8] = &data.to_rust::<Vec<u8>>();
 ///     let length = byte_slice.len() as i64;
 ///     length.to_ocaml(cr)

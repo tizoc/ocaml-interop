@@ -9,7 +9,7 @@ from OCaml.
 use ocaml_interop::{OCaml, OCamlRuntime, OCamlBytes, OCamlInt, ToOCaml};
 
 #[ocaml_interop::export]
-fn process_bytes(cr: &mut OCamlRuntime, data: OCaml<OCamlBytes>) -> OCaml<OCamlInt> {
+pub fn process_bytes(cr: &mut OCamlRuntime, data: OCaml<OCamlBytes>) -> OCaml<OCamlInt> {
     let byte_slice: &[u8] = &data.to_rust::<Vec<u8>>();
     let length = byte_slice.len() as i64;
     length.to_ocaml(cr)
@@ -41,7 +41,7 @@ When OCaml invokes an exported Rust function:
     ```rust
     # use ocaml_interop::*;
     #[ocaml_interop::export]
-    fn takes_rooted_string(cr: &mut OCamlRuntime, name: BoxRoot<String>) -> OCaml<OCamlInt> {
+    pub fn takes_rooted_string(cr: &mut OCamlRuntime, name: BoxRoot<String>) -> OCaml<OCamlInt> {
         // 'name' is a BoxRoot<String>, automatically rooted by the macro before this function body starts.
         // It remains valid even if we make OCaml calls here.
         // For example, if we called an OCaml logging function (which itself requires &mut OCamlRuntime):
@@ -83,7 +83,7 @@ When OCaml invokes an exported Rust function:
     ```rust
     # use ocaml_interop::*;
     #[ocaml_interop::export(no_panic_catch)]
-    fn my_critical_function(cr: &mut OCamlRuntime, arg: OCaml<String>, /* ... */) { /* ... */ }
+    pub fn my_critical_function(cr: &mut OCamlRuntime, arg: OCaml<String>, /* ... */) { /* ... */ }
     ```
     This attribute should be used if it is certain that the function will not panic, or for
     highly specialized error handling scenarios. It disables the automatic panic interception.
@@ -96,7 +96,7 @@ For OCaml projects targeting bytecode compilation, a compatible wrapper function
     ```rust
     # use ocaml_interop::*;
     #[ocaml_interop::export(bytecode = "rust_twice_bytecode")]
-    fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+    pub fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         // ...
         # num
     }
@@ -119,7 +119,7 @@ the `noalloc` attribute can be used. This aligns with OCaml's `[@@noalloc]` attr
     ```rust
     # use ocaml_interop::*;
     #[ocaml_interop::export(noalloc)]
-    fn my_no_alloc_function(cr: &OCamlRuntime, arg: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+    pub fn my_no_alloc_function(cr: &OCamlRuntime, arg: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
         // Function body must not allocate OCaml values or trigger GC
         // ...
         arg // Example: returning an input directly
@@ -183,7 +183,7 @@ For example, a Rust function using these direct primitives:
 ```rust
 # use ocaml_interop::*;
 #[ocaml_interop::export]
-fn process_primitive_values(cr: &mut OCamlRuntime, count: isize, active: bool, value: f64) -> i32 {
+pub fn process_primitive_values(cr: &mut OCamlRuntime, count: isize, active: bool, value: f64) -> i32 {
     if active {
         println!("Processing count: {}, value: {}", count, value);
         (count as i32) + (value as i32)

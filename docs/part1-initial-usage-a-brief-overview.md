@@ -11,7 +11,7 @@ Rust functions can be exposed to OCaml utilizing the [`#[ocaml_interop::export]`
 use ocaml_interop::{OCaml, OCamlInt, OCamlRuntime, ToOCaml};
 
 #[ocaml_interop::export]
-fn rust_add_one(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+pub fn rust_add_one(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
     let rust_num: i64 = num.to_rust();
     let result = rust_num + 1;
     result.to_ocaml(cr)
