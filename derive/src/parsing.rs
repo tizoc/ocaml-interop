@@ -307,6 +307,11 @@ pub(crate) fn parse_export_definition(
     let native_fn_name = original_fn_ident.clone();
     let visibility = input_fn.vis.clone();
     let original_fn_ident_span = original_fn_ident.span();
+    let is_async = input_fn.sig.asyncness.is_some();
+    let is_unsafe = input_fn.sig.unsafety.is_some();
+    let has_generics = !input_fn.sig.generics.params.is_empty();
+    let is_variadic = input_fn.sig.variadic.is_some();
+    let abi = input_fn.sig.abi.clone();
 
     let mut original_fn_args_iter = fn_inputs.iter();
 
@@ -344,5 +349,10 @@ pub(crate) fn parse_export_definition(
         _original_fn_ident_span: original_fn_ident_span,
         _fn_token_span: fn_token_span,
         _fn_inputs_span: fn_inputs_span,
+        is_async,
+        _is_unsafe: is_unsafe,
+        has_generics,
+        is_variadic,
+        abi,
     })
 }

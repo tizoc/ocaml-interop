@@ -1,7 +1,7 @@
 use ocaml_interop::{OCaml, OCamlInt, OCamlRuntime, ToOCaml};
 
 #[ocaml_interop::export]
-fn process_ocaml_tuple(
+pub fn process_ocaml_tuple(
     cr: &mut OCamlRuntime,
     input_tuple: OCaml<(OCamlInt, String)>, // OCaml type: int * string
 ) -> OCaml<(String, OCamlInt)> {

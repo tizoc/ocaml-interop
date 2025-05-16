@@ -21,44 +21,44 @@ enum PolymorphicMovement {
 }
 
 #[ocaml_interop::export]
-fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
+pub fn rust_twice(cr: &mut OCamlRuntime, num: OCaml<OCamlInt>) -> OCaml<OCamlInt> {
     let num: i64 = num.to_rust();
     unsafe { OCaml::of_i64_unchecked(num * 2) }
 }
 
 #[ocaml_interop::export]
-fn rust_twice_boxed_i64(cr: &mut OCamlRuntime, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {
+pub fn rust_twice_boxed_i64(cr: &mut OCamlRuntime, num: OCaml<OCamlInt64>) -> OCaml<OCamlInt64> {
     let num: i64 = num.to_rust();
     let result = num * 2;
     result.to_ocaml(cr)
 }
 
 #[ocaml_interop::export]
-fn rust_twice_boxed_i32(cr: &mut OCamlRuntime, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
+pub fn rust_twice_boxed_i32(cr: &mut OCamlRuntime, num: OCaml<OCamlInt32>) -> OCaml<OCamlInt32> {
     let num: i32 = num.to_rust();
     let result = num * 2;
     result.to_ocaml(cr)
 }
 
 #[ocaml_interop::export]
-fn rust_add_unboxed_floats_noalloc(_cr: &mut OCamlRuntime, num: f64, num2: f64) -> f64 {
+pub fn rust_add_unboxed_floats_noalloc(_cr: &mut OCamlRuntime, num: f64, num2: f64) -> f64 {
     num * num2
 }
 
 #[ocaml_interop::export]
-fn rust_twice_boxed_float(cr: &mut OCamlRuntime, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
+pub fn rust_twice_boxed_float(cr: &mut OCamlRuntime, num: OCaml<OCamlFloat>) -> OCaml<OCamlFloat> {
     let num: f64 = num.to_rust();
     let result = num * 2.0;
     result.to_ocaml(cr)
 }
 
 #[ocaml_interop::export]
-fn rust_twice_unboxed_float(_cr: &mut OCamlRuntime, num: f64) -> f64 {
+pub fn rust_twice_unboxed_float(_cr: &mut OCamlRuntime, num: f64) -> f64 {
     num * 2.0
 }
 
 #[ocaml_interop::export]
-fn rust_increment_bytes(
+pub fn rust_increment_bytes(
     cr: &mut OCamlRuntime,
     bytes: OCaml<OCamlBytes>,
     first_n: OCaml<OCamlInt>,
@@ -75,7 +75,7 @@ fn rust_increment_bytes(
 }
 
 #[ocaml_interop::export]
-fn rust_increment_ints_list(
+pub fn rust_increment_ints_list(
     cr: &mut OCamlRuntime,
     ints: OCaml<OCamlList<OCamlInt>>,
 ) -> OCaml<OCamlList<OCamlInt>> {
@@ -89,7 +89,7 @@ fn rust_increment_ints_list(
 }
 
 #[ocaml_interop::export]
-fn rust_increment_ints_uniform_array(
+pub fn rust_increment_ints_uniform_array(
     cr: &mut OCamlRuntime,
     ints: OCaml<OCamlUniformArray<OCamlInt>>,
 ) -> OCaml<OCamlUniformArray<OCamlInt>> {
@@ -103,7 +103,7 @@ fn rust_increment_ints_uniform_array(
 }
 
 #[ocaml_interop::export]
-fn rust_increment_floats_uniform_array(
+pub fn rust_increment_floats_uniform_array(
     cr: &mut OCamlRuntime,
     ints: OCaml<OCamlUniformArray<OCamlFloat>>,
 ) -> OCaml<OCamlUniformArray<OCamlFloat>> {
@@ -117,7 +117,7 @@ fn rust_increment_floats_uniform_array(
 }
 
 #[ocaml_interop::export]
-fn rust_increment_floats_float_array(
+pub fn rust_increment_floats_float_array(
     cr: &mut OCamlRuntime,
     ints: OCaml<OCamlFloatArray>,
 ) -> OCaml<OCamlFloatArray> {
@@ -131,7 +131,7 @@ fn rust_increment_floats_float_array(
 }
 
 #[ocaml_interop::export]
-fn rust_make_tuple(
+pub fn rust_make_tuple(
     cr: &mut OCamlRuntime,
     fst: OCaml<String>,
     snd: OCaml<OCamlInt>,
@@ -143,40 +143,46 @@ fn rust_make_tuple(
 }
 
 #[ocaml_interop::export]
-fn rust_make_some(cr: &mut OCamlRuntime, value: OCaml<String>) -> OCaml<Option<String>> {
+pub fn rust_make_some(cr: &mut OCamlRuntime, value: OCaml<String>) -> OCaml<Option<String>> {
     let value: String = value.to_rust();
     let some_value = Some(value);
     some_value.to_ocaml(cr)
 }
 
 #[ocaml_interop::export]
-fn rust_make_ok(cr: &mut OCamlRuntime, value: OCaml<OCamlInt>) -> OCaml<Result<OCamlInt, String>> {
+pub fn rust_make_ok(
+    cr: &mut OCamlRuntime,
+    value: OCaml<OCamlInt>,
+) -> OCaml<Result<OCamlInt, String>> {
     let value: i64 = value.to_rust();
     let ok_value: Result<i64, String> = Ok(value);
     ok_value.to_ocaml(cr)
 }
 
 #[ocaml_interop::export]
-fn rust_make_error(cr: &mut OCamlRuntime, value: OCaml<String>) -> OCaml<Result<OCamlInt, String>> {
+pub fn rust_make_error(
+    cr: &mut OCamlRuntime,
+    value: OCaml<String>,
+) -> OCaml<Result<OCamlInt, String>> {
     let value: String = value.to_rust();
     let error_value: Result<i64, String> = Err(value);
     error_value.to_ocaml(cr)
 }
 
 #[ocaml_interop::export]
-fn rust_sleep_releasing(cr: &mut OCamlRuntime, millis: OCaml<OCamlInt>) {
+pub fn rust_sleep_releasing(cr: &mut OCamlRuntime, millis: OCaml<OCamlInt>) {
     let millis: i64 = millis.to_rust();
     cr.releasing_runtime(|| thread::sleep(time::Duration::from_millis(millis as u64)));
 }
 
 #[ocaml_interop::export]
-fn rust_sleep(cr: &mut OCamlRuntime, millis: OCaml<OCamlInt>) {
+pub fn rust_sleep(cr: &mut OCamlRuntime, millis: OCaml<OCamlInt>) {
     let millis: i64 = millis.to_rust();
     thread::sleep(time::Duration::from_millis(millis as u64));
 }
 
 #[ocaml_interop::export]
-fn rust_string_of_movement(
+pub fn rust_string_of_movement(
     cr: &mut OCamlRuntime,
     movement: OCaml<PolymorphicMovement>,
 ) -> OCaml<String> {
@@ -198,7 +204,7 @@ fn rust_string_of_movement(
 }
 
 #[ocaml_interop::export]
-fn rust_string_of_polymorphic_movement(
+pub fn rust_string_of_polymorphic_movement(
     cr: &mut OCamlRuntime,
     polymorphic_movement: OCaml<PolymorphicMovement>,
 ) -> OCaml<String> {
@@ -220,7 +226,7 @@ fn rust_string_of_polymorphic_movement(
 }
 
 #[ocaml_interop::export]
-fn rust_call_ocaml_closure(
+pub fn rust_call_ocaml_closure(
     cr: &mut OCamlRuntime,
     ocaml_function: BoxRoot<fn(OCamlInt) -> OCamlInt>,
 ) -> OCaml<Result<OCamlInt, String>> {
@@ -232,7 +238,7 @@ fn rust_call_ocaml_closure(
 }
 
 #[ocaml_interop::export]
-fn rust_call_ocaml_closure_and_return_exn(
+pub fn rust_call_ocaml_closure_and_return_exn(
     cr: &mut OCamlRuntime,
     ocaml_function: BoxRoot<fn(OCamlInt) -> OCamlInt>,
 ) -> OCaml<Result<OCamlInt, OCamlException>> {
@@ -252,7 +258,7 @@ fn rust_call_ocaml_closure_and_return_exn(
 }
 
 #[ocaml_interop::export(bytecode = "rust_rust_add_7ints_byte")]
-fn rust_rust_add_7ints(
+pub fn rust_rust_add_7ints(
     cr: &mut OCamlRuntime,
     int1: OCaml<OCamlInt>,
     int2: OCaml<OCamlInt>,
@@ -273,7 +279,7 @@ fn rust_rust_add_7ints(
 }
 
 #[ocaml_interop::export]
-fn rust_should_panic_with_message(
+pub fn rust_should_panic_with_message(
     cr: &mut OCamlRuntime,
     message: OCaml<String>,
     should_panic: OCaml<bool>,
@@ -286,7 +292,7 @@ fn rust_should_panic_with_message(
 }
 
 #[ocaml_interop::export]
-fn rust_panic_while_releasing_lock(
+pub fn rust_panic_while_releasing_lock(
     cr: &mut OCamlRuntime,
     message: OCaml<String>,
     should_panic: OCaml<bool>,

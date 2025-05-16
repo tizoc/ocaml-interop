@@ -30,13 +30,13 @@ impl_from_ocaml_polymorphic_variant! {
 }
 
 #[ocaml_interop::export]
-fn rust_create_action(cr: &mut OCamlRuntime, _unit: OCaml<()>) -> OCaml<Action> {
+pub fn rust_create_action(cr: &mut OCamlRuntime, _unit: OCaml<()>) -> OCaml<Action> {
     let action_rust = Action::Set_speed(100);
     action_rust.to_ocaml(cr)
 }
 
 #[ocaml_interop::export]
-fn rust_process_action(cr: &mut OCamlRuntime, action: OCaml<Action>) -> OCaml<String> {
+pub fn rust_process_action(cr: &mut OCamlRuntime, action: OCaml<Action>) -> OCaml<String> {
     let rust_action: Action = action.to_rust();
     let description = match rust_action {
         Action::Start => "Rust processed: Start".to_string(),

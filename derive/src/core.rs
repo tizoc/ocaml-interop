@@ -17,6 +17,11 @@ pub(crate) struct ExportedFnData {
     pub(crate) native_fn_name: syn::Ident, // Name of the original Rust function, used for the extern "C" native fn
     pub(crate) visibility: syn::Visibility, // Original visibility, for bytecode stub
     pub(crate) original_fn_block: Box<syn::Block>, // The original function's body
+    pub(crate) is_async: bool,
+    pub(crate) _is_unsafe: bool,
+    pub(crate) has_generics: bool,
+    pub(crate) is_variadic: bool,
+    pub(crate) abi: Option<syn::Abi>,
 
     // Runtime argument details
     pub(crate) runtime_arg_pat: Box<Pat>,

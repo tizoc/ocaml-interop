@@ -24,7 +24,7 @@ impl_conv_ocaml_variant!(Status => OCamlStatus {
 // Exported Rust function that takes an OCaml `status`,
 // converts it to Rust `Status`, processes it, and returns a string.
 #[ocaml_interop::export]
-fn rust_process_status(cr: &mut OCamlRuntime, status_val: OCaml<OCamlStatus>) -> OCaml<String> {
+pub fn rust_process_status(cr: &mut OCamlRuntime, status_val: OCaml<OCamlStatus>) -> OCaml<String> {
     let status_rust: Status = status_val.to_rust();
     let result_string = match status_rust {
         Status::Ok => "Rust received: Ok".to_string(),
@@ -36,19 +36,22 @@ fn rust_process_status(cr: &mut OCamlRuntime, status_val: OCaml<OCamlStatus>) ->
 
 // Exported Rust function that creates and returns an OCaml `Ok` variant.
 #[ocaml_interop::export]
-fn rust_create_status_ok(cr: &mut OCamlRuntime, _unused: OCaml<()>) -> OCaml<OCamlStatus> {
+pub fn rust_create_status_ok(cr: &mut OCamlRuntime, _unused: OCaml<()>) -> OCaml<OCamlStatus> {
     Status::Ok.to_ocaml(cr)
 }
 
 // Exported Rust function that creates and returns an OCaml `Error` variant.
 #[ocaml_interop::export]
-fn rust_create_status_error(cr: &mut OCamlRuntime, message: OCaml<String>) -> OCaml<OCamlStatus> {
+pub fn rust_create_status_error(
+    cr: &mut OCamlRuntime,
+    message: OCaml<String>,
+) -> OCaml<OCamlStatus> {
     Status::Error(message.to_rust()).to_ocaml(cr)
 }
 
 // Exported Rust function that creates and returns an OCaml `Retrying` variant.
 #[ocaml_interop::export]
-fn rust_create_status_retrying(
+pub fn rust_create_status_retrying(
     cr: &mut OCamlRuntime,
     count: OCaml<OCamlInt>,
 ) -> OCaml<OCamlStatus> {

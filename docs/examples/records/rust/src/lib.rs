@@ -20,7 +20,7 @@ impl_conv_ocaml_record! {
 }
 
 #[ocaml_interop::export]
-fn rust_update_person_activity(
+pub fn rust_update_person_activity(
     cr: &mut OCamlRuntime,
     person_val: OCaml<Person>, // Input: OCaml person record, represented by OCaml<Person>
     new_activity_status: OCaml<bool>,
@@ -38,7 +38,7 @@ fn rust_update_person_activity(
 }
 
 #[ocaml_interop::export]
-fn rust_create_person(
+pub fn rust_create_person(
     cr: &mut OCamlRuntime,
     full_name_val: OCaml<String>,
     birth_year_val: OCaml<OCamlInt>,

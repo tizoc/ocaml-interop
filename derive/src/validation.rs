@@ -93,5 +93,51 @@ pub fn validate_parsed_data(data: &ExportedFnData) -> Result<(), Error> {
             }
         }
     }
+
+    // Validate function visibility (must be public)
+    if !matches!(data.visibility, syn::Visibility::Public(_)) {
+        return Err(Error::new_spanned(
+            &data.native_fn_name, // Span of the function name
+            "Exported functions must be public (`pub`).",
+        ));
+    }
+
+    // Validate function is not async
+    if data.is_async {
+        return Err(Error::new_spanned(
+            &data.native_fn_name,
+            "Exported functions cannot be `async`.",
+        ));
+    }
+
+    // Validate function is not generic
+    if data.has_generics {
+        return Err(Error::new_spanned(
+            &data.native_fn_name,
+            "Exported functions cannot have generic parameters.",
+        ));
+    }
+
+    // Validate function is not variadic
+    if data.is_variadic {
+        return Err(Error::new_spanned(
+            &data.native_fn_name,
+            "Exported functions cannot be variadic (e.g., `...`).",
+        ));
+    }
+
+    // Validate ABI is not specified or is "C" or "C-unwind"
+    if let Some(abi) = &data.abi {
+        if let Some(name) = &abi.name {
+            let abi_name = name.value();
+            if abi_name != "C" && abi_name != "C-unwind" {
+                return Err(Error::new_spanned(
+                    abi,
+                    "Exported functions must use `extern \"C\"` or `extern \"C-unwind\"` ABI. Other ABIs are not supported.",
+                ));
+            }
+        }
+    }
+
     Ok(())
 }
