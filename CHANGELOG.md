@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-05-16
+
 ### Added
 
+- Helper for building dune projects for linking into Rust.
 - New userguide, replaces old documentation.
 - New procedural macro `#[ocaml_interop::export]` in a dedicated `ocaml-interop-derive` crate,
   replaces the older `ocaml_export!` macro.
@@ -337,7 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OCaml<f64>` is no longer a valid representation for OCaml floats, use `OCaml<OCamlFloat>` instead.
 - `keep` method in GC handles and `OCaml<T>` values was removed. The `keep` method in root variables should be used instead, or the third optional parameter of the `to_ocaml!` macro.
 
-[Unreleased]: https://github.com/tizoc/ocaml-interop/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/tizoc/ocaml-interop/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/tizoc/ocaml-interop/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/tizoc/ocaml-interop/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/tizoc/ocaml-interop/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/tizoc/ocaml-interop/compare/v0.10.0...v0.11.0
