@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Enhanced validation for functions using `#[ocaml_interop::export]`:
+    * Functions must be public (`pub`).
+    * Functions cannot be `async`.
+    * Functions cannot have generic parameters.
+    * Functions cannot be variadic.
+
 ## [0.12.0] - 2025-05-16
 
 ### Added
