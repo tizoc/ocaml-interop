@@ -1,4 +1,4 @@
 (executables
  (names callable)
- (libraries unix threads)
+ (libraries threads)
  (modes object))

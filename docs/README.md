@@ -47,8 +47,8 @@ Function Interface (FFI) calls and progressing to more advanced concepts.
   - 6.8 Bigarrays (Placeholder)
   - 6.9 Threading Considerations (Placeholder)
 - [Part 7: Build and Link Instructions](user_guides::part7_build_and_link_instructions)
-  - Section 1: OCaml Programs Calling Rust Code
-  - Section 2: Rust Programs Calling OCaml Code
+  - 7.1 OCaml Programs Calling Rust Code
+  - 7.2 Rust Programs Calling OCaml Code
 
 ### References and Further Reading
 
