@@ -1,0 +1,4 @@
+(executables
+ (names test_types)
+ (libraries threads)
+ (modes object))

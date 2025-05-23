@@ -34,6 +34,7 @@ members = [
     "derive",
     "dune-builder",
     "inspect",
+    "inspect/examples/inspect_runtime_example",
     "testing/rust-caller",
     "testing/ocaml-caller/rust",
     "docs/examples/tuples/rust",

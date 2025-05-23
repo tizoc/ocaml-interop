@@ -19,5 +19,11 @@ ocaml-interop = { path = ".." }
 name = "basic_usage"
 path = "examples/basic_usage.rs"
 
+[[example]]
+name = "inspect_runtime_example"
+path = "examples/inspect_runtime_example/src/main.rs"
+required-features = ["inspect-runtime-example"]
+
 [features]
 default = []
+inspect-runtime-example = []
