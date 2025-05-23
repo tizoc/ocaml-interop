@@ -1,0 +1,23 @@
+[package]
+name = "ocaml-interop-inspect"
+version = "0.12.0"
+authors = ["Bruno Deferrari <utizoc@gmail.com>"]
+license = "MIT"
+description = "Runtime value inspection utilities for OCaml interop debugging"
+homepage = "https://github.com/tizoc/ocaml-interop"
+repository = "https://github.com/tizoc/ocaml-interop"
+keywords = ["ocaml", "rust", "ffi", "interop", "debug"]
+edition = "2021"
+
+[dependencies]
+ocaml-sys = { version = "0.26", features = ["ocaml5"] }
+
+[dev-dependencies]
+ocaml-interop = { path = ".." }
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[features]
+default = []
