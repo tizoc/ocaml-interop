@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * Functions cannot be `async`.
     * Functions cannot have generic parameters.
     * Functions cannot be variadic.
+- `ocaml-interop-inspect` crate to inspect runtime OCaml values.
 
 ## [0.12.0] - 2025-05-16
 
