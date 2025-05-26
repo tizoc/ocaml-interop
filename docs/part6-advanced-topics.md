@@ -63,40 +63,32 @@ For a complete buildable example demonstrating OCaml-Rust tuple interoperability
 ### 6.5 Records
 
 OCaml records can be seamlessly converted to and from Rust structs using the
-[`impl_conv_ocaml_record!`] macro provided by `ocaml-interop`. This macro automates the
-generation of [`ToOCaml`] and [`FromOCaml`] trait implementations for your Rust struct, handling the
+`#[derive(ToOCaml, FromOCaml)]` macros provided by `ocaml-interop`. These derive macros automatically
+generate the necessary trait implementations for your Rust struct, handling the
 field-by-field mapping.
 
 **Key Concepts:**
 
 *   **Rust Struct Definition:** Define a plain Rust struct that mirrors the OCaml record's
     structure.
-*   **[`impl_conv_ocaml_record!`] Macro:** This macro is the primary tool for enabling
-    bidirectional conversion. You specify your Rust struct and then list its fields, mapping each
-    to its corresponding OCaml type (e.g., Rust `String` to OCaml `string`, Rust `i64` to OCaml
-    `int` which is represented as `OCamlInt` at the interop layer).
-    *   This macro effectively combines the functionality of [`impl_to_ocaml_record!`] (for Rust to
-        OCaml conversion) and [`impl_from_ocaml_record!`] (for OCaml to Rust conversion). If you
-        only need one-way conversion, you can use these more specific macros directly.
-    *   **Crucially, the order of fields declared within the macro must exactly match the order
+*   **Derive Macros:** Use `#[derive(ToOCaml, FromOCaml)]` on your Rust struct to enable
+    bidirectional conversion. You can also derive just one trait if only one-way conversion is needed.
+    *   The derive macros automatically generate implementations based on the struct's fields.
+    *   For custom type mappings, use the `#[ocaml(as_ = "OCamlType")]` attribute on individual fields
+        (e.g., `#[ocaml(as_ = "OCamlInt")] count: i64` to map a Rust `i64` field to OCaml's `int` type).
+    *   **Crucially, the order of fields in your Rust struct must exactly match the order
         of fields in the OCaml record definition.**
-    *   The macro also supports specifying different names if the Rust struct name and the Rust
-        marker type for the OCaml record differ, using the
-        `RustStructName => OCamlMarkerTypeName { ... }` syntax. For example, if your Rust struct
-        is `MyPersonStruct` and the Rust marker type representing the OCaml record (which might
-        be named `person` in OCaml) is `OCamlPersonRecord`, you would use
-        `MyPersonStruct => OCamlPersonRecord { ... }`. If this syntax is not used, the macro
-        assumes the Rust struct name also serves as the marker type name (e.g., `Person` implies
-        `OCaml<Person>`).
+    *   Use `#[ocaml(as_ = "OCamlMarkerType")]` on the struct itself if the OCaml type name differs
+        from the Rust struct name. For example, if your Rust struct is `MyPersonStruct` and the 
+        OCaml record type should be represented as `OCamlPersonRecord`, use
+        `#[derive(ToOCaml, FromOCaml)] #[ocaml(as_ = "OCamlPersonRecord")] struct MyPersonStruct { ... }`.
 *   **Conversion Methods:**
-    *   **From OCaml to Rust:** Once the appropriate [`FromOCaml<T>`](FromOCaml) trait is implemented (either via
-        [`impl_conv_ocaml_record!`] or [`impl_from_ocaml_record!`]), an
-        `OCaml<YourRecordMarker>` (where `YourRecordMarker` is the Rust marker type for the OCaml
+    *   **From OCaml to Rust:** Once the [`FromOCaml<T>`](FromOCaml) trait is implemented via the derive macro,
+        an `OCaml<YourRecordMarker>` (where `YourRecordMarker` is the Rust marker type for the OCaml
         record) can be converted to an instance of your Rust struct using the `.to_rust()` method.
-    *   **From Rust to OCaml:** Similarly, with the [`ToOCaml<T>`](ToOCaml) trait implemented (via
-        [`impl_conv_ocaml_record!`] or [`impl_to_ocaml_record!`]), an instance of your Rust struct
-        can be converted to `OCaml<YourRecordMarker>` using `.to_ocaml(cr)` or, more commonly for
-        return values from exported functions, to `BoxRoot<YourRecordMarker>` using
+    *   **From Rust to OCaml:** Similarly, with the [`ToOCaml<T>`](ToOCaml) trait implemented via the derive macro,
+        an instance of your Rust struct can be converted to `OCaml<YourRecordMarker>` using `.to_ocaml(cr)` or,
+        more commonly for return values from exported functions, to `BoxRoot<YourRecordMarker>` using
         `.to_boxroot(cr)`.
 
 **Example:**
@@ -107,7 +99,7 @@ For a complete buildable example demonstrating OCaml-Rust record interoperabilit
 
 OCaml variants, akin to Rust enums, define a type that can be one of
 several distinct forms (constructors), each optionally carrying data.
-The `ocaml-interop` crate provides macros to simplify conversions
+The `ocaml-interop` crate provides derive macros to simplify conversions
 between Rust enums and OCaml variants.
 
 **Key Concepts:**
@@ -125,22 +117,20 @@ between Rust enums and OCaml variants.
         `PairVal(String, i64)`).
 
 *   **Order is Crucial:** The most critical aspect when mapping OCaml variants
-    is that **the order of variants declared within the conversion macros
+    is that **the order of variants in your Rust enum definition
     must exactly match the order of constructors in the OCaml variant type
     definition.** OCaml assigns tags to variant constructors based on this
     order (separately for constructors with and without arguments), and the
-    macros rely on this positional correspondence.
+    derive macros rely on this positional correspondence.
 
-*   **[`impl_conv_ocaml_variant!`] Macro:** This is the primary macro for
-    enabling bidirectional conversion. It generates [`ToOCaml`] (Rust to OCaml)
-    and [`FromOCaml`] (OCaml to Rust) trait implementations.
-    *   If only one-way conversion is needed, [`impl_to_ocaml_variant!`] or
-        [`impl_from_ocaml_variant!`] can be used directly.
+*   **Derive Macros:** Use `#[derive(ToOCaml, FromOCaml)]` on your Rust enum to enable
+    bidirectional conversion. These derive macros generate [`ToOCaml`] (Rust to OCaml)
+    and [`FromOCaml`] (OCaml to Rust) trait implementations automatically.
+    *   If only one-way conversion is needed, you can derive just `ToOCaml` or `FromOCaml`.
 
-*   **Macro Syntax:**
-    The macro requires the Rust enum name, an optional OCaml marker type name
-    (if different), and then a list of the Rust enum's variants in the
-    correct order.
+*   **Derive Macro Usage:**
+    The derive macros work directly on your Rust enum definition. Use attributes
+    for custom type mappings when needed.
 
     ```rust
     # use ocaml_interop::*;
@@ -150,42 +140,25 @@ between Rust enums and OCaml variants.
     //   | Error of string   (* Second constructor, one argument *)
     //   | Retrying of int   (* Third constructor, one argument *)
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, ToOCaml, FromOCaml)]
+    #[ocaml(as_ = "OCamlStatus")]
     pub enum Status {
         Ok,
         Error(String),
-        Retrying(i64),
+        Retrying(#[ocaml(as_ = "OCamlInt")] i64),
     }
 
     // Rust marker type for the OCaml `status`
     pub enum OCamlStatus {}
-
-    impl_conv_ocaml_variant!(Status => OCamlStatus {
-        // Variants must be listed in the same order as in OCaml.
-        // For `impl_to_ocaml_variant` (Rust -> OCaml):
-        //   RustEnum::VariantName(payload_name: OCamlRepresentationForPayloadType, ...)
-        // For `impl_from_ocaml_variant` (OCaml -> Rust):
-        //   RustEnum::VariantName(payload_name: OCamlRepresentationForPayloadType, ...)
-
-        Status::Ok, // No payload
-        Status::Error(message: String), // Payload `message` is String in OCaml
-        Status::Retrying(count: OCamlInt), // Payload `count` is OCaml `int` (Rust i64)
-                                           // `OCamlInt` is used for the interop layer.
-    });
     ```
 
-    *   **Variant Listing Details:**
-        *   List the fully qualified Rust enum variants (e.g., `MyEnum::VariantName`).
-        *   For variants with payloads:
-            `MyEnum::VariantName(name1: OCamlType1, name2: OCamlType2, ...)`
-            The `name`s are identifiers for the payload values. The `OCamlType`s
-            specify the OCaml representation used during conversion (e.g.,
-            `OCamlInt` for an OCaml `int` that corresponds to a Rust `i64`
-            field, `String` for OCaml `string`).
-        *   For variants without payloads: Just `MyEnum::VariantName`.
-    *   **Marker Type:** Use `RustEnumName => OCamlMarkerTypeName` if the Rust
-        enum and the OCaml marker type (used as `OCaml<OCamlMarkerTypeName>`)
-        have different names. If they are the same, `MyEnum { ... }` suffices.
+    *   **Field Attribute Details:**
+        *   For enum variants with data, use `#[ocaml(as_ = "OCamlType")]` attributes on fields
+            to specify the OCaml representation (e.g., `#[ocaml(as_ = "OCamlInt")]` for an OCaml
+            `int` that corresponds to a Rust `i64` field).
+        *   For variants without payloads, no attributes are needed.
+    *   **Enum Attribute:** Use `#[ocaml(as_ = "OCamlMarkerTypeName")]` on the enum itself if the Rust
+        enum and the OCaml marker type (used as `OCaml<OCamlMarkerTypeName>`) have different names.
 
 *   **Conversion Methods:**
     *   **From OCaml to Rust:** An `OCaml<YourVariantMarker>` is converted to
@@ -201,8 +174,8 @@ between Rust enums and OCaml variants.
     *   OCaml constructors with arguments are represented as "blocks" (a
         pointer to a memory region). Their tag is their index among other
         argument-bearing constructors (0, 1, 2...).
-    *   The `ocaml-interop` macros correctly derive and use these tags based
-        on the strict ordering of variants provided in the macro invocation.
+    *   The `ocaml-interop` derive macros correctly derive and use these tags based
+        on the ordering of variants in your Rust enum definition.
 
 **Example:**
 
@@ -210,8 +183,9 @@ For a complete buildable example demonstrating OCaml-Rust variant/enum interoper
 
 ### 6.7 Polymorphic Variants
 
-Interaction with OCaml polymorphic variants is supported via specific macros
-that leverage name-based matching.
+Interaction with OCaml polymorphic variants is supported via derive macros
+that leverage name-based matching. Polymorphic variants are particularly useful
+for flexible data modeling and interoperability scenarios.
 
 **Key Concepts:**
 
@@ -227,17 +201,41 @@ that leverage name-based matching.
     *   A corresponding Rust enum is typically defined to represent the
         OCaml polymorphic variant.
 
-3.  **Conversion Macros:**
-    *   [`impl_to_ocaml_polymorphic_variant!`]: Implements [`ToOCaml`] for
-        converting a Rust enum to an OCaml polymorphic variant.
-        *   Requires an exhaustive match for all Rust enum variants.
-        *   Specify Rust field names and OCaml types for payloads.
-    *   [`impl_from_ocaml_polymorphic_variant!`]: Implements [`FromOCaml`] for
-        converting an OCaml polymorphic variant to a Rust enum.
-        *   Match OCaml constructor names; specify payload types and
-            conversion to Rust (e.g., `field.to_rust()`).
-    *   Note: Unlike regular variants, there is no single `impl_conv_` macro;
-        use the `to_` and `from_` macros separately for bidirectional conversion.
+3.  **Derive Macros:**
+    *   Use `#[derive(ToOCaml, FromOCaml)]` on your Rust enum to enable conversion
+        to and from OCaml polymorphic variants.
+    *   The derive macros automatically handle the name-based matching and generate
+        the appropriate conversion code.
+
+**Polymorphic Variant Attributes:**
+
+*   **Enum-Level Attributes:**
+    *   **`#[ocaml(polymorphic_variant)]`** - **Required**. Marks the enum as representing
+        a polymorphic variant type. This distinguishes it from regular OCaml variants.
+    *   **`#[ocaml(as_ = "OCamlMarkerType")]`** - Optional. Specifies a custom OCaml marker
+        type name if different from the Rust enum name.
+
+*   **Variant-Level Attributes:**
+    *   **`#[ocaml(tag = "custom_tag_name")]`** - Optional. Overrides the default tag name
+        for a specific variant. Use this when the OCaml polymorphic variant tag differs
+        from the Rust variant name.
+        ```rust,ignore
+        #[derive(ToOCaml, FromOCaml)]
+        #[ocaml(polymorphic_variant)]
+        enum Action {
+            Start,                                    // Maps to `Start
+            #[ocaml(tag = "set_speed")]
+            SetSpeed(i64),                           // Maps to `set_speed instead of `SetSpeed
+        }
+        ```
+
+*   **Field-Level Attributes:**
+    *   **`#[ocaml(as_ = "OCamlType")]`** - Optional. Specifies the OCaml type for individual
+        fields when the default mapping is not suitable.
+        ```rust,ignore
+        #[ocaml(tag = "set_speed")]
+        SetSpeed(#[ocaml(as_ = "OCamlInt")] i64),   // Field mapped to OCamlInt
+        ```
 
 **Example:**
 

@@ -1,25 +1,18 @@
-use ocaml_interop::{impl_conv_ocaml_variant, OCaml, OCamlInt, OCamlRuntime, ToOCaml};
+use ocaml_interop::{FromOCaml, OCaml, OCamlInt, OCamlRuntime, ToOCaml};
 
 // Rust enum mirroring the OCaml variant type.
 // Order of variants must match OCaml definition.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, FromOCaml, ToOCaml)]
+#[ocaml(as_ = "OCamlStatus")]
 pub enum Status {
     Ok,
     Error(String),
-    Retrying(i64),
+    Retrying(#[ocaml(as_ = "OCamlInt")] i64),
 }
 
 // Rust marker type for the OCaml `status` variant.
 // This is used in type signatures like OCaml<OCamlStatus>.
 pub enum OCamlStatus {}
-
-// Implement conversions between Rust `Status` and OCaml `status` (via `OCamlStatus` marker).
-// The variants listed here MUST be in the same order as in the OCaml `type status = ...` definition.
-impl_conv_ocaml_variant!(Status => OCamlStatus {
-    Status::Ok, // OCaml: | Ok
-    Status::Error(message: String), // OCaml: | Error of string
-    Status::Retrying(count: OCamlInt), // OCaml: | Retrying of int
-});
 
 // Exported Rust function that takes an OCaml `status`,
 // converts it to Rust `Status`, processes it, and returns a string.

@@ -1,4 +1,4 @@
-(* Define the OCaml record type. Field order must match `impl_conv_ocaml_record!`. *)
+(* Define the OCaml record type. Field order must match Rust's struct declaration. *)
 type person = {
   full_name : string;
   birth_year : int;
