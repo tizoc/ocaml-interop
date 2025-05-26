@@ -1,23 +1,20 @@
 (* Copyright (c) Viable Systems and TezEdge Contributors
    SPDX-License-Identifier: MIT *)
 
-(* Unknown/UnknownBlock are not defined on Rust side to test the failure case *)
-
 type movement =
   | Step of int
-  | Expand of (int * int)
+  | Expand of {
+      width : int;
+      height : int;
+  }
   | RotateLeft
   | RotateRight
-  | Unknown
-  | UnkownBlock of int
 
 type movement_polymorphic =
   [ `Step of int
   | `Expand of int * int
   | `RotateLeft
-  | `RotateRight
-  | `Unknown
-  | `UnkownBlock of int ]
+  | `RotateRight ]
 
 exception RustPanic of string
 
@@ -163,28 +160,26 @@ let test_make_error () =
 
 let test_interpret_movement () =
   let expected =
-    [ "RotateLeft"; "Step(10)"; "Error unpacking"; "Error unpacking" ]
+    [ "RotateLeft"; "Step(10)"; "Expand { width: 1, height: 2 }" ]
   in
   let result =
     [
       Rust.string_of_movement RotateLeft;
       Rust.string_of_movement (Step 10);
-      Rust.string_of_movement Unknown;
-      Rust.string_of_movement (UnkownBlock 0);
+      Rust.string_of_movement (Expand { height = 2; width = 1 });
     ]
   in
   Alcotest.(check (list string)) "Interpret a variant" expected result
 
 let test_interpret_polymorphic_movement () =
   let expected =
-    [ "`RotateLeft"; "`Step(10)"; "Error unpacking"; "Error unpacking" ]
+    [ "`RotateLeft"; "`Step(10)"; "`Expand(1, 2)" ]
   in
   let result =
     [
       Rust.string_of_polymorphic_movement `RotateLeft;
       Rust.string_of_polymorphic_movement (`Step 10);
-      Rust.string_of_polymorphic_movement `Unknown;
-      Rust.string_of_polymorphic_movement (`UnkownBlock 0);
+      Rust.string_of_polymorphic_movement (`Expand (1, 2));
     ]
   in
   Alcotest.(check (list string))
