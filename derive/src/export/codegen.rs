@@ -1,3 +1,6 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{spanned::Spanned, Error, Pat};

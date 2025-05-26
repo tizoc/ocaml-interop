@@ -1,3 +1,6 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
 use ocaml_interop::{OCaml, OCamlInt, OCamlRuntime, ToOCaml};
 
 #[ocaml_interop::export]

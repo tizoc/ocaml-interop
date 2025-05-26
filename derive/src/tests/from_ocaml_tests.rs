@@ -1,3 +1,6 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
 #[cfg(test)]
 mod tests {
     use crate::common::parsing::{parse_input, EnumKind, VariantKind};

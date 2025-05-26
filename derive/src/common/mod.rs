@@ -1,3 +1,6 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
 pub mod attr_parsing;
 pub mod error;
 pub mod field_processing;

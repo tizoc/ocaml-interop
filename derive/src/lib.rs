@@ -1,3 +1,6 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use syn::ItemFn;

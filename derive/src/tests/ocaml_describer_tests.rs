@@ -1,3 +1,6 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
 use crate::ocaml_describer::codegen::expand_ocaml_describer;
 use pretty_assertions::assert_eq;
 use quote::quote;
