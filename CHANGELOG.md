@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * Functions cannot have generic parameters.
     * Functions cannot be variadic.
 - `ocaml-interop-inspect` crate to inspect runtime OCaml values.
+- **Derive macros for automatic trait implementation**: New derive macros in the `ocaml-interop-derive` crate:
+    * `#[derive(ToOCaml)]` - Automatically generates `ToOCaml` trait implementations for structs and enums.
+    * `#[derive(FromOCaml)]` - Automatically generates `FromOCaml` trait implementations for structs and enums.
+    * `#[derive(OCamlDescriber)]` - Automatically generates `OCamlDescriber` trait implementations for type name description.
+- **Default type mappings**: `DefaultOCamlMapping` and `DefaultRustMapping` traits for automatic type inference in derive macros.
+
+### Removed
+
+- All struct/enum mapping declarative macros. Use the derive macros instead.
 
 ## [0.12.0] - 2025-05-16
 
