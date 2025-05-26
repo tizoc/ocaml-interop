@@ -7,18 +7,14 @@ pub(crate) struct ExportedFnData {
     // Attributes
     pub(crate) bytecode_fn_name_opt: Option<syn::Ident>,
 
-    pub(crate) _bytecode_meta_span: Option<proc_macro2::Span>, // For error reporting on duplicate bytecode attributes
     pub(crate) no_panic_catch: bool,
-    pub(crate) _no_panic_catch_span: Option<proc_macro2::Span>, // For error reporting on duplicate no_panic_catch
     pub(crate) noalloc: bool,
-    pub(crate) _noalloc_span: Option<proc_macro2::Span>, // For error reporting on duplicate noalloc
 
     // Original function elements
     pub(crate) native_fn_name: syn::Ident, // Name of the original Rust function, used for the extern "C" native fn
     pub(crate) visibility: syn::Visibility, // Original visibility, for bytecode stub
     pub(crate) original_fn_block: Box<syn::Block>, // The original function's body
     pub(crate) is_async: bool,
-    pub(crate) _is_unsafe: bool,
     pub(crate) has_generics: bool,
     pub(crate) is_variadic: bool,
     pub(crate) abi: Option<syn::Abi>,
@@ -35,9 +31,7 @@ pub(crate) struct ExportedFnData {
     pub(crate) user_return_type_ast: syn::Type, // The syn::Type of the original function's return
 
     // Spans for error reporting
-    pub(crate) _original_fn_ident_span: proc_macro2::Span,
-    pub(crate) _fn_token_span: proc_macro2::Span,
-    pub(crate) _fn_inputs_span: proc_macro2::Span,
+    pub(crate) original_fn_ident_span: proc_macro2::Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

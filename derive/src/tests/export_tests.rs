@@ -1,4 +1,5 @@
-use super::*; // To import export_internal_logic and other items from lib.rs
+use crate::export_internal_logic;
+
 use pretty_assertions::assert_eq;
 use quote::quote;
 
