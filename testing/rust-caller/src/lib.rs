@@ -377,3 +377,196 @@ fn test_threads() {
         handle.join().unwrap();
     }
 }
+
+#[test]
+fn test_flexible_parameters_rust_values() {
+    // Test that OCaml functions can accept direct Rust values
+    with_domain_lock(|cr| {
+        // Test with direct primitive values
+        assert_eq!(twice(cr, 42), 84);
+
+        // Test with direct string
+        let result = ocaml::make_tuple(cr, "hello", 123);
+        let (s, n): (String, i64) = result.to_rust(cr);
+        assert_eq!(s, "hello");
+        assert_eq!(n, 123);
+
+        // Test with direct string slice
+        assert_eq!(increment_bytes(cr, "0000", 3), "1110");
+
+        // Test with direct Vec
+        let ints = vec![5, 10, 15];
+        let expected = vec![6, 11, 16];
+        assert_eq!(increment_ints_list(cr, &ints), expected);
+    });
+}
+
+#[test]
+fn test_flexible_parameters_ocaml_refs() {
+    // Test that OCaml functions still work with OCamlRef arguments
+    with_domain_lock(|cr| {
+        // Test with boxroot references
+        let num_boxroot = 42i64.to_boxroot(cr);
+        let result = ocaml::twice(cr, &num_boxroot);
+        let result_val: i64 = result.to_rust(cr);
+        assert_eq!(result_val, 84);
+
+        let string_boxroot = "world".to_string().to_boxroot(cr);
+        let num_boxroot2 = 456i64.to_boxroot(cr);
+        let result = ocaml::make_tuple(cr, &string_boxroot, &num_boxroot2);
+        let (s, n): (String, i64) = result.to_rust(cr);
+        assert_eq!(s, "world");
+        assert_eq!(n, 456);
+    });
+}
+
+#[test]
+fn test_flexible_parameters_mixed() {
+    // Test mixing direct Rust values and OCamlRef arguments
+    with_domain_lock(|cr| {
+        let string_boxroot = "mixed".to_string().to_boxroot(cr);
+        let result = ocaml::make_tuple(cr, &string_boxroot, 789);
+        let (s, n): (String, i64) = result.to_rust(cr);
+        assert_eq!(s, "mixed");
+        assert_eq!(n, 789);
+
+        let num_boxroot = 99i64.to_boxroot(cr);
+        let result = ocaml::make_tuple(cr, "direct", &num_boxroot);
+        let (s, n): (String, i64) = result.to_rust(cr);
+        assert_eq!(s, "direct");
+        assert_eq!(n, 99);
+    });
+}
+
+#[test]
+fn test_flexible_parameters_borrowed_values() {
+    // Test with borrowed Rust values
+    with_domain_lock(|cr| {
+        let s = String::from("borrowed");
+        let result = ocaml::make_tuple(cr, &s, 321);
+        let (result_s, n): (String, i64) = result.to_rust(cr);
+        assert_eq!(result_s, "borrowed");
+        assert_eq!(n, 321);
+
+        let owned_string = "owned".to_string();
+        let result = ocaml::make_tuple(cr, owned_string, 654);
+        let (result_s, n): (String, i64) = result.to_rust(cr);
+        assert_eq!(result_s, "owned");
+        assert_eq!(n, 654);
+    });
+}
+
+#[test]
+fn test_flexible_parameters_unit_values() {
+    // Test with unit values and OCaml::unit()
+    with_domain_lock(|cr| {
+        // Test with unit literal
+        ocaml::gc_compact(cr, ());
+
+        // Test with OCaml::unit() properly
+        let unit_val = OCaml::unit();
+        ocaml::gc_compact(cr, unit_val.as_ref());
+
+        // Test with owned OCaml::unit()
+        ocaml::gc_compact(cr, OCaml::unit());
+    });
+}
+
+#[test]
+fn test_flexible_parameters_complex_types() {
+    // Test with complex convertible types
+    with_domain_lock(|cr| {
+        // Test with Vec reference for list conversion
+        let numbers = vec![100i64, 200, 300];
+        let result = ocaml::increment_ints_list(cr, &numbers);
+        let result_vec: Vec<i64> = result.to_rust(cr);
+        assert_eq!(result_vec, vec![101, 201, 301]);
+
+        // Test with owned Vec
+        let numbers_owned = vec![1000i64, 2000, 3000];
+        let result = ocaml::increment_ints_list(cr, numbers_owned);
+        let result_vec: Vec<i64> = result.to_rust(cr);
+        assert_eq!(result_vec, vec![1001, 2001, 3001]);
+    });
+}
+
+#[test]
+fn test_flexible_parameters_option_result() {
+    // Test with Option and Result values
+    with_domain_lock(|cr| {
+        // Test Option with direct string
+        let result = ocaml::make_some(cr, "option_test");
+        let result_opt: Option<String> = result.to_rust(cr);
+        assert_eq!(result_opt, Some("option_test".to_string()));
+
+        // Test Result with direct values
+        let result = ocaml::make_ok(cr, 999);
+        let result_res: Result<i64, String> = result.to_rust(cr);
+        assert_eq!(result_res, Ok(999));
+
+        let result = ocaml::make_error(cr, "error_test");
+        let result_res: Result<i64, String> = result.to_rust(cr);
+        assert_eq!(result_res, Err("error_test".to_string()));
+    });
+}
+
+#[test]
+fn test_flexible_parameters_records_variants() {
+    // Test with record and variant types using flexible parameters
+    with_domain_lock(|cr| {
+        let record = ocaml::TestRecord {
+            i: 42,
+            f: 3.14,
+            i32: 123,
+            i64: Box::new(456),
+            s: "flexible".to_owned(),
+            t: (789, 2.71),
+        };
+
+        // Test passing record directly (will be converted via ToOCaml)
+        let result = ocaml::stringify_record(cr, record);
+        let expected = "{ i=42; f=3.14; i32=123; i64=456; s=flexible; t=(789, 2.71) }";
+        let result_str: String = result.to_rust(cr);
+        assert_eq!(result_str, expected);
+
+        // Test passing variant directly
+        let variant = ocaml::Movement::Step(555);
+        let result = ocaml::stringify_variant(cr, variant);
+        let result_str: String = result.to_rust(cr);
+        assert_eq!(result_str, "Step(555)");
+
+        // Test passing polymorphic variant directly
+        let pvariant = ocaml::PolymorphicEnum::Multiple(777, "flexible_param".to_string());
+        let result = ocaml::stringify_polymorphic_variant(cr, pvariant);
+        let result_str: String = result.to_rust(cr);
+        assert_eq!(result_str, "Multiple(777, flexible_param)");
+    });
+}
+
+#[test]
+fn test_flexible_parameters_backward_compatibility() {
+    // Ensure existing code patterns still work
+    with_domain_lock(|cr| {
+        // Original pattern with explicit to_boxroot
+        let value = "legacy".to_string();
+        let boxroot = value.to_boxroot(cr);
+        let result = ocaml::make_some(cr, &boxroot);
+        let result_opt: Option<String> = result.to_rust(cr);
+        assert_eq!(result_opt, Some("legacy".to_string()));
+
+        // Original pattern with explicit conversion and rooting
+        let record = ocaml::TestRecord {
+            i: 1,
+            f: 1.0,
+            i32: 1,
+            i64: Box::new(1),
+            s: "legacy".to_owned(),
+            t: (1, 1.0),
+        };
+        let ocaml_record = record.to_boxroot(cr);
+        let result = ocaml::stringify_record(cr, &ocaml_record);
+        let expected = "{ i=1; f=1.00; i32=1; i64=1; s=legacy; t=(1, 1.00) }";
+        let result_str: String = result.to_rust(cr);
+        assert_eq!(result_str, expected);
+    });
+}
