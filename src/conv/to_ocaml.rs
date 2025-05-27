@@ -60,6 +60,12 @@ unsafe impl<T> ToOCaml<T> for BoxRoot<T> {
     }
 }
 
+unsafe impl<T> ToOCaml<T> for OCaml<'_, T> {
+    fn to_ocaml<'a>(&self, cr: &'a mut OCamlRuntime) -> OCaml<'a, T> {
+        unsafe { OCaml::new(cr, self.raw()) }
+    }
+}
+
 unsafe impl ToOCaml<()> for () {
     fn to_ocaml(&self, _cr: &mut OCamlRuntime) -> OCaml<'static, ()> {
         OCaml::unit()
