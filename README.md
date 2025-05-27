@@ -89,8 +89,7 @@ ocaml! {
 
 // ...
 
-let ocaml_string = "hello OCaml!".to_boxroot(cr);
-ocaml_print_endline(cr, &ocaml_string);
+ocaml_print_endline(cr, "hello OCaml!");
 ```
 
 ### Call Rust functions from OCaml

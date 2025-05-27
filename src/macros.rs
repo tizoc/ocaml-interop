@@ -43,12 +43,17 @@ macro_rules! ocaml {
     ($vis:vis fn $name:ident(
         $arg:ident: $typ:ty $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis fn $name<'a>(
+        $vis fn $name<'a, 'b: 'a, RustT>(
             cr: &'a mut $crate::OCamlRuntime,
-            $arg: $crate::OCamlRef<$typ>,
+            $arg: impl $crate::OCamlParam<'a, 'b, RustT, $typ>,
         ) -> $crate::BoxRoot<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            $crate::BoxRoot::new(closure.call(cr, $arg))
+            let rooted_arg = $arg.to_rooted(cr);
+            let ocaml_ref = match rooted_arg {
+                $crate::RefOrRooted::Ref(r) => r,
+                $crate::RefOrRooted::Root(ref root) => &**root,
+            };
+            $crate::BoxRoot::new(closure.call(cr, ocaml_ref))
         }
 
         $crate::ocaml!($($t)*);
@@ -58,13 +63,23 @@ macro_rules! ocaml {
         $arg1:ident: $typ1:ty,
         $arg2:ident: $typ2:ty $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis fn $name<'a>(
+        $vis fn $name<'a, 'b: 'a, RustT1, RustT2>(
             cr: &'a mut $crate::OCamlRuntime,
-            $arg1: $crate::OCamlRef<$typ1>,
-            $arg2: $crate::OCamlRef<$typ2>,
+            $arg1: impl $crate::OCamlParam<'a, 'b, RustT1, $typ1>,
+            $arg2: impl $crate::OCamlParam<'a, 'b, RustT2, $typ2>,
         ) -> $crate::BoxRoot<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            $crate::BoxRoot::new(closure.call2(cr, $arg1, $arg2))
+            let rooted_arg1 = $arg1.to_rooted(cr);
+            let rooted_arg2 = $arg2.to_rooted(cr);
+            let ocaml_ref1 = match rooted_arg1 {
+                $crate::RefOrRooted::Ref(r) => r,
+                $crate::RefOrRooted::Root(ref root) => &**root,
+            };
+            let ocaml_ref2 = match rooted_arg2 {
+                $crate::RefOrRooted::Ref(r) => r,
+                $crate::RefOrRooted::Root(ref root) => &**root,
+            };
+            $crate::BoxRoot::new(closure.call2(cr, ocaml_ref1, ocaml_ref2))
         }
 
         $crate::ocaml!($($t)*);
@@ -75,14 +90,29 @@ macro_rules! ocaml {
         $arg2:ident: $typ2:ty,
         $arg3:ident: $typ3:ty $(,)?
     ) $(-> $rtyp:ty)?; $($t:tt)*) => {
-        $vis fn $name<'a>(
+        $vis fn $name<'a, 'b: 'a, RustT1, RustT2, RustT3>(
             cr: &'a mut $crate::OCamlRuntime,
-            $arg1: $crate::OCamlRef<$typ1>,
-            $arg2: $crate::OCamlRef<$typ2>,
-            $arg3: $crate::OCamlRef<$typ3>,
+            $arg1: impl $crate::OCamlParam<'a, 'b, RustT1, $typ1>,
+            $arg2: impl $crate::OCamlParam<'a, 'b, RustT2, $typ2>,
+            $arg3: impl $crate::OCamlParam<'a, 'b, RustT3, $typ3>,
         ) -> $crate::BoxRoot<$crate::default_to_unit!($($rtyp)?)> {
             $crate::ocaml_closure_reference!(closure, $name);
-            $crate::BoxRoot::new(closure.call3(cr, $arg1, $arg2, $arg3))
+            let rooted_arg1 = $arg1.to_rooted(cr);
+            let rooted_arg2 = $arg2.to_rooted(cr);
+            let rooted_arg3 = $arg3.to_rooted(cr);
+            let ocaml_ref1 = match rooted_arg1 {
+                $crate::RefOrRooted::Ref(r) => r,
+                $crate::RefOrRooted::Root(ref root) => &**root,
+            };
+            let ocaml_ref2 = match rooted_arg2 {
+                $crate::RefOrRooted::Ref(r) => r,
+                $crate::RefOrRooted::Root(ref root) => &**root,
+            };
+            let ocaml_ref3 = match rooted_arg3 {
+                $crate::RefOrRooted::Ref(r) => r,
+                $crate::RefOrRooted::Root(ref root) => &**root,
+            };
+            $crate::BoxRoot::new(closure.call3(cr, ocaml_ref1, ocaml_ref2, ocaml_ref3))
         }
 
         $crate::ocaml!($($t)*);

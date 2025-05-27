@@ -574,6 +574,16 @@ where
     }
 }
 
+impl<'a, 'b, RustValue, OCamlValue> OCamlParam<'a, 'b, RustValue, OCamlValue> for RustValue
+where
+    RustValue: crate::ToOCaml<OCamlValue>,
+{
+    fn to_rooted(self, cr: &mut OCamlRuntime) -> RefOrRooted<'a, 'b, OCamlValue> {
+        let boxroot = self.to_boxroot(cr);
+        RefOrRooted::Root(boxroot)
+    }
+}
+
 macro_rules! try_call_impl {
     (
         $( { $method:ident, ($( ($argname:ident: $ot:ident $rt:ident) ),*) } ),*,

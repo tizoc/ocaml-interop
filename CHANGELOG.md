@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * `#[derive(FromOCaml)]` - Automatically generates `FromOCaml` trait implementations for structs and enums.
     * `#[derive(OCamlDescriber)]` - Automatically generates `OCamlDescriber` trait implementations for type name description.
 - **Default type mappings**: `DefaultOCamlMapping` and `DefaultRustMapping` traits for automatic type inference in derive macros.
+- **Flexible function parameters**: OCaml functions can now accept both `OCamlRef` arguments and convertible Rust values.
 
 ### Removed
 
