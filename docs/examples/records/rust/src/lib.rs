@@ -1,22 +1,15 @@
-use ocaml_interop::{impl_conv_ocaml_record, OCaml, OCamlInt, OCamlRuntime, ToOCaml};
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
+use ocaml_interop::{FromOCaml, OCaml, OCamlInt, OCamlRuntime, ToOCaml};
 
 // Define the plain Rust struct.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, ToOCaml, FromOCaml)]
 struct Person {
     full_name: String,
+    #[ocaml(as_ = "OCamlInt")]
     birth_year: i64,
     is_active: bool,
-}
-
-// Use the macro to implement ToOCaml<Person> and FromOCaml<Person> for the Person struct.
-// The type `Person` inside OCaml<Person> or BoxRoot<Person> acts as a marker
-// for the OCaml record type.
-impl_conv_ocaml_record! {
-    Person { // Assumes OCaml record type is also effectively named "Person" for interop
-        full_name: String,     // Rust String maps to OCaml string
-        birth_year: OCamlInt,  // Rust i64 maps to OCaml int (via OCamlInt)
-        is_active: bool,       // Rust bool maps to OCaml bool
-    }
 }
 
 #[ocaml_interop::export]

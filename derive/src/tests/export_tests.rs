@@ -1,4 +1,8 @@
-use super::*; // To import export_internal_logic and other items from lib.rs
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
+use crate::export_internal_logic;
+
 use pretty_assertions::assert_eq;
 use quote::quote;
 

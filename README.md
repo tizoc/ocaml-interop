@@ -33,22 +33,16 @@ let new_ocaml_string = rust_string.to_ocaml(cr);
 (* OCaml *)
 type my_record = {
   string_field: string;
-  tuple_field: (string * int);
+  tuple_field: (string * int64);
 }
 ```
 
 ```rust
 // Rust
+#[derive(ToOCaml, FromOCaml)]
 struct MyStruct {
     string_field: String,
     tuple_field: (String, i64),
-}
-
-impl_conv_ocaml_record! {
-    MyStruct {
-        string_field: String,
-        tuple_field: (String, i64),
-    }
 }
 
 // ...
@@ -68,16 +62,10 @@ type my_variant =
 
 ```rust
 // Rust
+#[derive(ToOCaml, FromOCaml)]
 enum MyEnum {
     EmptyTag,
-    TagWithInt(i64),
-}
-
-impl_conv_ocaml_variant! {
-    MyEnum {
-        EmptyTag,
-        TagWithInt(OCamlInt),
-    }
+    TagWithInt(#[ocaml(as_ = "OCamlInt")] i64),
 }
 
 // ...

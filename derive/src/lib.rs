@@ -1,10 +1,24 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
+extern crate proc_macro;
 use proc_macro::TokenStream;
 use syn::ItemFn;
 
-mod core;
-mod expansion;
-mod parsing;
-mod validation;
+mod common;
+mod export;
+mod from_ocaml;
+mod ocaml_describer;
+mod to_ocaml;
+
+#[cfg(test)]
+mod tests {
+    mod export_tests;
+    mod from_ocaml_tests;
+    mod ocaml_describer_tests;
+    mod to_ocaml_tests;
+    mod to_ocaml_type_safety_tests;
+}
 
 fn export_internal_logic(
     attr_ts: proc_macro2::TokenStream,
@@ -17,11 +31,11 @@ fn export_internal_logic(
         )
     })?;
 
-    let parsed_data = parsing::parse_export_definition(attr_ts, &input_fn)?;
+    let parsed_data = export::parsing::parse_export_definition(attr_ts, &input_fn)?;
 
-    validation::validate_parsed_data(&parsed_data)?;
+    export::validation::validate_parsed_data(&parsed_data)?;
 
-    expansion::expand_function_from_data(&parsed_data)
+    export::codegen::expand_function_from_data(&parsed_data)
 }
 
 // --- Proc Macro Entry Point ---
@@ -36,5 +50,29 @@ pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
-#[cfg(test)]
-mod tests;
+#[proc_macro_derive(OCamlDescriber, attributes(ocaml))]
+pub fn ocaml_describer_derive(input: TokenStream) -> TokenStream {
+    // Convert proc_macro::TokenStream to proc_macro2::TokenStream for internal use
+    let input_pm2 = proc_macro2::TokenStream::from(input);
+    ocaml_describer::codegen::expand_ocaml_describer(input_pm2)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into() // Convert proc_macro2::TokenStream back to proc_macro::TokenStream
+}
+
+#[proc_macro_derive(ToOCaml, attributes(ocaml))]
+pub fn to_ocaml_derive(input: TokenStream) -> TokenStream {
+    // Convert proc_macro::TokenStream to proc_macro2::TokenStream for internal use
+    let input_pm2 = proc_macro2::TokenStream::from(input);
+    to_ocaml::codegen::expand_to_ocaml(input_pm2)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into() // Convert proc_macro2::TokenStream back to proc_macro::TokenStream
+}
+
+#[proc_macro_derive(FromOCaml, attributes(ocaml))]
+pub fn from_ocaml_derive(input: TokenStream) -> TokenStream {
+    // Convert proc_macro::TokenStream to proc_macro2::TokenStream for internal use
+    let input_pm2 = proc_macro2::TokenStream::from(input);
+    from_ocaml::codegen::expand_from_ocaml(input_pm2)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into() // Convert proc_macro2::TokenStream back to proc_macro::TokenStream
+}

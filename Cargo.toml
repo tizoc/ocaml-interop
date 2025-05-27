@@ -27,6 +27,7 @@ default = ["boxroot"]
 boxroot = ["ocaml-boxroot-sys/bundle-boxroot"]
 without-ocamlopt = ["ocaml-sys/without-ocamlopt"]
 no-caml-startup = []
+link = ["ocaml-sys/link", "boxroot"]
 
 [workspace]
 members = [

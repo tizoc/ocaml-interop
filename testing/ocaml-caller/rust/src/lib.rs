@@ -2,20 +2,41 @@
 // SPDX-License-Identifier: MIT
 
 use ocaml_interop::{
-    alloc_error, alloc_ok, ocaml_unpack_polymorphic_variant, ocaml_unpack_variant, BoxRoot, OCaml,
-    OCamlBytes, OCamlException, OCamlFloat, OCamlFloatArray, OCamlInt, OCamlInt32, OCamlInt64,
-    OCamlList, OCamlRuntime, OCamlUniformArray, ToOCaml,
+    alloc_error, alloc_ok, BoxRoot, FromOCaml, OCaml, OCamlBytes, OCamlException, OCamlFloat,
+    OCamlFloatArray, OCamlInt, OCamlInt32, OCamlInt64, OCamlList, OCamlRuntime, OCamlUniformArray,
+    ToOCaml,
 };
 use std::{thread, time};
 
+#[derive(FromOCaml)]
 enum Movement {
-    Step { count: i32 },
+    Step {
+        #[ocaml(as_ = "OCamlInt")]
+        count: i32,
+    },
+    Expand {
+        #[ocaml(as_ = "OCamlInt")]
+        width: i64,
+        #[ocaml(as_ = "OCamlInt")]
+        height: i64,
+    },
     RotateLeft,
     RotateRight,
 }
 
+#[derive(FromOCaml)]
+#[ocaml(polymorphic_variant)]
 enum PolymorphicMovement {
-    Step { count: i32 },
+    Step {
+        #[ocaml(as_ = "OCamlInt")]
+        count: i32,
+    },
+    Expand {
+        #[ocaml(as_ = "OCamlInt")]
+        width: i64,
+        #[ocaml(as_ = "OCamlInt")]
+        height: i64,
+    },
     RotateLeft,
     RotateRight,
 }
@@ -182,23 +203,15 @@ pub fn rust_sleep(cr: &mut OCamlRuntime, millis: OCaml<OCamlInt>) {
 }
 
 #[ocaml_interop::export]
-pub fn rust_string_of_movement(
-    cr: &mut OCamlRuntime,
-    movement: OCaml<PolymorphicMovement>,
-) -> OCaml<String> {
-    let movement_ocaml = cr.get(&movement); // Corrected: use cr.get() for BoxRoot
-    let pm = ocaml_unpack_variant! {
-        movement_ocaml => { // Use the OCaml<'_, T> value from cr.get()
-            Step(count: OCamlInt) => { Movement::Step {count} },
-            RotateLeft => Movement::RotateLeft,
-            RotateRight => Movement::RotateRight,
+pub fn rust_string_of_movement(cr: &mut OCamlRuntime, movement: OCaml<Movement>) -> OCaml<String> {
+    let m = movement.to_rust();
+    let s = match m {
+        Movement::Step { count } => format!("Step({})", count),
+        Movement::Expand { width, height } => {
+            format!("Expand {{ width: {width}, height: {height} }}")
         }
-    };
-    let s = match pm {
-        Err(_) => "Error unpacking".to_owned(),
-        Ok(Movement::Step { count }) => format!("Step({})", count),
-        Ok(Movement::RotateLeft) => "RotateLeft".to_owned(),
-        Ok(Movement::RotateRight) => "RotateRight".to_owned(),
+        Movement::RotateLeft => "RotateLeft".to_owned(),
+        Movement::RotateRight => "RotateRight".to_owned(),
     };
     s.to_ocaml(cr)
 }
@@ -208,19 +221,14 @@ pub fn rust_string_of_polymorphic_movement(
     cr: &mut OCamlRuntime,
     polymorphic_movement: OCaml<PolymorphicMovement>,
 ) -> OCaml<String> {
-    let polymorphic_movement_ocaml = cr.get(&polymorphic_movement); // Corrected
-    let pm = ocaml_unpack_polymorphic_variant! {
-        polymorphic_movement_ocaml => { // Corrected
-            Step(count: OCamlInt) => { PolymorphicMovement::Step {count} },
-            RotateLeft => PolymorphicMovement::RotateLeft,
-            RotateRight => PolymorphicMovement::RotateRight,
-        }
-    };
+    let pm = polymorphic_movement.to_rust();
     let s = match pm {
-        Err(_) => "Error unpacking".to_owned(),
-        Ok(PolymorphicMovement::Step { count }) => format!("`Step({})", count),
-        Ok(PolymorphicMovement::RotateLeft) => "`RotateLeft".to_owned(),
-        Ok(PolymorphicMovement::RotateRight) => "`RotateRight".to_owned(),
+        PolymorphicMovement::Step { count } => format!("`Step({})", count),
+        PolymorphicMovement::Expand { width, height } => {
+            format!("`Expand({}, {})", width, height)
+        }
+        PolymorphicMovement::RotateLeft => "`RotateLeft".to_owned(),
+        PolymorphicMovement::RotateRight => "`RotateRight".to_owned(),
     };
     s.to_ocaml(cr)
 }

@@ -1,3 +1,6 @@
+// Copyright (c) Viable Systems and TezEdge Contributors
+// SPDX-License-Identifier: MIT
+
 use ocaml_interop::{OCaml, OCamlRuntime};
 
 // Example with f64 (float)

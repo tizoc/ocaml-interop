@@ -15,52 +15,31 @@ use ocaml_interop::{bigarray, BoxRoot};
 mod ocaml {
     use ocaml_interop::*;
 
+    #[derive(ToOCaml)]
     pub struct TestRecord {
+        #[ocaml(as_ = "OCamlInt")]
         pub i: i64,
         pub f: f64,
         pub i32: i32,
         pub i64: Box<i64>,
         pub s: String,
+        #[ocaml(as_ = "(OCamlInt, OCamlFloat)")]
         pub t: (i64, f64),
     }
 
+    #[derive(ToOCaml)]
     pub enum Movement {
-        Step(i64),
+        Step(#[ocaml(as_ = "OCamlInt")] i64),
         RotateLeft,
         RotateRight,
     }
 
+    #[derive(ToOCaml)]
+    #[ocaml(polymorphic_variant)]
     pub enum PolymorphicEnum {
         Unit,
         Single(f64),
-        Multiple(i64, String),
-    }
-
-    impl_to_ocaml_record! {
-        TestRecord {
-            i: OCamlInt,
-            f: OCamlFloat,
-            i32: OCamlInt32,
-            i64: OCamlInt64,
-            s: String,
-            t: (OCamlInt, OCamlFloat),
-        }
-    }
-
-    impl_to_ocaml_variant! {
-        Movement {
-            Movement::Step(count: OCamlInt),
-            Movement::RotateLeft,
-            Movement::RotateRight,
-        }
-    }
-
-    impl_to_ocaml_polymorphic_variant! {
-        PolymorphicEnum {
-            PolymorphicEnum::Single(i: OCamlFloat),
-            PolymorphicEnum::Multiple(i: OCamlInt, s: String),
-            PolymorphicEnum::Unit,
-        }
+        Multiple(#[ocaml(as_ = "OCamlInt")] i64, String),
     }
 
     ocaml! {

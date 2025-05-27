@@ -1,5 +1,5 @@
 (* OCaml variant type definition. *)
-(* The order of constructors must match the order in Rust's `impl_conv_ocaml_variant!`. *)
+(* The order of constructors must match the order in Rust's enum declaration. *)
 type status =
   | Ok                (* First constructor, no arguments *)
   | Error of string   (* Second constructor, one argument *)
