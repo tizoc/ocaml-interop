@@ -85,45 +85,45 @@ fn main() {
     // This is necessary for thread safety when calling OCaml functions
     OCamlRuntime::with_domain_lock(|cr| {
         // Test record
-        let test_record = ocaml::create_test_record(cr, &OCaml::unit());
+        let test_record = ocaml::create_test_record(cr, ());
         unsafe {
             inspect_value(test_record.get_raw(),
             "{ int_field = 42; float_field = 3.14159; string_field = \"Hello, OCaml!\"; bool_field = true; tuple_field = (123, \"tuple element\", 45.67) }");
         }
 
         // Empty variant
-        let empty_variant = ocaml::create_empty_variant(cr, &OCaml::unit());
+        let empty_variant = ocaml::create_empty_variant(cr, ());
         unsafe {
             inspect_value(empty_variant.get_raw(), "Empty");
         }
 
         // Int variant
-        let int_variant = ocaml::create_int_variant(cr, &OCaml::unit());
+        let int_variant = ocaml::create_int_variant(cr, ());
         unsafe {
             inspect_value(int_variant.get_raw(), "WithInt 42");
         }
 
         // String variant
-        let string_variant = ocaml::create_string_variant(cr, &OCaml::unit());
+        let string_variant = ocaml::create_string_variant(cr, ());
         unsafe {
             inspect_value(string_variant.get_raw(), "WithString \"variant string\"");
         }
 
         // Tuple variant
-        let tuple_variant = ocaml::create_tuple_variant(cr, &OCaml::unit());
+        let tuple_variant = ocaml::create_tuple_variant(cr, ());
         unsafe {
             inspect_value(tuple_variant.get_raw(), "WithTuple (42, 3.14)");
         }
 
         // Complex variant
-        let complex_variant = ocaml::create_complex_variant(cr, &OCaml::unit());
+        let complex_variant = ocaml::create_complex_variant(cr, ());
         unsafe {
             inspect_value(complex_variant.get_raw(),
             "Complex { int_field = 42; float_field = 3.14159; string_field = \"Hello, OCaml!\"; bool_field = true; tuple_field = (123, \"tuple element\", 45.67) }");
         }
 
         // List of variants
-        let list_of_variants = ocaml::create_list_of_variants(cr, &OCaml::unit());
+        let list_of_variants = ocaml::create_list_of_variants(cr, ());
         unsafe {
             inspect_value(
                 list_of_variants.get_raw(),
@@ -132,17 +132,17 @@ fn main() {
         }
 
         // Polymorphic variants
-        let poly_none = ocaml::create_poly_none(cr, &OCaml::unit());
+        let poly_none = ocaml::create_poly_none(cr, ());
         unsafe {
             inspect_value(poly_none.get_raw(), "`None");
         }
 
-        let poly_int = ocaml::create_poly_int(cr, &OCaml::unit());
+        let poly_int = ocaml::create_poly_int(cr, ());
         unsafe {
             inspect_value(poly_int.get_raw(), "`Int 42");
         }
 
-        let poly_tuple = ocaml::create_poly_tuple(cr, &OCaml::unit());
+        let poly_tuple = ocaml::create_poly_tuple(cr, ());
         unsafe {
             inspect_value(poly_tuple.get_raw(), "`Tuple (42, \"poly tuple\")");
         }

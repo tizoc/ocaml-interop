@@ -64,40 +64,32 @@ mod ocaml {
 }
 
 pub fn increment_bytes(cr: &mut OCamlRuntime, bytes: &str, first_n: usize) -> String {
-    let bytes = bytes.to_boxroot(cr);
-    let first_n = unsafe { OCaml::of_i64_unchecked(first_n as i64) };
-    let result = ocaml::increment_bytes(cr, &bytes, &first_n);
+    let result = ocaml::increment_bytes(cr, bytes, first_n as i64);
     result.to_rust(cr)
 }
 
 pub fn increment_ints_list(cr: &mut OCamlRuntime, ints: &Vec<i64>) -> Vec<i64> {
-    let ints = ints.to_boxroot(cr);
-    let result = ocaml::increment_ints_list(cr, &ints);
+    let result = ocaml::increment_ints_list(cr, ints);
     result.to_rust(cr)
 }
 
 pub fn twice(cr: &mut OCamlRuntime, num: i64) -> i64 {
-    let num = unsafe { OCaml::of_i64_unchecked(num) };
-    let result = ocaml::twice(cr, &num);
+    let result = ocaml::twice(cr, num);
     result.to_rust(cr)
 }
 
 pub fn make_tuple(cr: &mut OCamlRuntime, fst: String, snd: i64) -> (String, i64) {
-    let num = unsafe { OCaml::of_i64_unchecked(snd) };
-    let str = fst.to_boxroot(cr);
-    let result = ocaml::make_tuple(cr, &str, &num);
+    let result = ocaml::make_tuple(cr, &fst, snd);
     result.to_rust(cr)
 }
 
 pub fn make_some(cr: &mut OCamlRuntime, value: String) -> Option<String> {
-    let str = value.to_boxroot(cr);
-    let result = ocaml::make_some(cr, &str);
+    let result = ocaml::make_some(cr, &value);
     result.to_rust(cr)
 }
 
 pub fn make_ok(cr: &mut OCamlRuntime, value: i64) -> Result<i64, String> {
-    let value = unsafe { OCaml::of_i64_unchecked(value) };
-    let result = ocaml::make_ok(cr, &value);
+    let result = ocaml::make_ok(cr, value);
     result.to_rust(cr)
 }
 
@@ -312,7 +304,7 @@ fn test_exception_handling_without_message() {
     use std::panic::{catch_unwind, AssertUnwindSafe};
     with_domain_lock(|cr| {
         let result = catch_unwind(AssertUnwindSafe(move || {
-            ocaml::raises_nonmessage_exception(cr, &OCaml::unit());
+            ocaml::raises_nonmessage_exception(cr, ());
         }));
         assert_eq!(
             result
@@ -329,7 +321,7 @@ fn test_exception_handling_nonblock_exception() {
     use std::panic::{catch_unwind, AssertUnwindSafe};
     with_domain_lock(|cr| {
         let result = catch_unwind(AssertUnwindSafe(move || {
-            ocaml::raises_nonblock_exception(cr, &OCaml::unit());
+            ocaml::raises_nonblock_exception(cr, ());
         }));
         assert_eq!(
             result
