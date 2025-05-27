@@ -66,13 +66,15 @@ fn main() -> Result<(), String> {
 
     OCamlRuntime::with_domain_lock(|cr| {
         let rust_val: i64 = 10;
-        // Convert to a rooted OCaml value.
+
+        // Pass direct Rust values - they're automatically converted
+        let result_root: BoxRoot<OCamlInt> = ocaml_bindings::multiply_by_two(cr, rust_val);
+        let rust_result: i64 = result_root.to_rust(cr);
+        println!("10 * 2 = {}", rust_result); // Output: 10 * 2 = 20
+
+        // Alternative: Traditional approach with explicit rooting still works
         let ocaml_val: BoxRoot<OCamlInt> = rust_val.to_boxroot(cr);
-
-        // Invoke the OCaml function
-        // Arguments are passed as OCamlRef<T>; the return value is BoxRoot<T>
         let result_root: BoxRoot<OCamlInt> = ocaml_bindings::multiply_by_two(cr, &ocaml_val);
-
         let rust_result: i64 = result_root.to_rust(cr);
         println!("10 * 2 = {}", rust_result); // Output: 10 * 2 = 20
     });
