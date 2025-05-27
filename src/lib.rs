@@ -138,7 +138,7 @@ pub use crate::mlvalues::{
     OCamlInt32, OCamlInt64, OCamlList, OCamlUniformArray, RawOCaml,
 };
 pub use crate::runtime::{OCamlRuntime, OCamlRuntimeStartupGuard};
-pub use crate::value::OCaml;
+pub use crate::value::{OCaml, OCamlParam, RefOrRooted};
 
 /// Exports a Rust function to OCaml.
 ///
